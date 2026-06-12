@@ -25,10 +25,12 @@ public:
     explicit NoisePanel (juce::AudioProcessorValueTreeState& s)
         : SectionPanel ("Noise"),
           onSwitch (s, Params::id::noiseOn, ""),
-          color (s, Params::id::noiseColor, "COLOR (W-P)"),
+          type (s, Params::id::noiseType),
+          color (s, Params::id::noiseColor, "COLOR / CLOCK"),
           level (s, Params::id::noiseLevel, "LEVEL")
     {
         addAndMakeVisible (onSwitch);
+        addAndMakeVisible (type);
         addAndMakeVisible (color);
         addAndMakeVisible (level);
     }
@@ -36,7 +38,12 @@ public:
     void resized() override
     {
         auto b = content();
-        onSwitch.setBounds (b.removeFromLeft (44).withSizeKeepingCentre (38, 22));
+        auto top = b.removeFromTop (22);
+        onSwitch.setBounds (top.removeFromLeft (38));
+        top.removeFromLeft (4);
+        type.setBounds (top);
+        b.removeFromTop (2);
+
         const int kw = b.getWidth() / 2;
         color.setBounds (b.removeFromLeft (kw));
         level.setBounds (b);
@@ -44,5 +51,6 @@ public:
 
 private:
     SwitchToggle onSwitch;
+    ChoiceCombo type;
     LabeledKnob color, level;
 };

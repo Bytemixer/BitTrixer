@@ -186,7 +186,7 @@ void Randomizer::fullRandom()
         const bool on = chance (oscProb[i - 1]);
         anySource |= on;
         setBool (oscId (i, "on"), on);
-        setChoice (oscId (i, "wave"), rndInt (0, 5));
+        setChoice (oscId (i, "wave"), rndInt (0, 7));
         set (oscId (i, "pitch"), chance (0.4f) ? (float) rndInt (-12, 12) : 0.0f);
         set (oscId (i, "fine"),  rnd (-20.0f, 20.0f));
         set (oscId (i, "pwm"),   rnd (10.0f, 90.0f));
@@ -196,6 +196,7 @@ void Randomizer::fullRandom()
 
     const bool noise = chance (0.35f) || ! anySource;
     setBool (id::noiseOn, noise);
+    setChoice (id::noiseType, rndInt (0, 3));
     set (id::noiseColor, rnd (0.0f, 1.0f));
     set (id::noiseLevel, rnd (0.3f, 1.0f));
 
@@ -420,7 +421,15 @@ void Randomizer::applyCategory (Category c)
             set (oscId (1, "level"), 0.6f);
             set (id::baseFreq, rndLog (40.0f, 90.0f));
             setBool (id::noiseOn, true);
-            set (id::noiseColor, rnd (0.3f, 1.0f));
+            if (chance (0.3f))                                     // console-chip boom
+            {
+                setChoice (id::noiseType, (int) NoiseType::LfsrHiss);
+                set (id::noiseColor, rnd (0.3f, 0.7f));            // mid clock = crunchy
+            }
+            else
+            {
+                set (id::noiseColor, rnd (0.3f, 1.0f));            // analog, pink-ish
+            }
             set (id::noiseLevel, rnd (0.8f, 1.0f));
             set (id::lpfCutoff, rndLog (250.0f, 800.0f));          // dark resting point
             set (id::lpfRes, rnd (0.05f, 0.4f));
@@ -522,7 +531,16 @@ void Randomizer::applyCategory (Category c)
             set (id::baseFreq, rndLog (80.0f, 220.0f));
             set (oscId (1, "level"), rnd (0.5f, 0.8f));
             setBool (id::noiseOn, true);
-            set (id::noiseColor, rnd (0.0f, 0.5f));
+            if (chance (0.35f))                                    // digital smack
+            {
+                setChoice (id::noiseType, chance (0.5f) ? (int) NoiseType::Rasp
+                                                        : (int) NoiseType::LfsrHiss);
+                set (id::noiseColor, rnd (0.1f, 0.5f));
+            }
+            else
+            {
+                set (id::noiseColor, rnd (0.0f, 0.5f));
+            }
             set (id::noiseLevel, rnd (0.7f, 1.0f));                // noise leads
             setBool (id::envFInvert, true);                        // dive and HOLD the bottom
             setChoice (modId (1, "src"), (int) ModSrc::FilterEnv);
