@@ -58,7 +58,12 @@ public:
     juce::AudioProcessorValueTreeState apvts;
 
     // ---- UI -> audio thread trigger requests (lock-free) ----
-    void uiGate (bool on) noexcept       { uiGateRequest.store (on ? 1 : 2); }
+    // On/off are separate counters: a fast click can land both edges inside
+    // one audio block, and the gate-on must never be lost.
+    void uiGate (bool on) noexcept
+    {
+        (on ? uiGateOnRequests : uiGateOffRequests).fetch_add (1);
+    }
     void uiOneShot() noexcept            { uiOneShotRequests.fetch_add (1); }
 
     // Snapshot of the current panel for offline rendering (WAV export, scope).
@@ -68,7 +73,8 @@ private:
     Params::Cache paramCache;
     SynthEngine engine;
 
-    std::atomic<int> uiGateRequest { 0 };      // 0 none, 1 on, 2 off
+    std::atomic<int> uiGateOnRequests { 0 };
+    std::atomic<int> uiGateOffRequests { 0 };
     std::atomic<int> uiOneShotRequests { 0 };
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (RetroForgeProcessor)

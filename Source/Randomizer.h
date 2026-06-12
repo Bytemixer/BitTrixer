@@ -12,20 +12,29 @@
 #pragma once
 
 #include <juce_audio_processors/juce_audio_processors.h>
+#include <atomic>
+#include <map>
+#include <vector>
 #include "Params.h"
 
 // ============================================================================
 //  Randomizer — sfxr/bfxr-style patch generation, message-thread only.
 //  * fullRandom()      : anything-goes (within musical constraints)
 //  * applyCategory()   : hand-tuned recipe ranges per SFX archetype
-//  * variate()         : perturbs the CURRENT patch by the Variate Amount
-//                        parameter — an editable "sibling" of the sound
+//  * variate()         : ANCHORED variation — the first press captures the
+//                        current sound as an anchor; every later press
+//                        re-perturbs FROM THE ANCHOR with tight, triangular
+//                        nudges. Press it forever: you get siblings of the
+//                        same sound, never a drift out of its family. The
+//                        anchor refreshes automatically when anything else
+//                        changes the sound (knob edit, category, undo...).
+//  * mutate()          : compounding walk with wider swings — the explorer.
 //  * undo()            : one-deep snapshot, taken before every action above
 //  Writes through setValueNotifyingHost so the host/UI stay in sync.
-//  Never touches: master volume, loop settings, gate, MIDI track.
+//  Never touches: master volume, loop settings, MIDI track.
 // ============================================================================
 
-class Randomizer
+class Randomizer : private juce::AudioProcessorValueTreeState::Listener
 {
 public:
     enum class Category { Pickup = 0, Laser, Explosion, Powerup, Hit, Jump, Blip, OneUp, Lose };
@@ -48,18 +57,45 @@ public:
         return "?";
     }
 
-    explicit Randomizer (juce::AudioProcessorValueTreeState& state) : apvts (state) {}
+    explicit Randomizer (juce::AudioProcessorValueTreeState& state) : apvts (state)
+    {
+        for (auto* p : apvts.processor.getParameters())
+            if (auto* rp = dynamic_cast<juce::RangedAudioParameter*> (p))
+            {
+                watchedIds.add (rp->paramID);
+                apvts.addParameterListener (rp->paramID, this);
+            }
+    }
+
+    ~Randomizer() override
+    {
+        for (const auto& pid : watchedIds)
+            apvts.removeParameterListener (pid, this);
+    }
 
     void fullRandom();
     void applyCategory (Category c);
     void variate();
+    void mutate();
 
     bool canUndo() const noexcept { return hasUndo; }
     void undo();
 
 private:
+    struct Nudge { juce::String pid; float scale; };
+
+    void parameterChanged (const juce::String&, float) override
+    {
+        // a change we did not make ourselves = new sound family
+        if (! selfChanging)
+            anchorDirty.store (true);
+    }
+
     void snapshotForUndo();
     void resetToNeutral();
+    std::vector<Nudge> perturbTargets (bool includeLoudnessAndLength) const;
+    void applyNudges (const std::vector<Nudge>& targets, float baseScale, bool fromAnchor);
+    void refreshAnchorIfNeeded (const std::vector<Nudge>& targets);
 
     // real-value setters (converted through each parameter's range)
     void set (const juce::String& paramId, float realValue);
@@ -75,4 +111,9 @@ private:
     juce::Random random;
     juce::ValueTree undoState;
     bool hasUndo = false;
+
+    juce::StringArray watchedIds;
+    std::map<juce::String, float> anchor;     // normalized values per param
+    std::atomic<bool> anchorDirty { true };
+    bool selfChanging = false;
 };
