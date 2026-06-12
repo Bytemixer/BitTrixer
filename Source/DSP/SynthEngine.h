@@ -69,8 +69,10 @@ private:
         bool active = false;
         int  note   = kNoteNone;        // >= 0 MIDI; see tags below
         uint64_t startClock = 0;
-        uint64_t ageSamples = 0;        // for pitch-jump onsets
+        uint64_t ageSamples = 0;        // for pitch-jump onsets / min-gate
         int  gateRemaining = -1;        // samples until auto gate-off; -1 = held
+        int  minGateSamples = 0;        // manual triggers: >= 1 base-freq cycle
+        double fs = 44100.0;
 
         Envelope envF, envA;
         LFO lfo1, lfo2;
