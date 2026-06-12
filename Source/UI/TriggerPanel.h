@@ -15,9 +15,11 @@
 #include "../Params.h"
 
 // ============================================================================
-//  TriggerPanel — the play surface: momentary TRIGGER pad (mouse down =
-//  gate on, up = gate off), gate time, loop mode, and the variate cluster.
-//  The owner wires onGate / onVariate / onUndo.
+//  TriggerPanel — the play surface: TRIGGER fires the complete sound as a
+//  one-shot (gate length = the GATE knob; the full envelope cycle always
+//  plays, regardless of how briefly the mouse is held). Plus gate time,
+//  loop mode and the variate cluster. The owner wires onTrigger / onVariate
+//  / onUndo.
 // ============================================================================
 
 class TriggerPanel : public SectionPanel
@@ -33,7 +35,7 @@ public:
     {
         trigger.setButtonText ("TRIGGER");
         trigger.setColour (juce::TextButton::buttonColourId, RetroColors::accentDark);
-        trigger.onGate = [this] (bool on) { if (onGate) onGate (on); };
+        trigger.onClick = [this] { if (onTrigger) onTrigger(); };
         addAndMakeVisible (trigger);
 
         variateButton.setButtonText ("VARIATE");
@@ -73,26 +75,10 @@ public:
         undoButton.setBounds (btns.reduced (0, 2));
     }
 
-    std::function<void (bool)> onGate;
-    std::function<void()> onVariate, onUndo;
+    std::function<void()> onTrigger, onVariate, onUndo;
 
 private:
-    struct MomentaryButton : juce::TextButton
-    {
-        std::function<void (bool)> onGate;
-        void mouseDown (const juce::MouseEvent& e) override
-        {
-            juce::TextButton::mouseDown (e);
-            if (onGate) onGate (true);
-        }
-        void mouseUp (const juce::MouseEvent& e) override
-        {
-            juce::TextButton::mouseUp (e);
-            if (onGate) onGate (false);
-        }
-    };
-
-    MomentaryButton trigger;
+    juce::TextButton trigger;
     juce::TextButton variateButton, undoButton;
     LabeledKnob gate;
     SwitchToggle loopOn;

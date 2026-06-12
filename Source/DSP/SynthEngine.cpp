@@ -37,7 +37,7 @@ namespace
         const float ax = std::fabs (x);
         if (ax <= th)
             return x;
-        const float knee = th + std::tanh ((ax - th) / (1.0f - th)) * (1.0f - th);
+        const float knee = th + FastMath::tanh ((ax - th) / (1.0f - th)) * (1.0f - th);
         return x < 0.0f ? -knee : knee;
     }
 }
@@ -364,6 +364,22 @@ void SynthEngine::render (float* left, float* right, int numSamples)
         for (auto& inst : instances)
             if (inst.active)
                 inst.renderAdd (l, r, n, patch, (float) fs);
+
+        // last-resort NaN/inf guard: if anything blew up, silence the
+        // sub-block and hard-reset every voice path
+        if (! std::isfinite (l[0] + r[0] + l[n - 1] + r[n - 1]))
+        {
+            for (auto& inst : instances)
+            {
+                inst.active = false;
+                inst.envF.reset();
+                inst.envA.reset();
+                for (auto& v : inst.voices)
+                    v.hardReset();
+            }
+            for (int s = 0; s < n; ++s)
+                l[s] = r[s] = 0.0f;
+        }
 
         for (int s = 0; s < n; ++s)
         {

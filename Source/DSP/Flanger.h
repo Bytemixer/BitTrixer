@@ -13,6 +13,7 @@
 
 #include <array>
 #include <cmath>
+#include "FastMath.h"
 
 // ============================================================================
 //  Flanger — short LFO-modulated delay with feedback (the sfxr "phaser" is
@@ -51,7 +52,7 @@ public:
         {
             phase += inc;
             if (phase >= 1.0f) phase -= 1.0f;
-            const float lfo = 0.5f + 0.5f * std::sin (phase * kTwoPi);
+            const float lfo = 0.5f + 0.5f * FastMath::sinCycle (phase);
 
             // sweep 0.5 ms .. 0.5 + 7*depth ms
             const float delaySamps = (0.0005f + 0.007f * depth * lfo) * fs;

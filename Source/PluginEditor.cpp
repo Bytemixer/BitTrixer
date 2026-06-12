@@ -44,7 +44,7 @@ RetroForgeEditor::RetroForgeEditor (RetroForgeProcessor& p)
         addAndMakeVisible (c);
 
     // ---- wiring ----
-    triggerPanel.onGate    = [this] (bool on) { proc.uiGate (on); };
+    triggerPanel.onTrigger = [this] { proc.uiOneShot(); };
     triggerPanel.onVariate = [this] { randomizer.variate(); previewSound(); };
     triggerPanel.onUndo    = [this] { randomizer.undo(); previewSound(); };
 
