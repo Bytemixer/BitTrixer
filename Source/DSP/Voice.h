@@ -46,6 +46,7 @@ public:
         Params::SyncMode syncMode = Params::SyncMode::Off;
 
         bool  noiseOn = false;
+        Params::NoiseType noiseType = Params::NoiseType::Analog;
         float noiseLevel = 0.0f;
 
         float cutoffHz = 20000.0f;
@@ -118,6 +119,7 @@ public:
         filter.setCutoff (ctx.cutoffHz * driftCutoff);
         filter.setResonance (ctx.res01);
         filter.setHpf (ctx.hpfOn, ctx.hpfHz);
+        noise.setType ((NoiseGen::Type) (int) ctx.noiseType);
         noise.setColor (noiseColor);
         drive.setAmount (ctx.driveAmt);
         if (ctx.crushOn)

@@ -27,7 +27,7 @@
 class Oscillator
 {
 public:
-    enum class Wave { Sine = 0, Triangle, Square, Saw, RevSaw, SuperSaw };
+    enum class Wave { Sine = 0, Triangle, Square, Saw, RevSaw, SuperSaw, Tan, Breaker };
 
     void prepare (double sampleRate) noexcept
     {
@@ -70,6 +70,8 @@ public:
             case Wave::Saw:      out = saw (phase, inc);          advance (inc); break;
             case Wave::RevSaw:   out = -saw (phase, inc);         advance (inc); break;
             case Wave::SuperSaw: out = superSaw (inc);            advance (inc); break;
+            case Wave::Tan:      out = tanWave (phase);           advance (inc); break;
+            case Wave::Breaker:  out = breaker (phase);           advance (inc); break;
             default:             out = 0.0f;                      advance (inc); break;
         }
 
@@ -153,6 +155,27 @@ private:
             if (superPhase[i] >= 1.0f) superPhase[i] -= 1.0f;
         }
         return sum * 0.32f;   // normalize the stack
+    }
+
+    // tangent wave: sin/cos ratio with a bounded clamp — harsh, buzzy and
+    // deliberately aliasing (naive by design, but it can never blow up)
+    static float tanWave (float p) noexcept
+    {
+        const float s = FastMath::sinCycle (p * 0.5f);          // sin(pi*p)
+        float c = FastMath::sinCycle (p * 0.5f + 0.25f);        // cos(pi*p)
+        constexpr float eps = 0.05f;
+        if (c > -eps && c < eps)
+            c = c < 0.0f ? -eps : eps;
+        float t = s / c;
+        t = t < -4.0f ? -4.0f : (t > 4.0f ? 4.0f : t);
+        return t * 0.25f;
+    }
+
+    // breaker: bouncing quadratic arc — hollow, glassy chiptune flavour
+    // (the 1.219 centres the wave: the arc's mean is ~0.109 above midline)
+    static float breaker (float p) noexcept
+    {
+        return std::fabs (1.0f - 2.0f * p * p) * 2.0f - 1.219f;
     }
 
     // reflect ("triangle") folding: identity for |x| <= 1

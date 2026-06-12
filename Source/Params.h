@@ -29,14 +29,16 @@ namespace Params
     inline constexpr int   kMaxUnison   = 16;
 
     // ---- enum orderings (must match the choice arrays below) ----
-    enum class OscWave  { Sine = 0, Triangle, Square, Saw, RevSaw, SuperSaw };
+    enum class OscWave  { Sine = 0, Triangle, Square, Saw, RevSaw, SuperSaw, Tan, Breaker };
+    enum class NoiseType { Analog = 0, LfsrHiss, LfsrBuzz, Rasp };
     enum class LfoWave  { Sine = 0, Triangle, Saw, RevSaw, Square, SampleHold, SampleGlide };
     enum class ModSrc   { Off = 0, Lfo1, Lfo2, FilterEnv, AmpEnv };
     enum class ModDest  { Off = 0, AllPitch, Osc1Pitch, Osc2Pitch, Osc3Pitch,
                           Pwm, Fold, NoiseLevel, Cutoff, Resonance,
                           Lfo1Rate, Lfo2Rate, VcaLevel };
 
-    inline const juce::StringArray oscWaveNames  { "Sine", "Triangle", "Square", "Saw", "Rev Saw", "SuperSaw" };
+    inline const juce::StringArray oscWaveNames  { "Sine", "Triangle", "Square", "Saw", "Rev Saw", "SuperSaw", "Tan", "Breaker" };
+    inline const juce::StringArray noiseTypeNames { "Analog W>P", "LFSR Hiss", "LFSR Buzz", "Rasp" };
     inline const juce::StringArray lfoWaveNames  { "Sine", "Triangle", "Saw", "Rev Saw", "Square", "S&H", "S&G" };
     inline const juce::StringArray modSrcNames   { "Off", "LFO 1", "LFO 2", "Filt Env", "Amp Env" };
     inline const juce::StringArray modDestNames  { "Off", "All Pitch", "Osc1 Pitch", "Osc2 Pitch", "Osc3 Pitch",
@@ -66,6 +68,7 @@ namespace Params
         inline constexpr const char* pj2Time     = "pj2_time";
 
         inline constexpr const char* noiseOn     = "noise_on";
+        inline constexpr const char* noiseType   = "noise_type";
         inline constexpr const char* noiseColor  = "noise_color";
         inline constexpr const char* noiseLevel  = "noise_level";
 
@@ -168,7 +171,8 @@ namespace Params
         float pj2TimeSec  = 0.16f;
 
         bool  noiseOn    = false;
-        float noiseColor = 0.0f;     // 0 white .. 1 pink
+        NoiseType noiseType = NoiseType::Analog;
+        float noiseColor = 0.0f;     // Analog: white..pink | LFSR: clock divide | Rasp: grit rate
         float noiseLevel = 0.5f;
 
         std::array<LfoPatch, kNumLfos>   lfo;
@@ -247,6 +251,7 @@ namespace Params
             pj2Time   = get (id::pj2Time);
 
             noiseOn    = get (id::noiseOn);
+            noiseType  = get (id::noiseType);
             noiseColor = get (id::noiseColor);
             noiseLevel = get (id::noiseLevel);
 
@@ -329,6 +334,7 @@ namespace Params
             p.pj2TimeSec  = pj2Time->load();
 
             p.noiseOn    = noiseOn->load() > 0.5f;
+            p.noiseType  = (NoiseType) (int) noiseType->load();
             p.noiseColor = noiseColor->load();
             p.noiseLevel = noiseLevel->load();
 
@@ -410,6 +416,7 @@ namespace Params
         std::atomic<float>* pj2Time {};
 
         std::atomic<float>* noiseOn {};
+        std::atomic<float>* noiseType {};
         std::atomic<float>* noiseColor {};
         std::atomic<float>* noiseLevel {};
 
@@ -548,6 +555,7 @@ namespace Params
 
         // ---- noise ----
         layout.add (std::make_unique<AudioParameterBool>  (ParameterID { id::noiseOn, 1 },    "Noise On", false));
+        layout.add (std::make_unique<AudioParameterChoice>(ParameterID { id::noiseType, 1 },  "Noise Type", noiseTypeNames, 0));
         layout.add (std::make_unique<AudioParameterFloat> (ParameterID { id::noiseColor, 1 }, "Noise Color",
                         NormalisableRange<float> (0.0f, 1.0f, 0.001f), 0.0f, unitAttr));
         layout.add (std::make_unique<AudioParameterFloat> (ParameterID { id::noiseLevel, 1 }, "Noise Level",

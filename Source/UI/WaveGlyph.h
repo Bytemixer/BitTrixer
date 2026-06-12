@@ -139,6 +139,31 @@ private:
                 p.quadraticTo (pt (((float) i - 0.5f) * seg, lv[i - 1]),
                                pt ((float) i * seg, lv[i]));
         };
+        auto tanShape = [&]
+        {
+            // rising curve to the asymptote, then re-enter from below
+            p.startNewSubPath (pt (0.0f, 0.0f));
+            for (int i = 1; i <= 12; ++i)
+            {
+                const float fx = 0.46f * (float) i / 12.0f;
+                p.lineTo (pt (fx, std::pow ((float) i / 12.0f, 2.2f)));
+            }
+            p.startNewSubPath (pt (0.54f, -1.0f));
+            for (int i = 1; i <= 12; ++i)
+            {
+                const float fx = 0.54f + 0.46f * (float) i / 12.0f;
+                p.lineTo (pt (fx, -std::pow (1.0f - (float) i / 12.0f, 2.2f)));
+            }
+        };
+        auto breakerShape = [&]
+        {
+            p.startNewSubPath (pt (0.0f, 0.8f));
+            for (int i = 1; i <= 24; ++i)
+            {
+                const float fp = (float) i / 24.0f;
+                p.lineTo (pt (fp, std::fabs (1.0f - 2.0f * fp * fp) * 1.8f - 1.0f));
+            }
+        };
 
         if (isOsc)
         {
@@ -150,6 +175,8 @@ private:
                 case OW::Saw:      saw (false); break;
                 case OW::RevSaw:   saw (true); break;
                 case OW::SuperSaw: saw (false, 0.25f, 0.6f); saw (false, -0.25f, 0.6f); break;
+                case OW::Tan:      tanShape(); break;
+                case OW::Breaker:  breakerShape(); break;
                 default: break;
             }
         }

@@ -174,6 +174,7 @@ void SynthEngine::Instance::renderAdd (float* left, float* right, int n,
 
     ctx.syncMode   = p.syncMode;
     ctx.noiseOn    = p.noiseOn;
+    ctx.noiseType  = p.noiseType;
     ctx.noiseLevel = clampf (p.noiseLevel + mv.noiseLevel, 0.0f, 1.0f);
 
     const float envFv = envF.value();
