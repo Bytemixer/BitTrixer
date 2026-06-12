@@ -68,8 +68,22 @@ public:
                                    RetroColors::background, 0, b.getBottom(), false);
         g.setGradientFill (grad);
         g.fillRect (b);
-        g.setColour (RetroColors::panelEdge);
-        g.fillRect (b.removeFromBottom (1.0f));
+
+        if (RetroColors::prideMode)
+        {
+            // the flag flies across the bottom of the header
+            auto band = b.removeFromBottom (6.0f);
+            const float stripeH = band.getHeight() / 6.0f;
+            for (int i = 0; i < 6; ++i)
+                g.setColour (RetroColors::kPrideFlag[i]),
+                g.fillRect (band.getX(), band.getY() + (float) i * stripeH,
+                            band.getWidth(), stripeH + 0.5f);
+        }
+        else
+        {
+            g.setColour (RetroColors::panelEdge);
+            g.fillRect (b.removeFromBottom (1.0f));
+        }
 
         g.setColour (RetroColors::accent);
         g.setFont (juce::Font (juce::FontOptions (22.0f, juce::Font::bold)));

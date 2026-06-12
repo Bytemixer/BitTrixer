@@ -26,7 +26,7 @@ struct Theme
     juce::Colour background, panel, panelEdge, panelTitle, text, textDim,
                  accent, accentDark, knobFace, knobRim, track, switchOff,
                  ledOn, trace;
-    bool rainbowTicks = false;
+    bool prideMode = false;
 
     void apply() const
     {
@@ -44,7 +44,7 @@ struct Theme
         RetroColors::switchOff  = switchOff;
         RetroColors::ledOn      = ledOn;
         RetroColors::trace      = trace;
-        RetroColors::rainbowTicks = rainbowTicks;
+        RetroColors::prideMode  = prideMode;
     }
 
     // build the full palette from the 8 user-editable base colors
@@ -138,10 +138,11 @@ namespace ThemePresets
         return t;
     }
 
-    inline Theme pride()
+    inline Theme cuteDark()
     {
+        // the dark sibling of Cute: deep plum panels, magenta/violet accents
         Theme t;
-        t.name = "Pride";
+        t.name = "Cute Dark";
         t.background = juce::Colour (0xff1d1d24);
         t.panel      = juce::Colour (0xff2a2a33);
         t.panelEdge  = juce::Colour (0xff141419);
@@ -154,9 +155,34 @@ namespace ThemePresets
         t.knobRim    = juce::Colour (0xff131118);
         t.track      = juce::Colour (0xff19191f);
         t.switchOff  = juce::Colour (0xff3c3848);
-        t.ledOn      = juce::Colour (0xff63d471);
+        t.ledOn      = juce::Colour (0xff8ad48a);
         t.trace      = juce::Colour (0xff7a5fd0);
-        t.rainbowTicks = true;
+        return t;
+    }
+
+    inline Theme pride()
+    {
+        // neutral charcoal canvas so the six flag colors carry the identity:
+        // red/orange in the accents, yellow in highlights, green in traces
+        // and LEDs, blue/purple in the modulation web — plus striped panel
+        // underlines, a header flag band and the rainbow-ribbon signal path
+        Theme t;
+        t.name = "Pride";
+        t.background = juce::Colour (0xff202023);
+        t.panel      = juce::Colour (0xff2c2c30);
+        t.panelEdge  = juce::Colour (0xff161618);
+        t.panelTitle = juce::Colour (0xffd8d4dc);
+        t.text       = juce::Colour (0xffeceaef);
+        t.textDim    = juce::Colour (0xff98949e);
+        t.accent     = juce::Colour (0xffff8c00);   // flag orange
+        t.accentDark = juce::Colour (0xffe40303);   // flag red
+        t.knobFace   = juce::Colour (0xff4c4a50);
+        t.knobRim    = juce::Colour (0xff141316);
+        t.track      = juce::Colour (0xff19191c);
+        t.switchOff  = juce::Colour (0xff3b3a40);
+        t.ledOn      = juce::Colour (0xff008026);   // flag green
+        t.trace      = juce::Colour (0xff2fa84f);
+        t.prideMode  = true;
         return t;
     }
 }
@@ -166,7 +192,7 @@ namespace ThemePresets
 class ThemeManager
 {
 public:
-    static constexpr int kCustomIndex = 4;
+    static constexpr int kCustomIndex = 5;
 
     ThemeManager()
     {
@@ -178,7 +204,8 @@ public:
         props = std::make_unique<juce::PropertiesFile> (o);
 
         presets = { ThemePresets::slate(), ThemePresets::light(),
-                    ThemePresets::cute(), ThemePresets::pride() };
+                    ThemePresets::cute(), ThemePresets::cuteDark(),
+                    ThemePresets::pride() };
         loadCustom();
         applyIndex (props->getIntValue ("themeIndex", 0));
     }
