@@ -48,6 +48,8 @@ RetroForgeEditor::RetroForgeEditor (RetroForgeProcessor& p)
     triggerPanel.onVariate = [this] { randomizer.variate(); previewSound(); };
     triggerPanel.onUndo    = [this] { randomizer.undo(); previewSound(); };
 
+    randomizerPanel.onMutate = [this] { randomizer.mutate(); previewSound(); };
+
     randomizerPanel.onRandom = [this]
     {
         randomizer.fullRandom();

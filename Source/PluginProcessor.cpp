@@ -38,12 +38,12 @@ void RetroForgeProcessor::processBlock (juce::AudioBuffer<float>& buffer,
 
     engine.setPatch (paramCache.read());
 
-    // ---- UI trigger requests ----
-    if (const int g = uiGateRequest.exchange (0))
-    {
-        if (g == 1) engine.manualGateOn();
-        else        engine.manualGateOff();
-    }
+    // ---- UI trigger requests (ons first, so a click within one block
+    //      starts the sound; min-gate then defers the off) ----
+    for (int ons = uiGateOnRequests.exchange (0); ons > 0; --ons)
+        engine.manualGateOn();
+    for (int offs = uiGateOffRequests.exchange (0); offs > 0; --offs)
+        engine.manualGateOff();
     for (int shots = uiOneShotRequests.exchange (0); shots > 0; --shots)
         engine.oneShot();
 

@@ -30,6 +30,11 @@ public:
         randomButton.onClick = [this] { if (onRandom) onRandom(); };
         addAndMakeVisible (randomButton);
 
+        mutateButton.setButtonText ("MUTATE");
+        mutateButton.setColour (juce::TextButton::buttonColourId, juce::Colour (0xff8a63d4));
+        mutateButton.onClick = [this] { if (onMutate) onMutate(); };
+        addAndMakeVisible (mutateButton);
+
         static const juce::Colour catColors[Randomizer::kNumCategories] = {
             juce::Colour (0xffe8b339),   // pickup  - coin gold
             juce::Colour (0xffff5e57),   // laser   - red
@@ -61,20 +66,21 @@ public:
         auto top = b.removeFromTop (rowH).reduced (0, 2);
         auto bottom = b.reduced (0, 2);
 
-        // top row: RANDOM + first 4 categories; bottom row: last 5
+        // top row: RANDOM + MUTATE + first 3 categories; bottom: last 6
         const int cw = top.getWidth() / 5;
         randomButton.setBounds (top.removeFromLeft (cw).reduced (2, 0));
-        for (int i = 0; i < 4; ++i)
+        mutateButton.setBounds (top.removeFromLeft (cw).reduced (2, 0));
+        for (int i = 0; i < 3; ++i)
             categoryButtons[i]->setBounds (top.removeFromLeft (cw).reduced (2, 0));
-        const int cw2 = bottom.getWidth() / 5;
-        for (int i = 4; i < Randomizer::kNumCategories; ++i)
+        const int cw2 = bottom.getWidth() / 6;
+        for (int i = 3; i < Randomizer::kNumCategories; ++i)
             categoryButtons[i]->setBounds (bottom.removeFromLeft (cw2).reduced (2, 0));
     }
 
-    std::function<void()> onRandom;
+    std::function<void()> onRandom, onMutate;
     std::function<void (int)> onCategory;
 
 private:
-    juce::TextButton randomButton;
+    juce::TextButton randomButton, mutateButton;
     juce::OwnedArray<juce::TextButton> categoryButtons;
 };

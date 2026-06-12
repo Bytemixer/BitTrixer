@@ -75,51 +75,98 @@ void Randomizer::resetToNeutral()
 //  variate — perturb the current patch (editable, undo-able variation)
 // ----------------------------------------------------------------------------
 
-void Randomizer::variate()
+std::vector<Randomizer::Nudge> Randomizer::perturbTargets (bool includeLoudnessAndLength) const
 {
-    snapshotForUndo();
-
-    const float amt = apvts.getRawParameterValue (id::autoVarAmt)->load();
-
-    // Timbre/pitch-ish params only, with per-param sensitivity. Loudness- and
-    // length-critical params (osc levels, noise level, drive, attack/release)
-    // are deliberately NOT variated: under repeated clicks they random-walked
-    // into silence and click-length sounds.
-    struct Target { juce::String pid; float scale; };
-    std::vector<Target> targets;
+    std::vector<Nudge> t;
     for (int i = 1; i <= kNumOscs; ++i)
     {
-        targets.push_back ({ oscId (i, "fine"), 1.0f });
-        targets.push_back ({ oscId (i, "pwm"),  1.0f });
-        targets.push_back ({ oscId (i, "fold"), 0.7f });
+        t.push_back ({ oscId (i, "fine"), 1.0f });
+        t.push_back ({ oscId (i, "pwm"),  1.0f });
+        t.push_back ({ oscId (i, "fold"), 0.7f });
     }
-    targets.push_back ({ id::baseFreq,   0.6f });
-    targets.push_back ({ id::noiseColor, 1.0f });
+    t.push_back ({ id::baseFreq,   0.6f });
+    t.push_back ({ id::noiseColor, 1.0f });
     for (int j = 1; j <= kNumLfos; ++j)
-        targets.push_back ({ lfoId (j, "rate"), 0.8f });
+        t.push_back ({ lfoId (j, "rate"), 0.8f });
     for (int k = 1; k <= kNumModSlots; ++k)
-        targets.push_back ({ modId (k, "depth"), 0.5f });
-    targets.push_back ({ id::lpfCutoff, 0.6f });
-    targets.push_back ({ id::lpfRes,    0.6f });
-    targets.push_back ({ id::lpfEnv,    0.5f });
-    targets.push_back ({ id::envFDecay, 0.5f });
-    targets.push_back ({ id::envADecay, 0.5f });
-    targets.push_back ({ id::uniDetune, 0.8f });
+        t.push_back ({ modId (k, "depth"), 0.5f });
+    t.push_back ({ id::lpfCutoff, 0.6f });
+    t.push_back ({ id::lpfRes,    0.6f });
+    t.push_back ({ id::lpfEnv,    0.5f });
+    t.push_back ({ id::envFDecay, 0.5f });
+    t.push_back ({ id::envADecay, 0.5f });
+    t.push_back ({ id::uniDetune, 0.8f });
+
+    if (includeLoudnessAndLength)
+    {
+        for (int i = 1; i <= kNumOscs; ++i)
+            t.push_back ({ oscId (i, "level"), 0.5f });
+        t.push_back ({ id::noiseLevel,  0.5f });
+        t.push_back ({ id::vcaDrive,    0.5f });
+        t.push_back ({ id::envFAttack,  0.5f });
+        t.push_back ({ id::envARelease, 0.5f });
+        t.push_back ({ id::pj1Amt,      0.4f });
+        t.push_back ({ id::pj2Amt,      0.4f });
+    }
+    return t;
+}
+
+void Randomizer::refreshAnchorIfNeeded (const std::vector<Nudge>& targets)
+{
+    if (! anchorDirty.exchange (false) && ! anchor.empty())
+        return;
+
+    anchor.clear();
+    for (const auto& t : targets)
+        if (auto* p = apvts.getParameter (t.pid))
+            anchor[t.pid] = p->getValue();
+}
+
+void Randomizer::applyNudges (const std::vector<Nudge>& targets, float baseScale,
+                              bool fromAnchor)
+{
+    const float amt = apvts.getRawParameterValue (id::autoVarAmt)->load();
+    const juce::ScopedValueSetter<bool> guard (selfChanging, true);
 
     for (const auto& t : targets)
     {
         if (auto* p = apvts.getParameter (t.pid))
         {
-            const float v = p->getValue();   // normalized 0..1
-            const float nudge = (random.nextFloat() * 2.0f - 1.0f) * amt * 0.15f * t.scale;
-            // reflect at the bounds instead of clamping: a clamped walk drifts
-            // away from saturated values (levels at 0.8+ could only ever fall)
-            float nv = v + nudge;
-            if (nv < 0.0f) nv = -nv;
-            if (nv > 1.0f) nv = 2.0f - nv;
-            p->setValueNotifyingHost (juce::jlimit (0.0f, 1.0f, nv));
+            float base = p->getValue();                  // normalized 0..1
+            if (fromAnchor)
+            {
+                const auto it = anchor.find (t.pid);
+                if (it != anchor.end())
+                    base = it->second;
+            }
+
+            // triangular distribution: extremes are rare, centre is likely
+            const float r = 0.5f * ((random.nextFloat() * 2.0f - 1.0f)
+                                  + (random.nextFloat() * 2.0f - 1.0f));
+            const float nv = juce::jlimit (0.0f, 1.0f,
+                                           base + r * amt * baseScale * t.scale);
+            p->setValueNotifyingHost (nv);
         }
     }
+}
+
+void Randomizer::variate()
+{
+    // anchored: every press is a fresh sibling of the SAME sound, so it can
+    // never random-walk out of its family
+    const auto targets = perturbTargets (true);
+    refreshAnchorIfNeeded (targets);
+    snapshotForUndo();
+    applyNudges (targets, 0.12f, true);
+    anchorDirty.store (false);   // our own writes must not invalidate the anchor
+}
+
+void Randomizer::mutate()
+{
+    // compounding explorer: walks from wherever the sound currently is
+    snapshotForUndo();
+    applyNudges (perturbTargets (true), 0.4f, false);
+    anchorDirty.store (true);    // mutate moves the family itself
 }
 
 // ----------------------------------------------------------------------------
