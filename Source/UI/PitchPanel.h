@@ -28,20 +28,29 @@ public:
           voices   (s, Params::id::uniVoices, "VOICES"),
           detune   (s, Params::id::uniDetune, "DETUNE"),
           spread   (s, Params::id::uniSpread, "SPREAD"),
-          midiTrack (s, Params::id::midiTrack, "MIDI PITCH")
+          midiTrack (s, Params::id::midiTrack, "MIDI PITCH"),
+          sync     (s, Params::id::oscSync)
     {
         addAndMakeVisible (baseFreq);
         addAndMakeVisible (voices);
         addAndMakeVisible (detune);
         addAndMakeVisible (spread);
         addAndMakeVisible (midiTrack);
+
+        syncLabel.setText ("SYNC", juce::dontSendNotification);
+        syncLabel.setColour (juce::Label::textColourId, RetroColors::textDim);
+        syncLabel.setFont (juce::Font (juce::FontOptions (10.5f)));
+        addAndMakeVisible (syncLabel);
+        addAndMakeVisible (sync);
     }
 
     void resized() override
     {
         auto b = content();
-        auto sw = b.removeFromBottom (18);
-        midiTrack.setBounds (sw.withTrimmedLeft (4));
+        auto sw = b.removeFromBottom (20);
+        midiTrack.setBounds (sw.removeFromLeft (130).withTrimmedLeft (4));
+        syncLabel.setBounds (sw.removeFromLeft (38));
+        sync.setBounds (sw.reduced (0, 0));
 
         const int kw = b.getWidth() / 4;
         baseFreq.setBounds (b.removeFromLeft (kw));
@@ -53,4 +62,6 @@ public:
 private:
     LabeledKnob baseFreq, voices, detune, spread;
     SwitchToggle midiTrack;
+    juce::Label syncLabel;
+    ChoiceCombo sync;
 };

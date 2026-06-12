@@ -27,6 +27,7 @@
 #include "UI/ModMatrixPanel.h"
 #include "UI/TriggerPanel.h"
 #include "UI/RandomizerPanel.h"
+#include "UI/ScopePanel.h"
 
 // ============================================================================
 //  RetroForgeEditor
@@ -64,6 +65,7 @@ private:
     ModMatrixPanel modMatrixPanel;
     TriggerPanel triggerPanel;
     RandomizerPanel randomizerPanel;
+    ScopePanel scopePanel;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (RetroForgeEditor)
 };

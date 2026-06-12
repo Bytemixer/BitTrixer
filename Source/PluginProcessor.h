@@ -64,6 +64,9 @@ public:
     // Snapshot of the current panel for the offline WAV renderer.
     Params::Patch snapshotPatch() const  { return paramCache.read(); }
 
+    // ---- oscilloscope feed for the editor (read-only) ----
+    const SynthEngine& scopeSource() const noexcept { return engine; }
+
 private:
     Params::Cache paramCache;
     SynthEngine engine;

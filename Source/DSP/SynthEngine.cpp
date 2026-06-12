@@ -122,7 +122,9 @@ void SynthEngine::Instance::renderAdd (float* left, float* right, int n,
         lfo1.tick();
         lfo2.tick();
         envF.tick();
-        amp[s] = envA.tick() * vcaGain * norm;
+        // squared: linear fader motion maps to perceived loudness
+        const float a = envA.tick();
+        amp[s] = a * a * vcaGain * norm;
     }
 
     // auto gate-off for timed (loop / one-shot) triggers
@@ -151,6 +153,7 @@ void SynthEngine::Instance::renderAdd (float* left, float* right, int n,
         ctx.oscLevel[i] = o.level;
     }
 
+    ctx.syncMode   = p.syncMode;
     ctx.noiseOn    = p.noiseOn;
     ctx.noiseLevel = clampf (p.noiseLevel + mv.noiseLevel, 0.0f, 1.0f);
 
@@ -223,6 +226,11 @@ void SynthEngine::fire (int noteTag, float overrideHz, int gateSamples)
 {
     findFreeInstance()->start (patch, noteTag, overrideHz, gateSamples,
                                makeVariate(), nextRand(), clock);
+
+    // restart the scope capture for the new sound
+    scopeDecimCount = 0;
+    scopeWritePos.store (0, std::memory_order_release);
+    scopeGen.fetch_add (1, std::memory_order_relaxed);
 }
 
 SynthEngine::VariateOffsets SynthEngine::makeVariate()
@@ -316,6 +324,17 @@ void SynthEngine::render (float* left, float* right, int numSamples)
             masterGain += 0.005f * (masterTarget - masterGain);
             l[s] = softClip (l[s] * masterGain);
             r[s] = softClip (r[s] * masterGain);
+
+            if (++scopeDecimCount >= kScopeDecim)
+            {
+                scopeDecimCount = 0;
+                const int w = scopeWritePos.load (std::memory_order_relaxed);
+                if (w < kScopeSize)
+                {
+                    scopeBuf[(size_t) w] = (l[s] + r[s]) * 0.5f;
+                    scopeWritePos.store (w + 1, std::memory_order_release);
+                }
+            }
         }
 
         pos += n;

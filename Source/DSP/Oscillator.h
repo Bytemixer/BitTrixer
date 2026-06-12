@@ -46,6 +46,15 @@ public:
     void setPwm  (float duty) noexcept { pwm = clamp (duty, 0.05f, 0.95f); }
     void setFold (float amount) noexcept { fold = clamp (amount, 0.0f, 1.0f); }
 
+    // ---- hard sync ----
+    bool wrapped() const noexcept { return didWrap; }   // true after the tick where the phase wrapped
+    void hardSync() noexcept
+    {
+        phase = 0.0f;
+        for (auto& sp : superPhase)
+            sp = 0.0f;
+    }
+
     // freqHz is the already-modulated per-voice frequency.
     float tick (float freqHz) noexcept
     {
@@ -81,8 +90,13 @@ private:
 
     void advance (float inc) noexcept
     {
+        didWrap = false;
         phase += inc;
-        if (phase >= 1.0f) phase -= 1.0f;
+        if (phase >= 1.0f)
+        {
+            phase -= 1.0f;
+            didWrap = true;
+        }
     }
 
     // ---- polyBLEP residual for a discontinuity at phase wrap ----
@@ -154,4 +168,5 @@ private:
     Wave  wave = Wave::Square;
     float pwm  = 0.5f;
     float fold = 0.0f;
+    bool  didWrap = false;
 };

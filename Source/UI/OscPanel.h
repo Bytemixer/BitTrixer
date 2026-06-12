@@ -12,6 +12,7 @@
 #pragma once
 
 #include "PanelCommon.h"
+#include "WaveGlyph.h"
 #include "../Params.h"
 
 // ============================================================================
@@ -26,6 +27,7 @@ public:
         : SectionPanel ("OSC " + juce::String (oscIndex1Based)),
           onSwitch (s, Params::oscId (oscIndex1Based, "on"), ""),
           wave  (s, Params::oscId (oscIndex1Based, "wave")),
+          glyph (s, Params::oscId (oscIndex1Based, "wave"), WaveGlyph::Set::Osc),
           pitch (s, Params::oscId (oscIndex1Based, "pitch"), "PITCH"),
           fine  (s, Params::oscId (oscIndex1Based, "fine"),  "FINE"),
           pwm   (s, Params::oscId (oscIndex1Based, "pwm"),   "PWM"),
@@ -34,6 +36,7 @@ public:
     {
         addAndMakeVisible (onSwitch);
         addAndMakeVisible (wave);
+        addAndMakeVisible (glyph);
         addAndMakeVisible (pitch);
         addAndMakeVisible (fine);
         addAndMakeVisible (pwm);
@@ -47,6 +50,8 @@ public:
         auto top = b.removeFromTop (22);
         onSwitch.setBounds (top.removeFromLeft (38));
         top.removeFromLeft (4);
+        glyph.setBounds (top.removeFromRight (58));
+        top.removeFromRight (4);
         wave.setBounds (top);
 
         b.removeFromTop (3);
@@ -61,5 +66,6 @@ public:
 private:
     SwitchToggle onSwitch;
     ChoiceCombo  wave;
+    WaveGlyph    glyph;
     LabeledKnob  pitch, fine, pwm, fold, level;
 };

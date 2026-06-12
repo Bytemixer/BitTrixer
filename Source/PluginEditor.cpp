@@ -30,7 +30,8 @@ RetroForgeEditor::RetroForgeEditor (RetroForgeProcessor& p)
       pitchPanel (p.apvts),
       lfo1Panel (p.apvts, 1), lfo2Panel (p.apvts, 2),
       modMatrixPanel (p.apvts),
-      triggerPanel (p.apvts)
+      triggerPanel (p.apvts),
+      scopePanel (p.scopeSource())
 {
     setLookAndFeel (&lookAndFeel);
 
@@ -38,7 +39,7 @@ RetroForgeEditor::RetroForgeEditor (RetroForgeProcessor& p)
              &header, &osc1, &osc2, &osc3, &noisePanel, &filterPanel,
              &envFPanel, &envAPanel, &vcaPanel, &pitchPanel,
              &lfo1Panel, &lfo2Panel, &modMatrixPanel,
-             &triggerPanel, &randomizerPanel })
+             &triggerPanel, &randomizerPanel, &scopePanel })
         addAndMakeVisible (c);
 
     // ---- wiring ----
@@ -82,7 +83,7 @@ RetroForgeEditor::RetroForgeEditor (RetroForgeProcessor& p)
         juce::AlertWindow::showMessageBoxAsync (
             juce::MessageBoxIconType::InfoIcon,
             "RetroForge",
-            "RetroForge — Retro Game SFX Synthesizer\n"
+            "RetroForge - Retro Game SFX Synthesizer\n"
             "Copyright (C) 2026 Bytemixer\n\n"
             "Licensed under the GNU Affero General Public License v3.0 or later.\n"
             "This program comes with ABSOLUTELY NO WARRANTY.\n"
@@ -136,7 +137,9 @@ void RetroForgeEditor::resized()
     mid.removeFromTop (gap);
     envAPanel.setBounds (mid.removeFromTop (164));
     mid.removeFromTop (gap);
-    vcaPanel.setBounds (mid);
+    vcaPanel.setBounds (mid.removeFromLeft (180));
+    mid.removeFromLeft (gap);
+    scopePanel.setBounds (mid);
 
     b.removeFromLeft (gap);
 

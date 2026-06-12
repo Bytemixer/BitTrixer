@@ -44,6 +44,10 @@ namespace Params
                                                    "LFO1 Rate", "LFO2 Rate", "VCA Level" };
     inline const juce::StringArray polesNames    { "2-Pole", "4-Pole" };
 
+    // hard-sync routing: slave oscillators reset phase when the master wraps
+    enum class SyncMode { Off = 0, S2to1, S3to1, S23to1, S3to2, S2to1_3to2 };
+    inline const juce::StringArray syncNames     { "Off", "2>1", "3>1", "2+3>1", "3>2", "2>1 3>2" };
+
     // ---- ID helpers ----
     inline juce::String oscId  (int osc1Based, const char* suffix)  { return "osc"  + juce::String (osc1Based) + "_" + suffix; }
     inline juce::String lfoId  (int lfo1Based, const char* suffix)  { return "lfo"  + juce::String (lfo1Based) + "_" + suffix; }
@@ -53,6 +57,7 @@ namespace Params
     {
         inline constexpr const char* baseFreq    = "base_freq";
         inline constexpr const char* midiTrack   = "midi_track";
+        inline constexpr const char* oscSync     = "osc_sync";
 
         inline constexpr const char* noiseOn     = "noise_on";
         inline constexpr const char* noiseColor  = "noise_color";
@@ -137,6 +142,7 @@ namespace Params
         std::array<OscPatch, kNumOscs> osc;
         float baseFreqHz = 440.0f;
         bool  midiTrack  = false;
+        SyncMode syncMode = SyncMode::Off;
 
         bool  noiseOn    = false;
         float noiseColor = 0.0f;     // 0 white .. 1 pink
@@ -198,6 +204,7 @@ namespace Params
 
             baseFreq  = get (id::baseFreq);
             midiTrack = get (id::midiTrack);
+            oscSync   = get (id::oscSync);
 
             noiseOn    = get (id::noiseOn);
             noiseColor = get (id::noiseColor);
@@ -263,6 +270,7 @@ namespace Params
 
             p.baseFreqHz = baseFreq->load();
             p.midiTrack  = midiTrack->load() > 0.5f;
+            p.syncMode   = (SyncMode) (int) oscSync->load();
 
             p.noiseOn    = noiseOn->load() > 0.5f;
             p.noiseColor = noiseColor->load();
@@ -327,6 +335,7 @@ namespace Params
 
         std::atomic<float>* baseFreq {};
         std::atomic<float>* midiTrack {};
+        std::atomic<float>* oscSync {};
 
         std::atomic<float>* noiseOn {};
         std::atomic<float>* noiseColor {};
@@ -378,10 +387,12 @@ namespace Params
             r.setSkewForCentre (std::sqrt (lo * hi));   // log-ish midpoint
             return r;
         };
-        auto timeRange = [] (float lo, float hi)
+        // centre = the value at the fader's halfway point; picked per-param so
+        // the control feels musically linear instead of bottom-heavy.
+        auto timeRange = [] (float lo, float hi, float centre)
         {
             NormalisableRange<float> r (lo, hi);
-            r.setSkewForCentre (std::sqrt (lo * hi));
+            r.setSkewForCentre (centre);
             return r;
         };
 
@@ -440,6 +451,7 @@ namespace Params
         layout.add (std::make_unique<AudioParameterFloat> (ParameterID { id::baseFreq, 1 }, "Base Freq",
                         freqRange (20.0f, 4000.0f), 440.0f, hzAttr));
         layout.add (std::make_unique<AudioParameterBool>  (ParameterID { id::midiTrack, 1 }, "MIDI Pitch Track", false));
+        layout.add (std::make_unique<AudioParameterChoice>(ParameterID { id::oscSync, 1 },  "Osc Sync", syncNames, 0));
 
         // ---- noise ----
         layout.add (std::make_unique<AudioParameterBool>  (ParameterID { id::noiseOn, 1 },    "Noise On", false));
@@ -487,13 +499,13 @@ namespace Params
                            float defS)
         {
             layout.add (std::make_unique<AudioParameterFloat> (ParameterID { a, 1 }, name + " Attack",
-                            timeRange (0.0001f, 5.0f), 0.001f, secAttr));
+                            timeRange (0.0001f, 5.0f, 0.08f), 0.001f, secAttr));
             layout.add (std::make_unique<AudioParameterFloat> (ParameterID { d, 1 }, name + " Decay",
-                            timeRange (0.001f, 8.0f), 0.3f, secAttr));
+                            timeRange (0.001f, 8.0f, 0.4f), 0.3f, secAttr));
             layout.add (std::make_unique<AudioParameterFloat> (ParameterID { s, 1 }, name + " Sustain",
                             NormalisableRange<float> (0.0f, 1.0f, 0.001f), defS, unitAttr));
             layout.add (std::make_unique<AudioParameterFloat> (ParameterID { r, 1 }, name + " Release",
-                            timeRange (0.001f, 8.0f), 0.2f, secAttr));
+                            timeRange (0.001f, 8.0f, 0.4f), 0.2f, secAttr));
             layout.add (std::make_unique<AudioParameterFloat> (ParameterID { c, 1 }, name + " Curve",
                             NormalisableRange<float> (-1.0f, 1.0f, 0.001f), 0.0f, unitAttr));
             layout.add (std::make_unique<AudioParameterBool>  (ParameterID { inv, 1 }, name + " Invert", false));
@@ -516,10 +528,10 @@ namespace Params
 
         // ---- trigger ----
         layout.add (std::make_unique<AudioParameterFloat> (ParameterID { id::gateTime, 1 }, "Gate Time",
-                        timeRange (0.01f, 5.0f), 0.25f, secAttr));
+                        timeRange (0.01f, 5.0f, 0.4f), 0.25f, secAttr));
         layout.add (std::make_unique<AudioParameterBool>  (ParameterID { id::loopOn, 1 },   "Loop", false));
         layout.add (std::make_unique<AudioParameterFloat> (ParameterID { id::loopRate, 1 }, "Loop Interval",
-                        timeRange (0.1f, 4.0f), 1.0f, secAttr));
+                        timeRange (0.1f, 4.0f, 1.0f), 1.0f, secAttr));
         layout.add (std::make_unique<AudioParameterBool>  (ParameterID { id::autoVarOn, 1 }, "Auto Variate", false));
         layout.add (std::make_unique<AudioParameterFloat> (ParameterID { id::autoVarAmt, 1 }, "Variate Amount",
                         NormalisableRange<float> (0.0f, 1.0f, 0.001f), 0.15f, unitAttr));
