@@ -94,6 +94,27 @@ RetroForgeEditor::RetroForgeEditor (RetroForgeProcessor& p)
             "OK", this);
     };
 
+    // ---- theme system ----
+    header.setThemeNames (themeManager.names(), themeManager.currentIndex());
+    header.onThemeSelected = [this] (int index)
+    {
+        themeManager.applyIndex (index);
+        if (index == ThemeManager::kCustomIndex)
+        {
+            themeEditor.setVisible (true);
+            themeEditor.toFront (true);
+        }
+    };
+    themeManager.onThemeChanged = [this]
+    {
+        lookAndFeel.applyThemeColours();
+        sendLookAndFeelChange();
+        repaint();
+    };
+    themeEditor.setVisible (false);
+    addChildComponent (themeEditor);
+    themeManager.onThemeChanged();   // apply persisted theme on open
+
     header.setPresetName (presetManager.getCurrentName());
     setSize (1180, 850);
 }
@@ -111,20 +132,193 @@ void RetroForgeEditor::previewSound()
 void RetroForgeEditor::paint (juce::Graphics& g)
 {
     g.fillAll (RetroColors::background);
+    drawSignalTraces (g);
+}
+
+// ============================================================================
+//  PCB-style signal routing drawn on the background between the panels:
+//  solder pads where a signal leaves a section, arrowheads where it enters.
+//  Solid traces = audio path (sources -> VCF -> VCA -> FX -> OUT),
+//  dashed thin traces = modulation (LFOs/envelopes -> matrix -> VCF).
+// ============================================================================
+
+namespace
+{
+    void strokeTrace (juce::Graphics& g, const juce::Path& p, juce::Colour c,
+                      float width, bool dashed = false)
+    {
+        g.setColour (c);
+        if (dashed)
+        {
+            juce::Path d;
+            const float dashes[2] = { 5.0f, 4.0f };
+            juce::PathStrokeType (width).createDashedStroke (d, p, dashes, 2);
+            g.fillPath (d);
+        }
+        else
+        {
+            g.strokePath (p, juce::PathStrokeType (width, juce::PathStrokeType::curved,
+                                                   juce::PathStrokeType::rounded));
+        }
+    }
+
+    void solderPad (juce::Graphics& g, juce::Point<float> pt, juce::Colour c)
+    {
+        g.setColour (c);
+        g.fillEllipse (pt.x - 3.5f, pt.y - 3.5f, 7.0f, 7.0f);
+        g.setColour (RetroColors::background);
+        g.fillEllipse (pt.x - 1.3f, pt.y - 1.3f, 2.6f, 2.6f);
+    }
+
+    // dir: 0 = pointing right, 1 = left, 2 = down, 3 = up
+    void arrowInto (juce::Graphics& g, juce::Point<float> tip, int dir, juce::Colour c)
+    {
+        juce::Path a;
+        constexpr float l = 7.0f, hw = 4.5f;
+        switch (dir)
+        {
+            case 0: a.addTriangle (tip.x - l, tip.y - hw, tip.x - l, tip.y + hw, tip.x, tip.y); break;
+            case 1: a.addTriangle (tip.x + l, tip.y - hw, tip.x + l, tip.y + hw, tip.x, tip.y); break;
+            case 2: a.addTriangle (tip.x - hw, tip.y - l, tip.x + hw, tip.y - l, tip.x, tip.y); break;
+            default: a.addTriangle (tip.x - hw, tip.y + l, tip.x + hw, tip.y + l, tip.x, tip.y); break;
+        }
+        g.setColour (c);
+        g.fillPath (a);
+    }
+}
+
+void RetroForgeEditor::drawSignalTraces (juce::Graphics& g)
+{
+    const auto audioCol = RetroColors::trace;
+    const auto modCol   = RetroColors::trace.withAlpha (0.55f);
+
+    const auto vcf   = filterPanel.getBounds().toFloat();
+    const auto vca   = vcaPanel.getBounds().toFloat();
+    const auto fx    = fxPanel.getBounds().toFloat();
+    const auto scope = scopePanel.getBounds().toFloat();
+    const auto envF  = envFPanel.getBounds().toFloat();
+    const auto envA  = envAPanel.getBounds().toFloat();
+    const auto mtx   = modMatrixPanel.getBounds().toFloat();
+    const auto lfo1b = lfo1Panel.getBounds().toFloat();
+    const auto lfo2b = lfo2Panel.getBounds().toFloat();
+
+    // ---- source bus: OSC1/2/3 + NOISE -> VCF (left channel, lane 1) ----
+    {
+        const float busX = vcf.getX() - 9.0f;
+        const float vcfInY = vcf.getY() + 60.0f;
+        juce::Path p;
+
+        juce::Component* sources[4] = { &osc1, &osc2, &osc3, &noisePanel };
+        float topY = 1.0e9f, botY = -1.0e9f;
+        for (auto* s : sources)
+        {
+            const float cy = (float) s->getBounds().getCentreY();
+            p.startNewSubPath ((float) s->getRight(), cy);
+            p.lineTo (busX, cy);
+            topY = juce::jmin (topY, cy);
+            botY = juce::jmax (botY, cy);
+        }
+        p.startNewSubPath (busX, juce::jmin (topY, vcfInY));
+        p.lineTo (busX, botY);
+        p.startNewSubPath (busX, vcfInY);
+        p.lineTo (vcf.getX(), vcfInY);
+
+        strokeTrace (g, p, audioCol, 3.0f);
+        for (auto* s : sources)
+            solderPad (g, { (float) s->getRight(), (float) s->getBounds().getCentreY() }, audioCol);
+        arrowInto (g, { vcf.getX(), vcfInY }, 0, audioCol);
+    }
+
+    // ---- downstream: VCF -> VCA (left channel, lane 2) ----
+    {
+        const float laneX = vcf.getX() - 4.0f;
+        const float outY = vcf.getBottom() - 18.0f;
+        const float inY  = vca.getCentreY();
+        juce::Path p;
+        p.startNewSubPath (vcf.getX(), outY);
+        p.lineTo (laneX, outY);
+        p.lineTo (laneX, inY);
+        p.lineTo (vca.getX(), inY);
+        strokeTrace (g, p, audioCol, 3.0f);
+        solderPad (g, { vcf.getX(), outY }, audioCol);
+        arrowInto (g, { vca.getX(), inY }, 0, audioCol);
+    }
+
+    // ---- VCA -> FX (vertical gap) ----
+    {
+        const float x = vca.getCentreX();
+        juce::Path p;
+        p.startNewSubPath (x, vca.getBottom());
+        p.lineTo (x, fx.getY());
+        strokeTrace (g, p, audioCol, 3.0f);
+        solderPad (g, { x, vca.getBottom() }, audioCol);
+        arrowInto (g, { x, fx.getY() }, 2, audioCol);
+    }
+
+    // ---- FX -> OUT (scope window monitors the output) ----
+    {
+        const float x = scope.getCentreX();
+        juce::Path p;
+        p.startNewSubPath (x, fx.getY());
+        p.lineTo (x, scope.getBottom());
+        strokeTrace (g, p, audioCol, 3.0f);
+        solderPad (g, { x, fx.getY() }, audioCol);
+        arrowInto (g, { x, scope.getBottom() }, 3, audioCol);
+        g.setColour (audioCol);
+        g.setFont (juce::Font (juce::FontOptions (9.0f, juce::Font::bold)));
+        g.drawText ("OUT", (int) x + 6, (int) scope.getBottom() - 4, 26, 10,
+                    juce::Justification::centredLeft);
+    }
+
+    // ---- modulation web (dashed): envs + matrix -> VCF, LFOs -> matrix ----
+    {
+        const float busX = vcf.getRight() + 7.0f;
+        const float vcfInY = vcf.getBottom() - 24.0f;
+        juce::Path p;
+        p.startNewSubPath (busX, vcfInY);
+        p.lineTo (busX, mtx.getCentreY());
+        p.startNewSubPath (vcf.getRight(), vcfInY);
+        p.lineTo (busX, vcfInY);
+        p.startNewSubPath (envF.getRight(), envF.getCentreY());
+        p.lineTo (busX, envF.getCentreY());
+        p.startNewSubPath (envA.getRight(), envA.getCentreY());
+        p.lineTo (busX, envA.getCentreY());
+        p.startNewSubPath (busX, mtx.getCentreY());
+        p.lineTo (mtx.getX(), mtx.getCentreY());
+
+        // LFOs drop into the matrix
+        p.startNewSubPath (lfo1b.getCentreX(), lfo1b.getBottom());
+        p.lineTo (lfo1b.getCentreX(), mtx.getY());
+        p.startNewSubPath (lfo2b.getCentreX(), lfo2b.getBottom());
+        p.lineTo (lfo2b.getCentreX(), mtx.getY());
+
+        strokeTrace (g, p, modCol, 1.6f, true);
+        solderPad (g, { envF.getRight(), envF.getCentreY() }, modCol);
+        solderPad (g, { envA.getRight(), envA.getCentreY() }, modCol);
+        solderPad (g, { mtx.getX(), mtx.getCentreY() }, modCol);
+        solderPad (g, { lfo1b.getCentreX(), lfo1b.getBottom() }, modCol);
+        solderPad (g, { lfo2b.getCentreX(), lfo2b.getBottom() }, modCol);
+        arrowInto (g, { vcf.getRight(), vcfInY }, 1, modCol);
+        arrowInto (g, { lfo1b.getCentreX(), mtx.getY() }, 2, modCol);
+        arrowInto (g, { lfo2b.getCentreX(), mtx.getY() }, 2, modCol);
+    }
 }
 
 void RetroForgeEditor::resized()
 {
+    themeEditor.setBounds (getLocalBounds());
+
     auto b = getLocalBounds();
     header.setBounds (b.removeFromTop (46));
     b.reduce (8, 8);
-    constexpr int gap = 6;
+    constexpr int gap = 6;        // vertical gap within columns
+    constexpr int channel = 14;   // horizontal trace channels between columns
 
     fxPanel.setBounds (b.removeFromBottom (104));
     b.removeFromBottom (gap);
 
     // ---- left column: oscillators + noise ----
-    auto left = b.removeFromLeft (330);
+    auto left = b.removeFromLeft (324);
     osc1.setBounds (left.removeFromTop (168));
     left.removeFromTop (gap);
     osc2.setBounds (left.removeFromTop (168));
@@ -133,21 +327,21 @@ void RetroForgeEditor::resized()
     left.removeFromTop (gap);
     noisePanel.setBounds (left);
 
-    b.removeFromLeft (gap);
+    b.removeFromLeft (channel);
 
-    // ---- middle column: filter, envelopes, vca ----
-    auto mid = b.removeFromLeft (430);
+    // ---- middle column: filter, envelopes, vca + scope ----
+    auto mid = b.removeFromLeft (424);
     filterPanel.setBounds (mid.removeFromTop (180));
     mid.removeFromTop (gap);
     envFPanel.setBounds (mid.removeFromTop (164));
     mid.removeFromTop (gap);
     envAPanel.setBounds (mid.removeFromTop (164));
     mid.removeFromTop (gap);
-    vcaPanel.setBounds (mid.removeFromLeft (180));
+    vcaPanel.setBounds (mid.removeFromLeft (178));
     mid.removeFromLeft (gap);
     scopePanel.setBounds (mid);
 
-    b.removeFromLeft (gap);
+    b.removeFromLeft (channel);
 
     // ---- right column: pitch/voices, LFOs, matrix, trigger, generate ----
     auto right = b;

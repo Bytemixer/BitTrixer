@@ -36,13 +36,17 @@ public:
         g.setColour (RetroColors::panelEdge);
         g.drawRoundedRectangle (b, 6.0f, 1.2f);
 
-        g.setColour (accent.withAlpha (0.9f));
+        g.setColour (tickColour().withAlpha (0.9f));
         g.fillRoundedRectangle (b.getX() + 8.0f, b.getY() + 6.0f, 3.0f, 10.0f, 1.5f);
 
         g.setColour (RetroColors::panelTitle);
         g.setFont (juce::Font (juce::FontOptions (11.0f, juce::Font::bold)));
         g.drawText (title.toUpperCase(), getLocalBounds().reduced (16, 4).removeFromTop (14),
                     juce::Justification::centredLeft);
+
+        // uniform title underline across every section
+        g.setColour (RetroColors::panelEdge.withAlpha (0.8f));
+        g.drawLine (b.getX() + 8.0f, b.getY() + 19.0f, b.getRight() - 8.0f, b.getY() + 19.0f, 1.0f);
     }
 
     juce::Rectangle<int> content() const
@@ -51,6 +55,19 @@ public:
     }
 
 protected:
+    juce::Colour tickColour() const
+    {
+        if (! RetroColors::rainbowTicks)
+            return RetroColors::accent;
+
+        // pride theme: each section gets its own flag stripe color
+        static const juce::Colour rainbow[6] = {
+            juce::Colour (0xffe40303), juce::Colour (0xffff8c00),
+            juce::Colour (0xffffed00), juce::Colour (0xff008026),
+            juce::Colour (0xff24408e), juce::Colour (0xff732982) };
+        return rainbow[(size_t) ((title.hashCode() & 0x7fffffff) % 6)];
+    }
+
     juce::String title;
     juce::Colour accent;
 };
