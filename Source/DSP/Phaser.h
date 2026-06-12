@@ -13,6 +13,7 @@
 
 #include <array>
 #include <cmath>
+#include "FastMath.h"
 
 // ============================================================================
 //  Phaser — 4-stage first-order allpass chain with feedback, sine-swept
@@ -51,10 +52,10 @@ public:
         {
             phase += inc;
             if (phase >= 1.0f) phase -= 1.0f;
-            const float lfo = 0.5f + 0.5f * std::sin (phase * kTwoPi);
+            const float lfo = 0.5f + 0.5f * FastMath::sinCycle (phase);
 
             const float sweepHz = 200.0f + lfo * (800.0f + 6200.0f * depth);
-            const float t = std::tan (kPi * (sweepHz < 0.45f * fs ? sweepHz : 0.45f * fs) / fs);
+            const float t = FastMath::tanPos (kPi * (sweepHz < 0.45f * fs ? sweepHz : 0.45f * fs) / fs);
             const float a = (t - 1.0f) / (t + 1.0f);
 
             left[s]  = channel (stagesL, lastL, left[s], a);

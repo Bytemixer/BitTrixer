@@ -13,6 +13,7 @@
 
 #include <cmath>
 #include <cstdint>
+#include "FastMath.h"
 
 // ============================================================================
 //  LFO — bipolar (-1..+1) modulation oscillator.
@@ -57,7 +58,7 @@ public:
 
         switch (wave)
         {
-            case Wave::Sine:     v = std::sin (kTwoPi * phase); break;
+            case Wave::Sine:     v = FastMath::sinCycle (phase); break;
             case Wave::Triangle: v = 4.0f * std::fabs (phase - 0.5f) - 1.0f; break;
             case Wave::Saw:      v = 2.0f * phase - 1.0f; break;
             case Wave::RevSaw:   v = 1.0f - 2.0f * phase; break;

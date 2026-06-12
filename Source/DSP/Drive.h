@@ -12,6 +12,7 @@
 #pragma once
 
 #include <cmath>
+#include "FastMath.h"
 
 // ============================================================================
 //  Drive — the VCA "preamp push". A dry/wet tanh waveshaper: transparent at
@@ -33,7 +34,7 @@ public:
     {
         if (amt < 0.0001f)
             return x;
-        const float wet = std::tanh (x * preGain) * makeup * 1.6f;
+        const float wet = FastMath::tanh (x * preGain) * makeup * 1.6f;
         return x + amt * (wet - x);
     }
 

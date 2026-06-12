@@ -13,6 +13,7 @@
 
 #include <cmath>
 #include <array>
+#include "FastMath.h"
 
 // ============================================================================
 //  Oscillator — one "VCO".
@@ -63,7 +64,7 @@ public:
 
         switch (wave)
         {
-            case Wave::Sine:     out = std::sin (kTwoPi * phase); advance (inc); break;
+            case Wave::Sine:     out = FastMath::sinCycle (phase); advance (inc); break;
             case Wave::Triangle: out = triangle (phase);          advance (inc); break;
             case Wave::Square:   out = square (phase, inc, pwm);  advance (inc); break;
             case Wave::Saw:      out = saw (phase, inc);          advance (inc); break;

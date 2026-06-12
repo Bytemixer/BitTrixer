@@ -18,6 +18,7 @@
 #include "LadderFilter.h"
 #include "Drive.h"
 #include "Bitcrusher.h"
+#include "FastMath.h"
 #include "../Params.h"
 
 // ============================================================================
@@ -155,7 +156,7 @@ public:
             if (ctx.noiseOn)
                 mix += noise.tick() * ctx.noiseLevel;
 
-            mix = std::tanh (mix);                    // mixer bus warmth
+            mix = FastMath::tanh (mix);               // mixer bus warmth
 
             if (ctx.crushOn)
                 mix = crusher.tick (mix);             // lo-fi grit, smoothed by the VCF
