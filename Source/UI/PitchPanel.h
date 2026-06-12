@@ -29,12 +29,20 @@ public:
           detune   (s, Params::id::uniDetune, "DETUNE"),
           spread   (s, Params::id::uniSpread, "SPREAD"),
           midiTrack (s, Params::id::midiTrack, "MIDI PITCH"),
-          sync     (s, Params::id::oscSync)
+          sync     (s, Params::id::oscSync),
+          j1Amt  (s, Params::id::pj1Amt,  "JUMP1 ST"),
+          j1Time (s, Params::id::pj1Time, "JUMP1 AT"),
+          j2Amt  (s, Params::id::pj2Amt,  "JUMP2 ST"),
+          j2Time (s, Params::id::pj2Time, "JUMP2 AT")
     {
         addAndMakeVisible (baseFreq);
         addAndMakeVisible (voices);
         addAndMakeVisible (detune);
         addAndMakeVisible (spread);
+        addAndMakeVisible (j1Amt);
+        addAndMakeVisible (j1Time);
+        addAndMakeVisible (j2Amt);
+        addAndMakeVisible (j2Time);
         addAndMakeVisible (midiTrack);
 
         syncLabel.setText ("SYNC", juce::dontSendNotification);
@@ -52,11 +60,18 @@ public:
         syncLabel.setBounds (sw.removeFromLeft (38));
         sync.setBounds (sw.reduced (0, 0));
 
-        const int kw = b.getWidth() / 4;
-        baseFreq.setBounds (b.removeFromLeft (kw));
-        voices.setBounds   (b.removeFromLeft (kw));
-        detune.setBounds   (b.removeFromLeft (kw));
-        spread.setBounds   (b);
+        auto row1 = b.removeFromTop (b.getHeight() / 2);
+        const int kw = row1.getWidth() / 4;
+        baseFreq.setBounds (row1.removeFromLeft (kw));
+        voices.setBounds   (row1.removeFromLeft (kw));
+        detune.setBounds   (row1.removeFromLeft (kw));
+        spread.setBounds   (row1);
+
+        const int kw2 = b.getWidth() / 4;
+        j1Amt.setBounds  (b.removeFromLeft (kw2));
+        j1Time.setBounds (b.removeFromLeft (kw2));
+        j2Amt.setBounds  (b.removeFromLeft (kw2));
+        j2Time.setBounds (b);
     }
 
 private:
@@ -64,4 +79,5 @@ private:
     SwitchToggle midiTrack;
     juce::Label syncLabel;
     ChoiceCombo sync;
+    LabeledKnob j1Amt, j1Time, j2Amt, j2Time;
 };

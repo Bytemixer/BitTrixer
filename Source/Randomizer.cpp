@@ -200,6 +200,17 @@ void Randomizer::fullRandom()
     set (id::gateTime, rndLog (0.1f, 0.8f));
     setChoice (id::oscSync, chance (0.18f) ? rndInt (1, 5) : 0);
 
+    if (chance (0.3f))                                     // arpeggio-style jumps
+    {
+        set (id::pj1Amt, (float) rndInt (-7, 12));
+        set (id::pj1Time, rnd (0.05f, 0.25f));
+        if (chance (0.5f))
+        {
+            set (id::pj2Amt, (float) rndInt (-9, 12));
+            set (id::pj2Time, rnd (0.2f, 0.5f));
+        }
+    }
+
     // integrated FX
     if (chance (0.3f))
     {
@@ -266,13 +277,14 @@ void Randomizer::applyCategory (Category c)
             }
             if (chance (0.4f))
                 set (oscId (1, "fold"), rnd (0.05f, 0.25f));       // glassy sparkle
-            setChoice (modId (1, "src"), (int) ModSrc::FilterEnv);
-            setChoice (modId (1, "dest"), (int) ModDest::AllPitch);
-            set (modId (1, "depth"), rnd (0.10f, 0.16f));          // ~5..8 st up
-            set (id::envFAttack, rnd (0.05f, 0.09f));              // the "jump"
-            set (id::envFCurve, -1.0f);                            // late-step feel
-            set (id::envFSustain, 1.0f);
-            set (id::envFDecay, 0.2f);
+            // the classic coin: a REAL pitch step up a 4th/5th
+            set (id::pj1Amt, (float) rndInt (5, 7));
+            set (id::pj1Time, rnd (0.05f, 0.09f));
+            if (chance (0.35f))                                    // double-coin variant
+            {
+                set (id::pj2Amt, (float) rndInt (4, 6));
+                set (id::pj2Time, rnd (0.12f, 0.17f));
+            }
             set (id::envADecay, rnd (0.3f, 0.55f));                // ring-out tail
             set (id::envACurve, rnd (-0.6f, -0.3f));
             set (id::lpfCutoff, rndLog (8000.0f, 16000.0f));
@@ -382,18 +394,35 @@ void Randomizer::applyCategory (Category c)
             setChoice (oscId (1, "wave"), chance (0.6f) ? (int) OscWave::Square
                                                         : (int) OscWave::Triangle);
             set (id::baseFreq, rndLog (250.0f, 600.0f));
-            setChoice (modId (1, "src"), (int) ModSrc::FilterEnv);
-            setChoice (modId (1, "dest"), (int) ModDest::AllPitch);
-            set (modId (1, "depth"), rnd (0.25f, 0.5f));           // big climb
-            set (id::envFAttack, rnd (0.35f, 0.8f));               // slow rise
-            set (id::envFCurve, rnd (0.2f, 0.7f));
-            set (id::envFSustain, 1.0f);
-            set (id::envFDecay, 0.3f);
-            setChoice (modId (2, "src"), (int) ModSrc::Lfo1);      // stepped trill
-            setChoice (modId (2, "dest"), (int) ModDest::AllPitch);
-            set (modId (2, "depth"), rnd (0.04f, 0.10f));
-            setChoice (lfoId (1, "wave"), (int) LfoWave::Square);
-            set (lfoId (1, "rate"), rnd (7.0f, 14.0f));
+            if (chance (0.5f))
+            {
+                // variant A: smooth climb + square-LFO trill riding it
+                setChoice (modId (1, "src"), (int) ModSrc::FilterEnv);
+                setChoice (modId (1, "dest"), (int) ModDest::AllPitch);
+                set (modId (1, "depth"), rnd (0.25f, 0.5f));       // big climb
+                set (id::envFAttack, rnd (0.35f, 0.8f));           // slow rise
+                set (id::envFCurve, rnd (0.2f, 0.7f));
+                set (id::envFSustain, 1.0f);
+                set (id::envFDecay, 0.3f);
+                setChoice (modId (2, "src"), (int) ModSrc::Lfo1);  // stepped trill
+                setChoice (modId (2, "dest"), (int) ModDest::AllPitch);
+                set (modId (2, "depth"), rnd (0.04f, 0.10f));
+                setChoice (lfoId (1, "wave"), (int) LfoWave::Square);
+                set (lfoId (1, "rate"), rnd (7.0f, 14.0f));
+            }
+            else
+            {
+                // variant B: arpeggio ladder of real pitch steps
+                set (id::pj1Amt, (float) rndInt (3, 5));
+                set (id::pj1Time, rnd (0.12f, 0.2f));
+                set (id::pj2Amt, (float) rndInt (5, 9));
+                set (id::pj2Time, rnd (0.3f, 0.45f));
+                setChoice (modId (2, "src"), (int) ModSrc::Lfo1);  // light trill
+                setChoice (modId (2, "dest"), (int) ModDest::AllPitch);
+                set (modId (2, "depth"), rnd (0.02f, 0.05f));
+                setChoice (lfoId (1, "wave"), (int) LfoWave::Square);
+                set (lfoId (1, "rate"), rnd (8.0f, 14.0f));
+            }
             set (id::envAAttack, 0.005f);
             set (id::envADecay, rnd (0.7f, 1.2f));
             set (id::envASustain, rnd (0.4f, 0.7f));
@@ -486,6 +515,65 @@ void Randomizer::applyCategory (Category c)
                 set (id::crushDown, rnd (2.0f, 8.0f));
             }
             set (id::gateTime, 0.08f);
+            break;
+        }
+
+        case Category::OneUp:
+        {
+            // extra life: bright 3-note up-arpeggio with a ringing tail
+            setChoice (oscId (1, "wave"), (int) OscWave::Square);
+            set (oscId (1, "pwm"), rnd (40.0f, 60.0f));
+            set (id::baseFreq, rndLog (500.0f, 900.0f));
+            set (id::pj1Amt, (float) rndInt (4, 5));               // major 3rd / 4th
+            set (id::pj1Time, rnd (0.07f, 0.1f));
+            set (id::pj2Amt, (float) rndInt (5, 8));               // up to the 5th/octave
+            set (id::pj2Time, rnd (0.15f, 0.2f));
+            if (chance (0.5f))                                     // octave shimmer layer
+            {
+                setBool (oscId (2, "on"), true);
+                setChoice (oscId (2, "wave"), (int) OscWave::Triangle);
+                set (oscId (2, "pitch"), 12.0f);
+                set (oscId (2, "level"), rnd (0.25f, 0.45f));
+            }
+            set (id::envADecay, rnd (0.35f, 0.6f));
+            set (id::envACurve, rnd (-0.5f, -0.2f));
+            set (id::envARelease, 0.12f);
+            set (id::lpfCutoff, rndLog (7000.0f, 16000.0f));
+            if (chance (0.25f))
+            {
+                setBool (id::crushOn, true);
+                set (id::crushBits, rnd (8.0f, 12.0f));
+                set (id::crushDown, rnd (1.0f, 4.0f));
+            }
+            set (id::gateTime, 0.3f);
+            break;
+        }
+
+        case Category::Lose:
+        {
+            // defeat: slow descending slide with sad downward steps
+            setChoice (oscId (1, "wave"), chance (0.5f) ? (int) OscWave::Triangle
+                                                        : (int) OscWave::Square);
+            set (oscId (1, "pwm"), rnd (35.0f, 65.0f));
+            set (id::baseFreq, rndLog (400.0f, 700.0f));
+            setChoice (modId (1, "src"), (int) ModSrc::FilterEnv); // gradual sag
+            setChoice (modId (1, "dest"), (int) ModDest::AllPitch);
+            set (modId (1, "depth"), rnd (-0.28f, -0.12f));
+            set (id::envFAttack, rnd (0.4f, 0.8f));
+            set (id::envFCurve, rnd (0.0f, 0.5f));
+            set (id::envFSustain, 1.0f);
+            set (id::envFDecay, 0.3f);
+            set (id::pj1Amt, (float) -rndInt (3, 5));              // sad steps down
+            set (id::pj1Time, rnd (0.18f, 0.28f));
+            set (id::pj2Amt, (float) -rndInt (5, 9));
+            set (id::pj2Time, rnd (0.45f, 0.6f));
+            set (id::envAAttack, 0.005f);
+            set (id::envADecay, rnd (0.8f, 1.2f));
+            set (id::envASustain, rnd (0.25f, 0.45f));
+            set (id::envARelease, rnd (0.25f, 0.4f));
+            set (id::lpfCutoff, rndLog (2000.0f, 6000.0f));
+            set (id::lpfRes, rnd (0.05f, 0.25f));
+            set (id::gateTime, rnd (0.8f, 1.1f));
             break;
         }
     }

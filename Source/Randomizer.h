@@ -28,8 +28,8 @@
 class Randomizer
 {
 public:
-    enum class Category { Pickup = 0, Laser, Explosion, Powerup, Hit, Jump, Blip };
-    static constexpr int kNumCategories = 7;
+    enum class Category { Pickup = 0, Laser, Explosion, Powerup, Hit, Jump, Blip, OneUp, Lose };
+    static constexpr int kNumCategories = 9;
 
     static const char* categoryName (Category c)
     {
@@ -42,6 +42,8 @@ public:
             case Category::Hit:       return "HIT";
             case Category::Jump:      return "JUMP";
             case Category::Blip:      return "BLIP";
+            case Category::OneUp:     return "1-UP";
+            case Category::Lose:      return "LOSE";
         }
         return "?";
     }
