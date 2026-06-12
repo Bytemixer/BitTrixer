@@ -15,11 +15,12 @@ using namespace Params;
 
 namespace
 {
-    // parameters the randomizer must never touch
+    // parameters the randomizer must never touch (gate time is NOT protected:
+    // it is part of a sound's design, so recipes set it per category)
     bool isProtected (const juce::String& pid)
     {
         return pid == id::masterVol || pid == id::loopOn || pid == id::loopRate
-            || pid == id::gateTime  || pid == id::autoVarOn || pid == id::autoVarAmt
+            || pid == id::autoVarOn || pid == id::autoVarAmt
             || pid == id::midiTrack;
     }
 }
@@ -196,6 +197,9 @@ void Randomizer::fullRandom()
 
     set (id::vcaDrive, chance (0.4f) ? rnd (0.1f, 0.7f) : 0.0f);
 
+    set (id::gateTime, rndLog (0.1f, 0.8f));
+    setChoice (id::oscSync, chance (0.18f) ? rndInt (1, 5) : 0);
+
     // unison
     static const int voiceChoices[] = { 1, 1, 1, 2, 3, 4, 6, 8 };
     set (id::uniVoices, (float) voiceChoices[rndInt (0, 7)]);
@@ -218,54 +222,78 @@ void Randomizer::applyCategory (Category c)
     set (id::envARelease, 0.08f);
     set (id::envFAttack, 0.0001f);
     set (id::envFSustain, 0.0f);
+    set (id::gateTime, 0.25f);
     setBool (oscId (1, "on"), true);
 
     switch (c)
     {
         case Category::Pickup:
         {
-            // coin: bright square, quick upward step via slow-ish filter env -> pitch
+            // coin: bright square + octave sparkle layer, a late upward pitch
+            // step, and a ringing decay tail — richer than a plain Blip
             setChoice (oscId (1, "wave"), (int) OscWave::Square);
             set (oscId (1, "pwm"), rnd (35.0f, 65.0f));
-            set (id::baseFreq, rndLog (900.0f, 1800.0f));
+            set (id::baseFreq, rndLog (900.0f, 1700.0f));
+            if (chance (0.6f))                                     // octave layer
+            {
+                setBool (oscId (2, "on"), true);
+                setChoice (oscId (2, "wave"), chance (0.5f) ? (int) OscWave::Sine
+                                                            : (int) OscWave::Triangle);
+                set (oscId (2, "pitch"), 12.0f);
+                set (oscId (2, "level"), rnd (0.3f, 0.55f));
+            }
+            if (chance (0.4f))
+                set (oscId (1, "fold"), rnd (0.05f, 0.25f));       // glassy sparkle
             setChoice (modId (1, "src"), (int) ModSrc::FilterEnv);
             setChoice (modId (1, "dest"), (int) ModDest::AllPitch);
-            set (modId (1, "depth"), rnd (0.10f, 0.18f));          // ~5..9 st up
-            set (id::envFAttack, rnd (0.03f, 0.07f));              // the "jump"
-            set (id::envFCurve, -1.0f);                            // late jump feel
+            set (modId (1, "depth"), rnd (0.10f, 0.16f));          // ~5..8 st up
+            set (id::envFAttack, rnd (0.05f, 0.09f));              // the "jump"
+            set (id::envFCurve, -1.0f);                            // late-step feel
             set (id::envFSustain, 1.0f);
             set (id::envFDecay, 0.2f);
-            set (id::envADecay, rnd (0.15f, 0.4f));
-            set (id::lpfCutoff, rndLog (6000.0f, 16000.0f));
+            set (id::envADecay, rnd (0.3f, 0.55f));                // ring-out tail
+            set (id::envACurve, rnd (-0.6f, -0.3f));
+            set (id::lpfCutoff, rndLog (8000.0f, 16000.0f));
+            set (id::lpfRes, rnd (0.1f, 0.3f));
+            set (id::gateTime, 0.2f);
             break;
         }
 
         case Category::Laser:
         {
+            // pew: starts much higher and dives much steeper than Jump/Hit,
+            // with resonant "zap"; sometimes a hard-sync sweep for the classic
+            // tearing timbre
             setChoice (oscId (1, "wave"), chance (0.5f) ? (int) OscWave::Saw
                                                         : (int) OscWave::Square);
-            set (oscId (1, "pwm"), rnd (15.0f, 60.0f));
-            set (id::baseFreq, rndLog (700.0f, 2200.0f));
+            set (oscId (1, "pwm"), rnd (15.0f, 50.0f));
+            set (id::baseFreq, rndLog (1200.0f, 2600.0f));
             setChoice (modId (1, "src"), (int) ModSrc::FilterEnv);
             setChoice (modId (1, "dest"), (int) ModDest::AllPitch);
-            set (modId (1, "depth"), rnd (-0.75f, -0.35f));        // fast dive
-            set (id::envFDecay, rnd (0.08f, 0.3f));
-            set (id::envFCurve, rnd (-0.6f, 0.0f));
-            set (id::envADecay, rnd (0.12f, 0.35f));
-            set (id::lpfCutoff, rndLog (2500.0f, 12000.0f));
-            set (id::lpfRes, rnd (0.15f, 0.55f));
-            if (chance (0.35f))
+            set (modId (1, "depth"), rnd (-0.85f, -0.5f));         // steep dive
+            set (id::envFDecay, rnd (0.15f, 0.4f));
+            set (id::envFCurve, rnd (-0.4f, 0.0f));
+            set (id::envADecay, rnd (0.15f, 0.4f));
+            set (id::lpfCutoff, rndLog (4000.0f, 14000.0f));
+            set (id::lpfRes, rnd (0.35f, 0.7f));                   // the "pew" ring
+            if (chance (0.4f))                                     // sync sweep zap
             {
+                setChoice (id::oscSync, 1);                        // 2>1
                 setBool (oscId (2, "on"), true);
                 setChoice (oscId (2, "wave"), (int) OscWave::Saw);
-                set (oscId (2, "fine"), rnd (-30.0f, 30.0f));
-                set (oscId (2, "level"), rnd (0.3f, 0.7f));
+                set (oscId (2, "pitch"), rnd (4.0f, 14.0f));
+                set (oscId (2, "level"), rnd (0.6f, 0.9f));
+                set (oscId (1, "level"), 0.25f);
+                setChoice (modId (2, "src"), (int) ModSrc::FilterEnv);
+                setChoice (modId (2, "dest"), (int) ModDest::Osc2Pitch);
+                set (modId (2, "depth"), rnd (-0.7f, -0.35f));     // slave sweep
             }
-            if (chance (0.4f))
+            if (chance (0.3f))
             {
-                set (id::uniVoices, (float) rndInt (2, 4));
-                set (id::uniDetune, rnd (8.0f, 25.0f));
+                setBool (id::hpfOn, true);
+                set (id::hpfCutoff, rndLog (200.0f, 600.0f));
             }
+            set (id::gateTime, 0.2f);
             break;
         }
 
@@ -287,6 +315,7 @@ void Randomizer::applyCategory (Category c)
             set (id::envACurve, rnd (-0.8f, -0.3f));               // exp die-away
             set (id::envARelease, rnd (0.2f, 0.5f));
             set (id::vcaDrive, rnd (0.3f, 0.8f));
+            set (id::gateTime, 0.4f);
             if (chance (0.4f))                                     // crackle
             {
                 setChoice (modId (2, "src"), (int) ModSrc::Lfo1);
@@ -300,42 +329,61 @@ void Randomizer::applyCategory (Category c)
 
         case Category::Powerup:
         {
+            // long bubbly STEPPED rise — much slower and longer than a laser,
+            // with a square-LFO trill riding the climb and a sustained body
             setChoice (oscId (1, "wave"), chance (0.6f) ? (int) OscWave::Square
-                                                        : (int) OscWave::Saw);
-            set (id::baseFreq, rndLog (300.0f, 800.0f));
+                                                        : (int) OscWave::Triangle);
+            set (id::baseFreq, rndLog (250.0f, 600.0f));
             setChoice (modId (1, "src"), (int) ModSrc::FilterEnv);
             setChoice (modId (1, "dest"), (int) ModDest::AllPitch);
-            set (modId (1, "depth"), rnd (0.2f, 0.45f));           // long rise
-            set (id::envFAttack, rnd (0.25f, 0.6f));
+            set (modId (1, "depth"), rnd (0.25f, 0.5f));           // big climb
+            set (id::envFAttack, rnd (0.35f, 0.8f));               // slow rise
+            set (id::envFCurve, rnd (0.2f, 0.7f));
             set (id::envFSustain, 1.0f);
             set (id::envFDecay, 0.3f);
-            setChoice (modId (2, "src"), (int) ModSrc::Lfo1);      // warble
+            setChoice (modId (2, "src"), (int) ModSrc::Lfo1);      // stepped trill
             setChoice (modId (2, "dest"), (int) ModDest::AllPitch);
-            set (modId (2, "depth"), rnd (0.02f, 0.08f));
-            setChoice (lfoId (1, "wave"), (int) LfoWave::Triangle);
-            set (lfoId (1, "rate"), rnd (5.0f, 11.0f));
+            set (modId (2, "depth"), rnd (0.04f, 0.10f));
+            setChoice (lfoId (1, "wave"), (int) LfoWave::Square);
+            set (lfoId (1, "rate"), rnd (7.0f, 14.0f));
             set (id::envAAttack, 0.005f);
-            set (id::envADecay, rnd (0.5f, 0.9f));
-            set (id::envASustain, rnd (0.3f, 0.6f));
-            set (id::envARelease, rnd (0.15f, 0.35f));
-            set (id::lpfCutoff, rndLog (4000.0f, 14000.0f));
+            set (id::envADecay, rnd (0.7f, 1.2f));
+            set (id::envASustain, rnd (0.4f, 0.7f));
+            set (id::envARelease, rnd (0.2f, 0.4f));
+            set (id::lpfCutoff, rndLog (3000.0f, 9000.0f));
+            set (id::lpfRes, rnd (0.15f, 0.4f));
+            if (chance (0.5f))
+            {
+                set (id::uniVoices, (float) rndInt (2, 3));
+                set (id::uniDetune, rnd (8.0f, 18.0f));
+            }
+            set (id::gateTime, rnd (0.9f, 1.3f));                  // let the rise finish
             break;
         }
 
         case Category::Hit:
         {
+            // impact: noise-dominant crunch with a low thunk, steep pitch drop,
+            // hard drive and a darkening filter snap — short and percussive
             setChoice (oscId (1, "wave"), (int) OscWave::Square);
-            set (id::baseFreq, rndLog (100.0f, 320.0f));
+            set (id::baseFreq, rndLog (80.0f, 220.0f));
+            set (oscId (1, "level"), rnd (0.5f, 0.8f));
             setBool (id::noiseOn, true);
-            set (id::noiseColor, rnd (0.0f, 0.6f));
-            set (id::noiseLevel, rnd (0.4f, 0.8f));
+            set (id::noiseColor, rnd (0.0f, 0.5f));
+            set (id::noiseLevel, rnd (0.7f, 1.0f));                // noise leads
             setChoice (modId (1, "src"), (int) ModSrc::FilterEnv);
             setChoice (modId (1, "dest"), (int) ModDest::AllPitch);
-            set (modId (1, "depth"), rnd (-0.3f, -0.1f));
-            set (id::envFDecay, rnd (0.06f, 0.18f));
-            set (id::envADecay, rnd (0.08f, 0.22f));
-            set (id::lpfCutoff, rndLog (1200.0f, 5000.0f));
-            set (id::vcaDrive, rnd (0.2f, 0.5f));
+            set (modId (1, "depth"), rnd (-0.65f, -0.35f));        // steep thunk
+            set (id::envFDecay, rnd (0.04f, 0.12f));               // very fast
+            set (id::envFCurve, -0.5f);
+            set (id::envADecay, rnd (0.07f, 0.16f));               // short + punchy
+            set (id::envACurve, rnd (-0.8f, -0.5f));
+            set (id::envARelease, 0.05f);
+            set (id::lpfCutoff, rndLog (1500.0f, 5000.0f));
+            set (id::lpfEnv, rnd (-0.5f, -0.2f));                  // darkening snap
+            set (id::lpfRes, rnd (0.0f, 0.25f));
+            set (id::vcaDrive, rnd (0.4f, 0.8f));                  // crunch
+            set (id::gateTime, 0.15f);
             break;
         }
 
@@ -357,6 +405,7 @@ void Randomizer::applyCategory (Category c)
                 setBool (id::hpfOn, true);
                 set (id::hpfCutoff, rndLog (80.0f, 250.0f));
             }
+            set (id::gateTime, 0.3f);
             break;
         }
 
@@ -369,6 +418,7 @@ void Randomizer::applyCategory (Category c)
             set (id::envADecay, rnd (0.04f, 0.12f));
             set (id::envARelease, 0.03f);
             set (id::lpfCutoff, rndLog (5000.0f, 18000.0f));
+            set (id::gateTime, 0.08f);
             break;
         }
     }

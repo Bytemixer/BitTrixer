@@ -15,8 +15,110 @@
 #include "../Params.h"
 
 // ============================================================================
+//  EnvCurveDisplay — paints the actual ADSR output shape (curve + invert
+//  included, release always falling to silence like the DSP does). Polls
+//  the parameters on a slow timer.
+// ============================================================================
+
+class EnvCurveDisplay : public juce::Component, private juce::Timer
+{
+public:
+    EnvCurveDisplay (juce::AudioProcessorValueTreeState& s,
+                     const char* aId, const char* dId, const char* sId,
+                     const char* rId, const char* cId, const char* invId)
+    {
+        const char* ids[6] = { aId, dId, sId, rId, cId, invId };
+        for (int i = 0; i < 6; ++i)
+            raw[i] = s.getRawParameterValue (ids[i]);
+        setInterceptsMouseClicks (false, false);
+        startTimerHz (8);
+    }
+
+    void paint (juce::Graphics& g) override
+    {
+        auto b = getLocalBounds().toFloat().reduced (1.0f);
+        g.setColour (RetroColors::track);
+        g.fillRoundedRectangle (b, 4.0f);
+        g.setColour (RetroColors::panelEdge);
+        g.drawRoundedRectangle (b, 4.0f, 1.0f);
+
+        const auto r = b.reduced (4.0f, 4.0f);
+        const float A = v (0), D = v (1), S = v (2), R = v (3), curve = v (4);
+        const bool inv = v (5) > 0.5f;
+
+        // segment widths: log-ish time scale, fixed sustain plateau
+        auto seg = [] (float t) { return 0.06f + 0.27f * std::pow (t / 8.0f, 0.3f); };
+        const float wA = seg (A), wD = seg (D), wR = seg (R);
+        const float wS = 1.0f - juce::jmin (0.82f, wA + wD + wR);
+        const float total = wA + wD + wS + wR;
+
+        const float k = std::pow (4.0f, -curve);
+        auto shape = [k] (float t) { return std::pow (t, k); };
+        auto out = [inv] (float lvl) { return inv ? 1.0f - lvl : lvl; };
+        auto px = [&r, total] (float x) { return r.getX() + (x / total) * r.getWidth(); };
+        auto py = [&r] (float y) { return r.getBottom() - y * r.getHeight(); };
+
+        juce::Path p;
+        p.startNewSubPath (px (0.0f), py (out (0.0f)));
+        constexpr int N = 14;
+        for (int i = 1; i <= N; ++i)   // attack 0 -> 1
+        {
+            const float t = (float) i / N;
+            p.lineTo (px (t * wA), py (out (shape (t))));
+        }
+        for (int i = 1; i <= N; ++i)   // decay 1 -> S
+        {
+            const float t = (float) i / N;
+            p.lineTo (px (wA + t * wD), py (out (1.0f - (1.0f - S) * shape (t))));
+        }
+        p.lineTo (px (wA + wD + wS), py (out (S)));         // sustain plateau
+        const float relStart = out (S);                     // release: OUTPUT falls to 0
+        for (int i = 1; i <= N; ++i)
+        {
+            const float t = (float) i / N;
+            p.lineTo (px (wA + wD + wS + t * wR), py (relStart * (1.0f - shape (t))));
+        }
+
+        g.setColour (RetroColors::accent.withAlpha (0.25f));
+        juce::Path fill (p);
+        fill.lineTo (px (total), py (0.0f));
+        fill.lineTo (px (0.0f), py (0.0f));
+        fill.closeSubPath();
+        g.fillPath (fill);
+
+        g.setColour (RetroColors::accent);
+        g.strokePath (p, juce::PathStrokeType (1.6f, juce::PathStrokeType::curved,
+                                               juce::PathStrokeType::rounded));
+
+        // gate-off marker (release start)
+        g.setColour (RetroColors::textDim.withAlpha (0.5f));
+        const float gx = px (wA + wD + wS);
+        g.drawLine (gx, r.getY(), gx, r.getBottom(), 1.0f);
+    }
+
+private:
+    float v (int i) const { return raw[i] != nullptr ? raw[i]->load() : 0.0f; }
+
+    void timerCallback() override
+    {
+        bool changed = false;
+        for (int i = 0; i < 6; ++i)
+        {
+            const float n = v (i);
+            if (n != cached[i]) { cached[i] = n; changed = true; }
+        }
+        if (changed)
+            repaint();
+    }
+
+    std::atomic<float>* raw[6] {};
+    float cached[6] { -1e9f, -1e9f, -1e9f, -1e9f, -1e9f, -1e9f };
+};
+
+// ============================================================================
 //  EnvPanel — one ADSR section as DeepMind-style vertical faders, plus the
-//  curve-shape pot and the invert switch. Used twice (filter env, amp env).
+//  live curve display, the curve-shape pot and the invert switch.
+//  Used twice (filter env, amp env).
 // ============================================================================
 
 class EnvPanel : public SectionPanel
@@ -31,7 +133,8 @@ public:
           su (s, sustainId, "S"),
           r (s, releaseId, "R"),
           curve  (s, curveId, "CURVE"),
-          invert (s, invertId, "INV")
+          invert (s, invertId, "INV"),
+          display (s, attackId, decayId, sustainId, releaseId, curveId, invertId)
     {
         addAndMakeVisible (a);
         addAndMakeVisible (d);
@@ -39,14 +142,17 @@ public:
         addAndMakeVisible (r);
         addAndMakeVisible (curve);
         addAndMakeVisible (invert);
+        addAndMakeVisible (display);
     }
 
     void resized() override
     {
         auto b = content();
-        auto right = b.removeFromRight (92);
-        curve.setBounds (right.removeFromTop (juce::jmin (76, right.getHeight() - 24)));
-        invert.setBounds (right.removeFromTop (22).withTrimmedLeft (8));
+        auto right = b.removeFromRight (124);
+        display.setBounds (right.removeFromTop (48));
+        right.removeFromTop (2);
+        invert.setBounds (right.removeFromBottom (20).withTrimmedLeft (26));
+        curve.setBounds (right.withSizeKeepingCentre (64, right.getHeight()));
 
         const int fw = b.getWidth() / 4;
         a.setBounds  (b.removeFromLeft (fw).reduced (4, 0));
@@ -59,4 +165,5 @@ private:
     VFader a, d, su, r;
     LabeledKnob  curve;
     SwitchToggle invert;
+    EnvCurveDisplay display;
 };

@@ -41,6 +41,8 @@ public:
         float oscFold[Params::kNumOscs] {};
         float oscLevel[Params::kNumOscs] {};
 
+        Params::SyncMode syncMode = Params::SyncMode::Off;
+
         bool  noiseOn = false;
         float noiseLevel = 0.0f;
 
@@ -112,12 +114,35 @@ public:
         noise.setColor (noiseColor);
         drive.setAmount (ctx.driveAmt);
 
+        using Sync = Params::SyncMode;
+        const Sync sync = ctx.syncMode;
+        const bool sync2 = sync == Sync::S2to1 || sync == Sync::S23to1 || sync == Sync::S2to1_3to2;
+        const bool sync3from1 = sync == Sync::S3to1 || sync == Sync::S23to1;
+        const bool sync3from2 = sync == Sync::S3to2 || sync == Sync::S2to1_3to2;
+
         for (int s = 0; s < n; ++s)
         {
             float mix = 0.0f;
-            for (int i = 0; i < Params::kNumOscs; ++i)
-                if (ctx.oscOn[i])
-                    mix += oscs[(size_t) i].tick (inc[i]) * ctx.oscLevel[i];
+            bool w1 = false, w2 = false;
+
+            if (ctx.oscOn[0])
+            {
+                mix += oscs[0].tick (inc[0]) * ctx.oscLevel[0];
+                w1 = oscs[0].wrapped();
+            }
+            if (ctx.oscOn[1])
+            {
+                if (sync2 && w1)
+                    oscs[1].hardSync();
+                mix += oscs[1].tick (inc[1]) * ctx.oscLevel[1];
+                w2 = oscs[1].wrapped();
+            }
+            if (ctx.oscOn[2])
+            {
+                if ((sync3from1 && w1) || (sync3from2 && w2))
+                    oscs[2].hardSync();
+                mix += oscs[2].tick (inc[2]) * ctx.oscLevel[2];
+            }
 
             if (ctx.noiseOn)
                 mix += noise.tick() * ctx.noiseLevel;
