@@ -18,6 +18,8 @@
 #include "Envelope.h"
 #include "LFO.h"
 #include "ModMatrix.h"
+#include "Phaser.h"
+#include "Flanger.h"
 #include "../Params.h"
 
 // ============================================================================
@@ -53,16 +55,6 @@ public:
 
     bool anyActive() const noexcept;
 
-    // ---- oscilloscope capture (jsfxr-style: the whole rendered sound) ----
-    // Capture restarts on every trigger; the UI polls generation + available.
-    static constexpr int kScopeDecim = 4;
-    static constexpr int kScopeSize  = 96000;   // 8 s at 48 kHz / 4
-
-    const float* scopeData() const noexcept      { return scopeBuf.data(); }
-    int scopeAvailable() const noexcept          { return scopeWritePos.load (std::memory_order_acquire); }
-    uint32_t scopeGeneration() const noexcept    { return scopeGen.load (std::memory_order_relaxed); }
-    double scopeSampleRate() const noexcept      { return fs / kScopeDecim; }
-
 private:
     struct VariateOffsets
     {
@@ -81,6 +73,8 @@ private:
 
         Envelope envF, envA;
         LFO lfo1, lfo2;
+        Phaser phaser;       // per-instance FX: retrigger with the sound,
+        Flanger flanger;     // applied to the summed unison stack
         std::array<Voice, Params::kMaxUnison> voices;
         int numVoices = 1;
 
@@ -123,12 +117,6 @@ private:
     // smoothed master gain
     float masterGain = 0.5f;
     float masterTarget = 0.5f;
-
-    // scope capture state (audio thread writes, UI reads — display only)
-    std::array<float, kScopeSize> scopeBuf {};
-    std::atomic<int> scopeWritePos { 0 };
-    std::atomic<uint32_t> scopeGen { 0 };
-    int scopeDecimCount = 0;
 
     uint32_t rng = 0x5EEDF00Du;
 };

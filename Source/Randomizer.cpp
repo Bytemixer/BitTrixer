@@ -200,6 +200,28 @@ void Randomizer::fullRandom()
     set (id::gateTime, rndLog (0.1f, 0.8f));
     setChoice (id::oscSync, chance (0.18f) ? rndInt (1, 5) : 0);
 
+    // integrated FX
+    if (chance (0.3f))
+    {
+        setBool (id::crushOn, true);
+        set (id::crushBits, rnd (4.0f, 12.0f));
+        set (id::crushDown, rndLog (1.0f, 20.0f));
+    }
+    if (chance (0.12f))
+    {
+        setBool (id::phaseOn, true);
+        set (id::phaseRate, rndLog (0.2f, 5.0f));
+        set (id::phaseDepth, rnd (0.3f, 0.9f));
+        set (id::phaseFb, rnd (0.1f, 0.7f));
+    }
+    if (chance (0.18f))
+    {
+        setBool (id::flangeOn, true);
+        set (id::flangeRate, rndLog (0.1f, 2.0f));
+        set (id::flangeDepth, rnd (0.3f, 0.9f));
+        set (id::flangeFb, rnd (0.2f, 0.8f));
+    }
+
     // unison
     static const int voiceChoices[] = { 1, 1, 1, 2, 3, 4, 6, 8 };
     set (id::uniVoices, (float) voiceChoices[rndInt (0, 7)]);
@@ -255,6 +277,12 @@ void Randomizer::applyCategory (Category c)
             set (id::envACurve, rnd (-0.6f, -0.3f));
             set (id::lpfCutoff, rndLog (8000.0f, 16000.0f));
             set (id::lpfRes, rnd (0.1f, 0.3f));
+            if (chance (0.2f))                                     // gentle 8-bit shimmer
+            {
+                setBool (id::crushOn, true);
+                set (id::crushBits, rnd (8.0f, 12.0f));
+                set (id::crushDown, rnd (1.0f, 4.0f));
+            }
             set (id::gateTime, 0.2f);
             break;
         }
@@ -293,6 +321,13 @@ void Randomizer::applyCategory (Category c)
                 setBool (id::hpfOn, true);
                 set (id::hpfCutoff, rndLog (200.0f, 600.0f));
             }
+            if (chance (0.25f))                                    // swooshy zap
+            {
+                setBool (id::phaseOn, true);
+                set (id::phaseRate, rndLog (1.0f, 5.0f));
+                set (id::phaseDepth, rnd (0.4f, 0.9f));
+                set (id::phaseFb, rnd (0.3f, 0.7f));
+            }
             set (id::gateTime, 0.2f);
             break;
         }
@@ -315,6 +350,19 @@ void Randomizer::applyCategory (Category c)
             set (id::envACurve, rnd (-0.8f, -0.3f));               // exp die-away
             set (id::envARelease, rnd (0.2f, 0.5f));
             set (id::vcaDrive, rnd (0.3f, 0.8f));
+            if (chance (0.45f))                                    // debris crunch
+            {
+                setBool (id::crushOn, true);
+                set (id::crushBits, rnd (4.0f, 8.0f));
+                set (id::crushDown, rnd (4.0f, 16.0f));
+            }
+            if (chance (0.35f))                                    // sfxr-style whoosh
+            {
+                setBool (id::flangeOn, true);
+                set (id::flangeRate, rnd (0.1f, 0.4f));
+                set (id::flangeDepth, rnd (0.5f, 1.0f));
+                set (id::flangeFb, rnd (0.5f, 0.8f));
+            }
             set (id::gateTime, 0.4f);
             if (chance (0.4f))                                     // crackle
             {
@@ -357,6 +405,13 @@ void Randomizer::applyCategory (Category c)
                 set (id::uniVoices, (float) rndInt (2, 3));
                 set (id::uniDetune, rnd (8.0f, 18.0f));
             }
+            if (chance (0.25f))                                    // sparkle swirl
+            {
+                setBool (id::flangeOn, true);
+                set (id::flangeRate, rnd (0.3f, 1.0f));
+                set (id::flangeDepth, rnd (0.3f, 0.6f));
+                set (id::flangeFb, rnd (0.2f, 0.5f));
+            }
             set (id::gateTime, rnd (0.9f, 1.3f));                  // let the rise finish
             break;
         }
@@ -383,6 +438,12 @@ void Randomizer::applyCategory (Category c)
             set (id::lpfEnv, rnd (-0.5f, -0.2f));                  // darkening snap
             set (id::lpfRes, rnd (0.0f, 0.25f));
             set (id::vcaDrive, rnd (0.4f, 0.8f));                  // crunch
+            if (chance (0.4f))                                     // smashed-speaker grit
+            {
+                setBool (id::crushOn, true);
+                set (id::crushBits, rnd (4.0f, 9.0f));
+                set (id::crushDown, rnd (2.0f, 10.0f));
+            }
             set (id::gateTime, 0.15f);
             break;
         }
@@ -418,6 +479,12 @@ void Randomizer::applyCategory (Category c)
             set (id::envADecay, rnd (0.04f, 0.12f));
             set (id::envARelease, 0.03f);
             set (id::lpfCutoff, rndLog (5000.0f, 18000.0f));
+            if (chance (0.35f))                                    // 8-bit voice character
+            {
+                setBool (id::crushOn, true);
+                set (id::crushBits, rnd (6.0f, 10.0f));
+                set (id::crushDown, rnd (2.0f, 8.0f));
+            }
             set (id::gateTime, 0.08f);
             break;
         }

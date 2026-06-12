@@ -61,11 +61,8 @@ public:
     void uiGate (bool on) noexcept       { uiGateRequest.store (on ? 1 : 2); }
     void uiOneShot() noexcept            { uiOneShotRequests.fetch_add (1); }
 
-    // Snapshot of the current panel for the offline WAV renderer.
+    // Snapshot of the current panel for offline rendering (WAV export, scope).
     Params::Patch snapshotPatch() const  { return paramCache.read(); }
-
-    // ---- oscilloscope feed for the editor (read-only) ----
-    const SynthEngine& scopeSource() const noexcept { return engine; }
 
 private:
     Params::Cache paramCache;

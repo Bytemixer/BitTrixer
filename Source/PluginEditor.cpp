@@ -31,7 +31,8 @@ RetroForgeEditor::RetroForgeEditor (RetroForgeProcessor& p)
       lfo1Panel (p.apvts, 1), lfo2Panel (p.apvts, 2),
       modMatrixPanel (p.apvts),
       triggerPanel (p.apvts),
-      scopePanel (p.scopeSource())
+      scopePanel (p.apvts, [&p] { return p.snapshotPatch(); }),
+      fxPanel (p.apvts)
 {
     setLookAndFeel (&lookAndFeel);
 
@@ -39,7 +40,7 @@ RetroForgeEditor::RetroForgeEditor (RetroForgeProcessor& p)
              &header, &osc1, &osc2, &osc3, &noisePanel, &filterPanel,
              &envFPanel, &envAPanel, &vcaPanel, &pitchPanel,
              &lfo1Panel, &lfo2Panel, &modMatrixPanel,
-             &triggerPanel, &randomizerPanel, &scopePanel })
+             &triggerPanel, &randomizerPanel, &scopePanel, &fxPanel })
         addAndMakeVisible (c);
 
     // ---- wiring ----
@@ -92,7 +93,7 @@ RetroForgeEditor::RetroForgeEditor (RetroForgeProcessor& p)
     };
 
     header.setPresetName (presetManager.getCurrentName());
-    setSize (1180, 720);
+    setSize (1180, 836);
 }
 
 RetroForgeEditor::~RetroForgeEditor()
@@ -116,6 +117,9 @@ void RetroForgeEditor::resized()
     header.setBounds (b.removeFromTop (46));
     b.reduce (8, 8);
     constexpr int gap = 6;
+
+    fxPanel.setBounds (b.removeFromBottom (104));
+    b.removeFromBottom (gap);
 
     // ---- left column: oscillators + noise ----
     auto left = b.removeFromLeft (330);
