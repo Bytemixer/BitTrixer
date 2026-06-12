@@ -1,0 +1,422 @@
+About Subtractive Synthesis Page 75
+11. About Subtractive 
+Synthesis
+Introduction
+Subtractive synthesis is one of the oldest and most widely spread forms of synthesizing sounds. It is the 
+method employed in such classics as the Moog synthesizers, the Sequential Prophet-5 and 10, Arp syn-
+thesizers, most Oberheim synthesizers, the Roland Jupiter models, the TB-303 etc; the list is practically 
+endless. Even new digital instruments such as workstations and sample playback devices employ many 
+of the basic principles of subtractive synthesis.
+With the first Nord Lead, Clavia introduced a new concept: a modern digital instrument that combined a 
+faithful reproduction of the behaviour of the old analog favourites with the convenience and stability of 
+the newer designs. The Nord Lead 2 takes this concept even further, adding valuable new features and 
+functionalities.
+The purpose of this chapter is to give you a quick introduction to this world of subtractive synthesis as 
+used in he Nord Lead 2 and its analog predecessors. If you’d like to know more, there are number of text 
+books on the subject.
+The Building Blocks
+Subtractive synthesis started its life in modular synthesizers, large cabinets housing separate electronic 
+modules, connected via patch cords. With the advancement of technology, the functionality of many of 
+these modules could be put onto one single circuit board. But functionality-wise, subtractive synthesizers 
+are still built out of the same modules (or building blocks) as they were decades ago. 
+We will now take a closer look at these building blocks. Let’s first talk about the three that actually create 
+and process sound:
+Oscillator
+The Oscillator is actually the only thing in a synthesizer that actually produces any sound, (all the other 
+modules only shape the sound from the oscillator.) The oscillator is a bit like the string on a string instru-
+ment, it vibrates to create sound.
+Filter
+The signal from the oscillator is sent through the Filter which shapes the timbre of the sound to make it 
+“bright”, “dull”, “thin”, etc.
+Amplifier
+The Amplifier shapes the volume of the sound making it “soft” or “hard”, “slow” or “short”.
+In addition to these major three modules all synthesizers also have “modulators”, devices that can make 
+the volume, timbre pitch and other qualities of sound vary continuously when you play a key. It is these 
+modulators that basically add animation to the sound, taking it from a dull organ drone to a dynamic and 
+interesting timbre. The two most common modulators are Envelopes and LFOs:
+Page 76 About Subtractive Synthesis
+Envelopes
+An envelope is used to give a sound a “shape”. If you apply an envelope to the amplifier (which controls 
+the volume) you are able to make the sound for example slowly fade in and then fade out when you 
+press and hold a key.
+LFOs
+LFO is an abbreviation for Low Frequency Oscillator. It is used for repeating variations in a sound, such 
+as vibrato or tremolo.
+Connections
+There are many ways in which the modules outlined above can be connected in a synthesizer, but the 
+one in the picture below is a basic and common one, used in the Nord Lead 2 (although the illustration 
+depicts far from all the possibilities in this instrument!)
+Note that the horizontal lines indicate the way the sound travels. The vertical lines indicate control sig-
+nals. The envelopes for example only modulate (control) the oscillator, filter and amplifiers, they do not 
+affect the sound directly.
+The Oscillators and Waveforms
+The two basic qualities of an oscillator is waveform and pitch.
+Pitch
+The picture of the sawtooth on the Nord Lead 2 front panel displays a sawtooth during one period of 
+sound. During this time, the wave raises gradually up to maximum level and then instantly drops back 
+to minimum level.
+Oscillator
+Noise
+Oscillator
+Mixer
+Filter Amplifier Output
+LFOEnvelope LFOEnvelope Envelope LFO
+Audio Signal
+Control Signal
+About Subtractive Synthesis Page 77
+The length of the period determines the pitch (frequency) of the sound. The shorter the period, the high-
+er the pitch. If you for example make the oscillator play at a frequency of 440Hz, there will be 440 periods 
+of identical Sawtooth waves generated per second.
+Normally there are three ways to change the frequency of an oscillator:
+tBy making settings on the front panel.
+On the Nord Lead 2 for example, you have an “Oct Shift” setting for both oscillators and separate Semi-
+tone and Fine Tune adjustments for Oscillator 2.
+tBy playing the keyboard.
+The keyboard is if course connected to the oscillator so that pressing different key produces different 
+pitches. In some cases this connection can be turned off, so that the oscillator always plays the same 
+pitch, regardless of which key is pressed. In the Nord Lead 2, this can be done for Oscillator 2, by deac-
+tivating “Kbd Track”.
+tBy Modulation
+Modulation allows you to make the pitch vary “automatically”. The most common example is probably 
+to use an LFO to make pitch go up and down, to create a vibrato. But you can also put the pitch under 
+envelope control, or make the pitch vary with your striking force (velocity).
+Waveform
+The waveform of the oscillator affects its harmonic content and thereby its “sound quality” (timbre). The 
+three most common waveforms are sawtooth, pulse wave and triangle.
+Looking at the shape of a waveform tells very little about how it sounds. Instead, there’s a better way to 
+draw it, called a spectrum. Let’s introduce some quick theory:
+Mathematically, all waveforms can be considered as built from a number of harmonics, added together.
+Each of the harmonics consists of a sine wave, the purest and simple waveform there is (a sine wave has 
+no harmonics at all). In other words, if you add a number of sine waves together, each one with its own 
+pitch (frequency) and volume (amplitude), then you can build any waveform you like.
+The lowest harmonic is called the fundamental. The fundamental determines the basic pitch of the 
+sound. If the fundamental has a frequency of 440Hz, we will perceive the entire sound as having a pitch 
+of 440Hz.
+Other harmonics are then added to the fundamental, called overtones. Normally the first overtone ap-
+pears at a frequency twice the fundamental (in our example 880 Hz). The next harmonic appears at a 
+frequency three times the fundamental (in our example 1320Hz) and so on.
+In a spectral display of a waveform you can see the frequency (pitch) of each harmonic and its amplitude 
+(level). This is done by drawing each harmonic as a line raising up from a horizontal scale. 
+Each line’s position on this scale indicates the harmonic’s frequency. The line furthest to the left is the 
+fundamental, the next is the first harmonic etc. To make life easier, one usually doesn’t label the horizon-
+tal scale with frequency in Hz, but rather with the number of the harmonic.
+One Period
+Page 78 About Subtractive Synthesis
+The height of each line represents the amplitude of each harmonic.
+If you understand the principle, you also understand that if the harmonics with high numbers have a high 
+amplitude, the sound will be perceived as bright.
+Let’s take a look at some common waveforms and their spectra.
+In the illustrations below, only some of the first harmonics are displayed. In reality, waveforms like these 
+have an infinite amount of harmonics.
+Sawtooth
+The Sawtooth wave has a simple spectrum. All harmonics are present in the wave, in proportional values. 
+As you can see, the high harmonics have a fairly high amplitude, which makes this waveform sound 
+bright.
+Triangle
+The triangle wave does not have very strong harmonics. Furthermore they only appear at odd harmonic 
+numbers. The first fact makes the tone pure, a bit like a flute, and the second fact gives the sound a slight-
+ly “hollow” character.
+Amplitude 
+Time
+10 20 30 40
+Amplitude
+Harmonic number
+(Frequency)
+Amplitude
+Time
+10 20 30 40
+Amplitude
+Harmonic number
+(Frequency)
+About Subtractive Synthesis Page 79
+Pulse Wave
+The pulse wave is slightly more complicated, because it is not one waveform, it is many different ones. 
+A pulse wave is a waveform that during one period jumps once between full positive amplitude and full 
+negative and then back.The thing that can be varied is where within the period you jump from maximum 
+to minimum amplitude. Let’s look at three examples:
+95%
+5%
+Time
+Amplitude
+10 20 30 40
+Amplitude
+Harmonic number
+(Frequency)
+90%
+10%
+Time
+Amplitude
+10 20 30 40
+Amplitude
+Harmonic number
+(Frequency)
+50%
+50%
+Amplitude
+Time
+10 20 30 40
+Amplitude
+Harmonic number
+(Frequency)
+Page 80 About Subtractive Synthesis
+In the first, the jump happens 5% in from the beginning of the period. This is referred to as a pulse wave 
+with a 5% pulse width (sometimes called duty cycle). The second wave has a pulse width of 10%. The 
+third wave has a pulse width of 50%.
+This third wave is a special case of the pulse wave, called a square wave, and this has one peculiarity, it 
+only contains odd number harmonics, which gives it a “hollow” quality.
+On many synthesizers (including the Nord Lead) the pulse width can be adjusted, to set the timbre of the 
+pulse wave. The more narrow the pulse width, the more “thin” the sound will be.
+You can also have the pulse width vary continuously, for example from an LFO or envelope. This is re-
+ferred to as pulse width modulation. Modulating pulse widths from an LFO creates a rich, chorus-like 
+effect often used in “string” sounds.
+About Inharmonic Spectra
+Above we have only discussed spectra where the overtones appear at perfect harmonics. While this is 
+true for the basic waveforms discussed above, it is definitely not true for all sound. If you for example 
+use the frequency modulation (FM) or Ring Modulation capabilities in the Nord Lead 2, with the two os-
+cillators set to an “unusual” interval (not octaves or fifths, for example), you will get a spectrum where 
+the overtones appear at frequencies somewhere between the perfect harmonics. This results in an inhar-
+monic sound, which often sounds “metallic”.
+Sync
+One some instruments (including the Nord Lead 2), two Oscillators can be synchronized. If you for ex-
+ample synchronize Oscillator 2 to Oscillator 1, Oscillator 2 will start over with a new period of the wave-
+form, each time Oscillator 1 does so. If Oscillator 2 then has a higher frequency than 1, it will get a 
+complex waveform that depends both on its own pitch and on that of the other oscillator.
+Amplitude
+Time
+Amplitude
+Harmonic number 
+(Frequency)1 2 3 4 5 6 7 8
+Oscillator 1
+Oscillator 2
+(synchronized)
+About Subtractive Synthesis Page 81
+When sync is applied, the basic pitch of Oscillator 2 is locked to that of Oscillator 1. If you change the 
+pitch of Oscillator 1 you will affect the basic pitch of both oscillators. Furthermore, when you vary the 
+pitch of the synchronized oscillator (Oscillator 2), this will be perceived as a change in timbre, rather than 
+in pitch.
+This leads to a spectrum with deep resonances at Osc2’s harmonics, like this:
+If you go even further and let the pitch of the synchronized oscillator vary continuously, for example 
+from an LFO or envelope, you will change the harmonic content of the sound in an interesting and very 
+characteristic way.
+The Filter
+The filter in a synthesizer is used to remove or emphasize frequencies in a spectrum. A filter is a bit like 
+an amplifier (a volume control) that is applied differently to different parts of the spectrum. For example, 
+a filter might make low frequencies louder, while at the same time making high frequencies weaker. Ap-
+plying such a filter would make a sound have more bass and less treble.
+Let’s imagine a sound with a spectrum where all harmonics are available at full level. It would look like 
+this:
+Let’s now pass this spectrum through a lowpass filter (this type of filter is discussed in more detail below). 
+The filter has a characteristic, which can be drawn as a curve.
+10 20 30 40
+Amplitude
+Harmonic number
+(Frequency)
+Osc 2 Harmonics
+Page 82 About Subtractive Synthesis
+As you can see the curve is flat in the low register (which means it doesn’t affect this part of the spectrum 
+at all) and then, at a certain point, gradually starts falling. When applied to the wave above, this filter cuts 
+away some of the high frequency material in the wave, like this:
++ = 
+Filter Types
+There are many types of filters, all with their different purposes. We will here discuss the three most com-
+mon, the ones found in the Nord Lead 2.
+Lowpass filter: The Lowpass filter dampens high frequencies and let’s low frequencies pass through unaf-
+fected, as in the example above. It is the most common synthesizer filter, since it can be used to “round 
+off” the sharp sound of sawtooth waves and pulse waves.
+Highpass Filter: This is the opposite of the lowpass filter. It let’s the high frequencies of the sound pass 
+through and cuts off the low frequencies. This removes “bass” from a sound, without affecting the high 
+end.
+Amplitude
+Frequency
+Fc (Cutoff Frequency)
+Amplitude
+Frequency
+Fc (Cutoff Frequency)
+About Subtractive Synthesis Page 83
+Bandpass filter: This let’s frequencies in a certain range of the spectrum (the band) pass through while 
+dampening frequencies both below and above this range. This accentuates the mid-range of a sound.
+Notch filter: This filter type (also known as Band Reject) can be seen as the opposite of a band pass filter. 
+It cuts off frequencies in a “mid-range” band, letting the frequencies below and above through.
+In the Nord Lead 2 the Notch filter is combined with a 12 dB Lowpass filter, for greater musical versatility 
+(see page 44).
+Roll-off
+Filters of one and the same type (lowpass, highpass etc) can have different characteristics. One of the 
+factors determining the exact filter curve is the roll-off, which is measured in dB/Octave (“decibels per 
+octave”) or poles. The simplest possible filter has a roll-off of 6dB/octave, which is referred to as “1 pole”. 
+The next step up is 12dB (2 poles), 18db (3 poles) etc.
+The most common synth filters are the 12dB and 24dB lowpass filters. The difference between the two 
+can be studied in the graph below. The 12dB filter let’s more of the high frequency pass through which 
+gives the sound a brighter and “buzzier” character than the 24dB filter does.
+In the Nord Lead 2, the lowpass filter can be switched between 12 and 24dB modes. For sounds with high 
+resonance (see below), similar to those in the Roland TB-303, we recommend the 12dB variation. For 
+most other sounds we recommend 24dB.
+Amplitude
+Frequency
+Fc (Cutoff Frequency)
+Amplitude
+Frequency
+Fc (Cutoff Frequency)
+Amplitude
+Frequency
+Fc (Cutoff Frequency)
+12dB (2-pole)
+24dB (4-pole)
+Page 84 About Subtractive Synthesis
+Cutoff Frequency
+The most important parameter for a filter is its cutoff frequency, which is the setting that determines 
+where in the frequency material it should start cutting. If the cutoff frequency in a low pass filter is set to 
+a very low value, only the lowest harmonics (the bass) will pass through. If you raise the cutoff all the 
+way up, all frequencies will be let through, as the figure below illustrates.
+Changing the cutoff frequency is often referred to as “sweeping the filter”. This is probably one of the 
+most important ways of shaping the timbre of a synthesizer sound. By using an envelope you can for 
+example have a high cutoff at the beginning of a sound which is then gradually lowered (the filter “clos-
+es” as the sound decays). This would emulate the way most plucked string sound (piano, guitar etc) be-
+have; the amplitude of the harmonics decreases as the sound decays.
+Key Tracking
+When you play different pitches, the oscillators produce different frequencies. This means that the over-
+tones in the waveform appear at different frequencies. The cutoff frequency of the filter however, is 
+fixed. This means that different overtones will be cut off at different pitches. To be more precise, the fur-
+ther up the keyboard you play, the muddier the sound will be.
+To remedy this problem many synthesizers have a parameter called Filter Keyboard Tracking. When this 
+is activated, the filter Cutoff Frequency varies with which key you play, just as the oscillator frequency 
+does. This ensures a constant harmonic spectrum for all keys.
+Resonance
+Resonance in a filter is created by connecting the output of the filter to its input, in other words setting 
+up a “feedback loop”. The amount of feedback is then controlled with a Resonance parameter on the 
+front panel of the instrument.
+Amplitude
+Frequency
+Filter Frequency
+Amplitude
+Frequency
+About Subtractive Synthesis Page 85
+When you apply resonance, the frequencies just around the cutoff point of the filter will be emphasized 
+(louder). As you increase the Resonance further and further, the filter will start to behave more an more 
+like a bandpass filter, where only the frequencies around the cutoff point are let through. The filter will 
+start to “ring”, which means it almost sounds like it is adding frequencies to the sound. If the Resonance 
+is then raised even further (on some synthesizers) the filter will start to self-oscillate, that is produce 
+sound of its own, just like an oscillator.
+High Resonance values are also visible in the waveform. They appear as a “superimposed” waveform 
+with a frequency equivalent to the filter’s cutoff frequency. The three examples above show the same 
+wave with increased resonance.
+If you add Resonance to a sound and then vary the Cutoff frequency (for example with an envelope) you 
+will get a very typical synthesizer sound.
+Amplitude
+FrequencyFilter
+Frequency
+Q=0.5
+
+Q=1
+Q=4
+Q=2
+Q=0.5
+Q=1
+Q=2
+Page 86 About Subtractive Synthesis
+The Amplifier
+An amplifier is most often used at the final stage of a synth signal chain, to control volume. By modulating 
+the amplifier with an envelope, the sound can be given its basic “shape”. In fact, the “volume shape” is 
+one of the most important factors to how we identify the sound. By setting up a proper volume envelope 
+you can make a sound “soft”, “hard”, “plucked” “static” etc.
+The volume envelope curve (to the left) determines how the amplitude of the waveform changes over time.
+Envelopes
+ADSR-Envelope
+Envelopes are used to modulate pitch, amplitude, filter cutoff and other parameters in a sound. This is 
+used to give the sound a varying character from the moment the key is pressed to the moment it is re-
+leased.
+The classic synthesizer envelope has four parameters, Attack, Decay, Sustain and Release, and is there-
+fore often referred to as an “ADSR-envelope”.
+When you press a key, the envelope is triggered. This means is starts rasing from zero to maximum level. 
+How long this should take, depends on the Attack setting. If the Attack time is set to “0”, the envelope 
+will instantly reach full level. If it is raised it will take longer.
+If you for example have an envelope controlling volume, raising the attack will give the sound a “softer” 
+character. If you have the envelope routed to the filter, it might give the sound a “wah” type of start.
++=
+Attack
+(time)
+Key Down
+Level
+Time
+About Subtractive Synthesis Page 87
+After the envelope has reached full level, it starts to fall back again. How long this should take, is set with 
+the Decay parameter.
+The level of the envelope does not necessarily have to fall all the way back to zero level at the end of the 
+Decay. Instead, the ADSR-envelope has a Sustain setting used to determine the level the envelope should 
+rest at, after the Decay. If you for example want to create a flute sound, you would have a fairly high 
+Sustain setting on your Volume envelope, since a flute tone basically stays at a steady level for as long as 
+you play it. On the other hand, for a piano sound, you would want a Sustain level of “0”, since a piano 
+sound decays to silence if you hold the key long enough.
+Please note that the Sustain parameter represents a level, but all other envelope parameters represent 
+times.
+Attack
+(time)
+Decay
+(time)
+Key Down
+Level
+Time
+Attack
+(time)
+Decay
+(time)
+Sustain
+(level)
+Key Down
+Level
+Time
+Page 88 About Subtractive Synthesis
+As described above, the envelope stays at the Sustain level until the key is released. It then falls back to 
+zero level. The time it should take for this to happen is set with the Release parameter, which works just 
+as the Decay, only it is not applied until you lift your finger off the keys.
+tIf you set Sustain to full level, the Decay setting is of no importance since the volume of the sound is 
+never lowered.
+tIf you set Sustain to 0, the sound will become silent after the Decay phase is finished. With short Attacks 
+moderate Decay times, this can be used to simulate the behaviour of a plucked string instrument (guitar, 
+piano etc) where the sound always decays to silence after a while.
+Attack
+(time)
+Decay
+(time)
+Sustain
+(level)
+Release
+(time)
+Key Down Key Up
+Level
+Time
+Key Down Key Up
+Level
+Time
+Key Down Key Up
+Level
+Time
+About Subtractive Synthesis Page 89
+tIf you release a key before the envelope has reach its sustain, it will immediately “jump” to the Release. 
+The effect of this can be studied in the illustration below.
+tOften envelope levels can be made to vary with how hard you play the keys. This is used to make a 
+sound vary with your playing style, for example to make the sound brighter (filter envelope) or louder 
+(amplifier envelope).
+AD-Envelope
+A simpler form of envelope has Attack and Decay parameters only, and is therefore called an AD-enve-
+lope. In effect, the AD-envelope behaves like an ADSR-envelope with Sustain set to 0 (see the picture at 
+the top of this page??). This type of envelope, often with amount and inversion controls, is suitable when 
+you want to affect the start of the sound only. 
+On the Nord Lead 2, the Modulation Envelope is of AD-type. Typically, it can be made to modulate the 
+FM amplitude or the pitch of Oscillator 2, to create a different timbre during the attack part of the sounds.
+LFOs
+An LFO is an oscillator, just like the ones that produce the sound in a synthesizer, but with two main dif-
+ferences:
+tThe LFO produces very low frequencies, most often below the hearing range (up to 20Hz).
+tThe LFO is not used to produce sound, instead it is connected to other modules to provide modulation 
+of parameters.
+If you for example route an LFO to pitch, you get a vibrato. If you route it to the filter’s cutoff frequency 
+you get a wah-wah type of effect. And if you route it to the amplifier of an instrument you get a tremolo.
+The three basic parameters for an LFO are Waveform, Rate (frequency) and Amount:
+tThe waveform determines the type of vibrato, for example “regular” (triangle or sine), ramp (sawtooth) 
+or random.
+tThe Rate determines the speed of the vibrato.
+tThe Amount controls to what degree the LFO affects its destination.
+Key Down Key Up
+Level
+Time
+Page 90 About Subtractive Synthesis
