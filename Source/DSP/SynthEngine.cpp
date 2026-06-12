@@ -10,6 +10,7 @@
 */
 
 #include "SynthEngine.h"
+#include <algorithm>
 #include <cmath>
 
 namespace
@@ -47,6 +48,7 @@ namespace
 
 void SynthEngine::Instance::prepare (double sampleRate)
 {
+    fs = sampleRate;
     envF.prepare (sampleRate);
     envA.prepare (sampleRate);
     lfo1.prepare (sampleRate);
@@ -67,6 +69,11 @@ void SynthEngine::Instance::start (const Params::Patch& p, int noteTag,
     startClock = clockNow;
     ageSamples = 0;
     gateRemaining = gateSamples;
+
+    // a quick TRIGGER click must still play at least one full waveform
+    // cycle (30 ms floor so very short taps stay audible)
+    const float baseHz = p.baseFreqHz > 20.0f ? p.baseFreqHz : 20.0f;
+    minGateSamples = (int) std::max (fs / (double) baseHz + 1.0, 0.03 * fs);
     freqOverrideHz = overrideHz;
     var = v;
 
@@ -301,8 +308,15 @@ void SynthEngine::manualGateOn()
 void SynthEngine::manualGateOff()
 {
     for (auto& inst : instances)
-        if (inst.active && inst.note == kNoteManual)
+    {
+        if (! inst.active || inst.note != kNoteManual)
+            continue;
+
+        if (inst.ageSamples >= (uint64_t) inst.minGateSamples)
             inst.gateOff();
+        else if (inst.gateRemaining < 0)   // too quick: defer via the timed path
+            inst.gateRemaining = inst.minGateSamples - (int) inst.ageSamples;
+    }
 }
 
 void SynthEngine::oneShot()

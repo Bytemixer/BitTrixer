@@ -10,6 +10,7 @@
 */
 
 #include "Randomizer.h"
+#include <vector>
 
 using namespace Params;
 
@@ -80,37 +81,43 @@ void Randomizer::variate()
 
     const float amt = apvts.getRawParameterValue (id::autoVarAmt)->load();
 
-    // continuous params that benefit from gentle perturbation
-    juce::StringArray targets;
+    // Timbre/pitch-ish params only, with per-param sensitivity. Loudness- and
+    // length-critical params (osc levels, noise level, drive, attack/release)
+    // are deliberately NOT variated: under repeated clicks they random-walked
+    // into silence and click-length sounds.
+    struct Target { juce::String pid; float scale; };
+    std::vector<Target> targets;
     for (int i = 1; i <= kNumOscs; ++i)
     {
-        targets.add (oscId (i, "fine"));
-        targets.add (oscId (i, "pwm"));
-        targets.add (oscId (i, "fold"));
-        targets.add (oscId (i, "level"));
+        targets.push_back ({ oscId (i, "fine"), 1.0f });
+        targets.push_back ({ oscId (i, "pwm"),  1.0f });
+        targets.push_back ({ oscId (i, "fold"), 0.7f });
     }
-    targets.add (id::baseFreq);
-    targets.add (id::noiseColor);
-    targets.add (id::noiseLevel);
+    targets.push_back ({ id::baseFreq,   0.6f });
+    targets.push_back ({ id::noiseColor, 1.0f });
     for (int j = 1; j <= kNumLfos; ++j)
-        targets.add (lfoId (j, "rate"));
+        targets.push_back ({ lfoId (j, "rate"), 0.8f });
     for (int k = 1; k <= kNumModSlots; ++k)
-        targets.add (modId (k, "depth"));
-    targets.add (id::lpfCutoff);
-    targets.add (id::lpfRes);
-    targets.add (id::lpfEnv);
-    targets.add (id::envFAttack); targets.add (id::envFDecay);
-    targets.add (id::envADecay);  targets.add (id::envARelease);
-    targets.add (id::vcaDrive);
-    targets.add (id::uniDetune);
+        targets.push_back ({ modId (k, "depth"), 0.5f });
+    targets.push_back ({ id::lpfCutoff, 0.6f });
+    targets.push_back ({ id::lpfRes,    0.6f });
+    targets.push_back ({ id::lpfEnv,    0.5f });
+    targets.push_back ({ id::envFDecay, 0.5f });
+    targets.push_back ({ id::envADecay, 0.5f });
+    targets.push_back ({ id::uniDetune, 0.8f });
 
-    for (const auto& pid : targets)
+    for (const auto& t : targets)
     {
-        if (auto* p = apvts.getParameter (pid))
+        if (auto* p = apvts.getParameter (t.pid))
         {
             const float v = p->getValue();   // normalized 0..1
-            const float nudge = (random.nextFloat() * 2.0f - 1.0f) * amt * 0.25f;
-            p->setValueNotifyingHost (juce::jlimit (0.0f, 1.0f, v + nudge));
+            const float nudge = (random.nextFloat() * 2.0f - 1.0f) * amt * 0.15f * t.scale;
+            // reflect at the bounds instead of clamping: a clamped walk drifts
+            // away from saturated values (levels at 0.8+ could only ever fall)
+            float nv = v + nudge;
+            if (nv < 0.0f) nv = -nv;
+            if (nv > 1.0f) nv = 2.0f - nv;
+            p->setValueNotifyingHost (juce::jlimit (0.0f, 1.0f, nv));
         }
     }
 }
@@ -301,19 +308,33 @@ void Randomizer::applyCategory (Category c)
 
         case Category::Laser:
         {
-            // pew: starts much higher and dives much steeper than Jump/Hit,
-            // with resonant "zap"; sometimes a hard-sync sweep for the classic
-            // tearing timbre
+            // pew: a genuine DOWNWARD sweep, two mechanisms:
+            //  A) start high, dive to base (env decays to neutral - no tail artifact)
+            //  B) inverted filter env: start at base, dive low and HOLD the bottom
             setChoice (oscId (1, "wave"), chance (0.5f) ? (int) OscWave::Saw
                                                         : (int) OscWave::Square);
             set (oscId (1, "pwm"), rnd (15.0f, 50.0f));
-            set (id::baseFreq, rndLog (1200.0f, 2600.0f));
+            const float sweepLen = rnd (0.15f, 0.4f);
+            set (id::envFDecay, sweepLen);
+            set (id::envFCurve, rnd (-0.4f, 0.0f));
+            set (id::envADecay, sweepLen * rnd (0.7f, 1.0f));      // amp dies with the sweep
+            const bool invertedDive = chance (0.5f);
             setChoice (modId (1, "src"), (int) ModSrc::FilterEnv);
             setChoice (modId (1, "dest"), (int) ModDest::AllPitch);
-            set (modId (1, "depth"), rnd (-0.85f, -0.5f));         // steep dive
-            set (id::envFDecay, rnd (0.15f, 0.4f));
-            set (id::envFCurve, rnd (-0.4f, 0.0f));
-            set (id::envADecay, rnd (0.15f, 0.4f));
+            if (! invertedDive)
+            {
+                // A: start-high dive (env decays to neutral - artifact-free tail)
+                set (id::baseFreq, rndLog (400.0f, 1000.0f));
+                set (modId (1, "depth"), rnd (0.5f, 0.85f));
+            }
+            else
+            {
+                // B: inverted dive from base (user-suggested invert flavor)
+                set (id::baseFreq, rndLog (1200.0f, 2600.0f));
+                setBool (id::envFInvert, true);
+                set (modId (1, "depth"), rnd (-0.85f, -0.5f));
+                set (id::envFRelease, 2.0f);                       // return drifts inaudibly
+            }
             set (id::lpfCutoff, rndLog (4000.0f, 14000.0f));
             set (id::lpfRes, rnd (0.35f, 0.7f));                   // the "pew" ring
             if (chance (0.4f))                                     // sync sweep zap
@@ -326,7 +347,8 @@ void Randomizer::applyCategory (Category c)
                 set (oscId (1, "level"), 0.25f);
                 setChoice (modId (2, "src"), (int) ModSrc::FilterEnv);
                 setChoice (modId (2, "dest"), (int) ModDest::Osc2Pitch);
-                set (modId (2, "depth"), rnd (-0.7f, -0.35f));     // slave sweep
+                set (modId (2, "depth"), invertedDive ? rnd (-0.7f, -0.35f)
+                                                      : rnd (0.35f, 0.7f));
             }
             if (chance (0.3f))
             {
@@ -353,9 +375,9 @@ void Randomizer::applyCategory (Category c)
             setBool (id::noiseOn, true);
             set (id::noiseColor, rnd (0.3f, 1.0f));
             set (id::noiseLevel, rnd (0.8f, 1.0f));
-            set (id::lpfCutoff, rndLog (800.0f, 3000.0f));
+            set (id::lpfCutoff, rndLog (250.0f, 800.0f));          // dark resting point
             set (id::lpfRes, rnd (0.05f, 0.4f));
-            set (id::lpfEnv, rnd (-0.6f, -0.25f));                 // darkening sweep
+            set (id::lpfEnv, rnd (0.35f, 0.7f));                   // bright impact, darkens away
             set (id::envFDecay, rnd (0.5f, 1.5f));
             set (id::envFSustain, 0.0f);
             set (id::envADecay, rnd (0.8f, 2.2f));
@@ -455,11 +477,13 @@ void Randomizer::applyCategory (Category c)
             setBool (id::noiseOn, true);
             set (id::noiseColor, rnd (0.0f, 0.5f));
             set (id::noiseLevel, rnd (0.7f, 1.0f));                // noise leads
+            setBool (id::envFInvert, true);                        // dive and HOLD the bottom
             setChoice (modId (1, "src"), (int) ModSrc::FilterEnv);
             setChoice (modId (1, "dest"), (int) ModDest::AllPitch);
             set (modId (1, "depth"), rnd (-0.65f, -0.35f));        // steep thunk
             set (id::envFDecay, rnd (0.04f, 0.12f));               // very fast
             set (id::envFCurve, -0.5f);
+            set (id::envFRelease, 1.5f);                           // return drifts inaudibly
             set (id::envADecay, rnd (0.07f, 0.16f));               // short + punchy
             set (id::envACurve, rnd (-0.8f, -0.5f));
             set (id::envARelease, 0.05f);
