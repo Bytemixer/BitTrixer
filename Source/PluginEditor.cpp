@@ -185,12 +185,56 @@ namespace
         g.setColour (c);
         g.fillPath (a);
     }
+
+    // PCB-style polyline: corners are 45-degree chamfers, never square turns
+    juce::Path chamfered (std::initializer_list<juce::Point<float>> waypoints,
+                          float ch = 8.0f)
+    {
+        std::vector<juce::Point<float>> pts (waypoints);
+        juce::Path p;
+        if (pts.size() < 2)
+            return p;
+        p.startNewSubPath (pts.front());
+        for (size_t i = 1; i + 1 < pts.size(); ++i)
+        {
+            const auto d1 = pts[i] - pts[i - 1];
+            const auto d2 = pts[i + 1] - pts[i];
+            const float l1 = std::sqrt (d1.x * d1.x + d1.y * d1.y);
+            const float l2 = std::sqrt (d2.x * d2.x + d2.y * d2.y);
+            const float c = juce::jmin (ch, l1 * 0.5f, l2 * 0.5f);
+            if (l1 > 0.01f) p.lineTo (pts[i] - d1 * (c / l1));
+            if (l2 > 0.01f) p.lineTo (pts[i] + d2 * (c / l2));
+        }
+        p.lineTo (pts.back());
+        return p;
+    }
+
+    // junction via: where a branch meets a bus
+    void via (juce::Graphics& g, juce::Point<float> pt, juce::Colour c)
+    {
+        g.setColour (c);
+        g.fillEllipse (pt.x - 2.6f, pt.y - 2.6f, 5.2f, 5.2f);
+        g.setColour (RetroColors::background);
+        g.fillEllipse (pt.x - 1.0f, pt.y - 1.0f, 2.0f, 2.0f);
+    }
 }
 
 void RetroForgeEditor::drawSignalTraces (juce::Graphics& g)
 {
-    const auto audioCol = RetroColors::trace;
-    const auto modCol   = RetroColors::trace.withAlpha (0.55f);
+    // pride theme: the signal path becomes a rainbow ribbon — each leg of
+    // the audio chain takes the next flag stripe, input to output
+    const bool pride = RetroColors::prideMode;
+    auto leg = [pride] (int i) {
+        return pride ? RetroColors::kPrideFlag[i].brighter (0.15f) : RetroColors::trace;
+    };
+    const auto srcCol  = leg (0);                       // red    : sources -> VCF
+    const auto vcaCol  = leg (1);                       // orange : VCF -> VCA
+    const auto fxCol   = leg (2);                       // yellow : VCA -> FX
+    const auto outCol  = leg (3);                       // green  : FX -> OUT
+    const auto envCol  = pride ? RetroColors::kPrideFlag[4].brighter (0.35f)
+                               : RetroColors::trace.withAlpha (0.55f);  // blue
+    const auto modCol  = pride ? RetroColors::kPrideFlag[5].brighter (0.45f)
+                               : RetroColors::trace.withAlpha (0.55f);  // purple
 
     const auto vcf   = filterPanel.getBounds().toFloat();
     const auto vca   = vcaPanel.getBounds().toFloat();
@@ -206,27 +250,30 @@ void RetroForgeEditor::drawSignalTraces (juce::Graphics& g)
     {
         const float busX = vcf.getX() - 19.0f;
         const float vcfInY = vcf.getY() + 60.0f;
-        juce::Path p;
 
         juce::Component* sources[4] = { &osc1, &osc2, &osc3, &noisePanel };
-        float topY = 1.0e9f, botY = -1.0e9f;
+        const float botY = (float) noisePanel.getBounds().getCentreY();
+
+        // bus trunk with a 45-degree turn into the VCF
+        strokeTrace (g, chamfered ({ { busX, botY }, { busX, vcfInY },
+                                     { vcf.getX(), vcfInY } }), srcCol, 3.2f);
+        // branch stubs from each source, vias where they meet the trunk
+        juce::Path stubs;
         for (auto* s : sources)
         {
             const float cy = (float) s->getBounds().getCentreY();
-            p.startNewSubPath ((float) s->getRight(), cy);
-            p.lineTo (busX, cy);
-            topY = juce::jmin (topY, cy);
-            botY = juce::jmax (botY, cy);
+            stubs.startNewSubPath ((float) s->getRight(), cy);
+            stubs.lineTo (busX, cy);
         }
-        p.startNewSubPath (busX, juce::jmin (topY, vcfInY));
-        p.lineTo (busX, botY);
-        p.startNewSubPath (busX, vcfInY);
-        p.lineTo (vcf.getX(), vcfInY);
-
-        strokeTrace (g, p, audioCol, 3.0f);
+        strokeTrace (g, stubs, srcCol, 2.0f);
         for (auto* s : sources)
-            solderPad (g, { (float) s->getRight(), (float) s->getBounds().getCentreY() }, audioCol);
-        arrowInto (g, { vcf.getX(), vcfInY }, 0, audioCol);
+        {
+            const float cy = (float) s->getBounds().getCentreY();
+            solderPad (g, { (float) s->getRight(), cy }, srcCol);
+            if (cy < botY - 1.0f)
+                via (g, { busX, cy }, srcCol);
+        }
+        arrowInto (g, { vcf.getX(), vcfInY }, 0, srcCol);
     }
 
     // ---- downstream: VCF -> VCA (left channel, lane 2) ----
@@ -234,14 +281,11 @@ void RetroForgeEditor::drawSignalTraces (juce::Graphics& g)
         const float laneX = vcf.getX() - 8.0f;
         const float outY = vcf.getBottom() - 18.0f;
         const float inY  = vca.getCentreY();
-        juce::Path p;
-        p.startNewSubPath (vcf.getX(), outY);
-        p.lineTo (laneX, outY);
-        p.lineTo (laneX, inY);
-        p.lineTo (vca.getX(), inY);
-        strokeTrace (g, p, audioCol, 3.0f);
-        solderPad (g, { vcf.getX(), outY }, audioCol);
-        arrowInto (g, { vca.getX(), inY }, 0, audioCol);
+        strokeTrace (g, chamfered ({ { vcf.getX(), outY }, { laneX, outY },
+                                     { laneX, inY }, { vca.getX(), inY } }),
+                     vcaCol, 3.2f);
+        solderPad (g, { vcf.getX(), outY }, vcaCol);
+        arrowInto (g, { vca.getX(), inY }, 0, vcaCol);
     }
 
     // ---- VCA -> FX (vertical gap) ----
@@ -250,9 +294,9 @@ void RetroForgeEditor::drawSignalTraces (juce::Graphics& g)
         juce::Path p;
         p.startNewSubPath (x, vca.getBottom());
         p.lineTo (x, fx.getY());
-        strokeTrace (g, p, audioCol, 3.0f);
-        solderPad (g, { x, vca.getBottom() }, audioCol);
-        arrowInto (g, { x, fx.getY() }, 2, audioCol);
+        strokeTrace (g, p, fxCol, 3.0f);
+        solderPad (g, { x, vca.getBottom() }, fxCol);
+        arrowInto (g, { x, fx.getY() }, 2, fxCol);
     }
 
     // ---- FX -> OUT (scope window monitors the output) ----
@@ -261,10 +305,10 @@ void RetroForgeEditor::drawSignalTraces (juce::Graphics& g)
         juce::Path p;
         p.startNewSubPath (x, fx.getY());
         p.lineTo (x, scope.getBottom());
-        strokeTrace (g, p, audioCol, 3.0f);
-        solderPad (g, { x, fx.getY() }, audioCol);
-        arrowInto (g, { x, scope.getBottom() }, 3, audioCol);
-        g.setColour (audioCol);
+        strokeTrace (g, p, outCol, 3.0f);
+        solderPad (g, { x, fx.getY() }, outCol);
+        arrowInto (g, { x, scope.getBottom() }, 3, outCol);
+        g.setColour (outCol);
         g.setFont (juce::Font (juce::FontOptions (9.0f, juce::Font::bold)));
         g.drawText ("OUT", (int) x + 6, (int) scope.getBottom() - 4, 26, 10,
                     juce::Justification::centredLeft);
@@ -279,41 +323,44 @@ void RetroForgeEditor::drawSignalTraces (juce::Graphics& g)
         const float ax = vca.getCentreX();              // ENV A drives the VCA
         p.startNewSubPath (ax, envA.getBottom());
         p.lineTo (ax, vca.getY());
-        strokeTrace (g, p, modCol, 1.6f, true);
-        solderPad (g, { fx1, envF.getY() }, modCol);
-        solderPad (g, { ax, envA.getBottom() }, modCol);
-        arrowInto (g, { fx1, vcf.getBottom() }, 3, modCol);
-        arrowInto (g, { ax, vca.getY() }, 2, modCol);
+        strokeTrace (g, p, envCol, 1.4f, true);
+        solderPad (g, { fx1, envF.getY() }, envCol);
+        solderPad (g, { ax, envA.getBottom() }, envCol);
+        arrowInto (g, { fx1, vcf.getBottom() }, 3, envCol);
+        arrowInto (g, { ax, vca.getY() }, 2, envCol);
     }
 
     // ---- modulation web (dashed): envs + matrix -> VCF, LFOs -> matrix ----
     {
         const float busX = vcf.getRight() + 15.0f;
         const float vcfInY = vcf.getBottom() - 24.0f;
+
+        // chamfered bus: matrix output up the channel and into the VCF
+        strokeTrace (g, chamfered ({ { mtx.getX(), mtx.getCentreY() },
+                                     { busX, mtx.getCentreY() },
+                                     { busX, vcfInY },
+                                     { vcf.getRight(), vcfInY } }),
+                     modCol, 1.4f, true);
+
+        // env sources joining the bus + LFOs dropping into the matrix
         juce::Path p;
-        p.startNewSubPath (busX, vcfInY);
-        p.lineTo (busX, mtx.getCentreY());
-        p.startNewSubPath (vcf.getRight(), vcfInY);
-        p.lineTo (busX, vcfInY);
         p.startNewSubPath (envF.getRight(), envF.getCentreY());
         p.lineTo (busX, envF.getCentreY());
         p.startNewSubPath (envA.getRight(), envA.getCentreY());
         p.lineTo (busX, envA.getCentreY());
-        p.startNewSubPath (busX, mtx.getCentreY());
-        p.lineTo (mtx.getX(), mtx.getCentreY());
-
-        // LFOs drop into the matrix
         p.startNewSubPath (lfo1b.getCentreX(), lfo1b.getBottom());
         p.lineTo (lfo1b.getCentreX(), mtx.getY());
         p.startNewSubPath (lfo2b.getCentreX(), lfo2b.getBottom());
         p.lineTo (lfo2b.getCentreX(), mtx.getY());
+        strokeTrace (g, p, modCol, 1.4f, true);
 
-        strokeTrace (g, p, modCol, 1.6f, true);
         solderPad (g, { envF.getRight(), envF.getCentreY() }, modCol);
         solderPad (g, { envA.getRight(), envA.getCentreY() }, modCol);
         solderPad (g, { mtx.getX(), mtx.getCentreY() }, modCol);
         solderPad (g, { lfo1b.getCentreX(), lfo1b.getBottom() }, modCol);
         solderPad (g, { lfo2b.getCentreX(), lfo2b.getBottom() }, modCol);
+        via (g, { busX, envF.getCentreY() }, modCol);
+        via (g, { busX, envA.getCentreY() }, modCol);
         arrowInto (g, { vcf.getRight(), vcfInY }, 1, modCol);
         arrowInto (g, { lfo1b.getCentreX(), mtx.getY() }, 2, modCol);
         arrowInto (g, { lfo2b.getCentreX(), mtx.getY() }, 2, modCol);

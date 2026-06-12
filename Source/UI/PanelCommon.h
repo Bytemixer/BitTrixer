@@ -45,8 +45,22 @@ public:
                     juce::Justification::centredLeft);
 
         // uniform title underline across every section
-        g.setColour (RetroColors::panelEdge.withAlpha (0.8f));
-        g.drawLine (b.getX() + 8.0f, b.getY() + 19.0f, b.getRight() - 8.0f, b.getY() + 19.0f, 1.0f);
+        if (RetroColors::prideMode)
+        {
+            // six-stripe flag underline
+            const float x0 = b.getX() + 8.0f, x1 = b.getRight() - 8.0f;
+            const float seg = (x1 - x0) / 6.0f;
+            for (int i = 0; i < 6; ++i)
+            {
+                g.setColour (RetroColors::kPrideFlag[i].withAlpha (0.85f));
+                g.fillRect (x0 + (float) i * seg, b.getY() + 18.0f, seg, 1.6f);
+            }
+        }
+        else
+        {
+            g.setColour (RetroColors::panelEdge.withAlpha (0.8f));
+            g.drawLine (b.getX() + 8.0f, b.getY() + 19.0f, b.getRight() - 8.0f, b.getY() + 19.0f, 1.0f);
+        }
     }
 
     juce::Rectangle<int> content() const
@@ -57,15 +71,11 @@ public:
 protected:
     juce::Colour tickColour() const
     {
-        if (! RetroColors::rainbowTicks)
+        if (! RetroColors::prideMode)
             return RetroColors::accent;
 
         // pride theme: each section gets its own flag stripe color
-        static const juce::Colour rainbow[6] = {
-            juce::Colour (0xffe40303), juce::Colour (0xffff8c00),
-            juce::Colour (0xffffed00), juce::Colour (0xff008026),
-            juce::Colour (0xff24408e), juce::Colour (0xff732982) };
-        return rainbow[(size_t) ((title.hashCode() & 0x7fffffff) % 6)];
+        return RetroColors::kPrideFlag[(size_t) ((title.hashCode() & 0x7fffffff) % 6)];
     }
 
     juce::String title;

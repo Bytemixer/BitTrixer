@@ -40,7 +40,13 @@ namespace RetroColors
     inline juce::Colour switchOff    { 0xff3c4148 };
     inline juce::Colour ledOn        { 0xff63d471 };
     inline juce::Colour trace        { 0xff5580ab };   // PCB signal traces
-    inline bool rainbowTicks = false;                  // pride theme: per-panel tick colors
+    inline bool prideMode = false;                     // pride theme: flag stripes everywhere
+
+    // the six-stripe LGBTQ+ flag, used by the pride theme
+    inline const juce::Colour kPrideFlag[6] = {
+        juce::Colour (0xffe40303), juce::Colour (0xffff8c00),
+        juce::Colour (0xffffed00), juce::Colour (0xff008026),
+        juce::Colour (0xff24408e), juce::Colour (0xff732982) };
 }
 
 class RetroLookAndFeel : public juce::LookAndFeel_V4
