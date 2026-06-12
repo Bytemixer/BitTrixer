@@ -16,6 +16,8 @@
 #include "PresetManager.h"
 #include "WavExporter.h"
 #include "UI/RetroLookAndFeel.h"
+#include "UI/Theme.h"
+#include "UI/ThemeEditor.h"
 #include "UI/HeaderBar.h"
 #include "UI/OscPanel.h"
 #include "UI/NoisePanel.h"
@@ -47,10 +49,12 @@ public:
 
 private:
     void previewSound();
+    void drawSignalTraces (juce::Graphics&);
 
     RetroForgeProcessor& proc;
 
     RetroLookAndFeel lookAndFeel;
+    ThemeManager themeManager;
     Randomizer randomizer;
     PresetManager presetManager;
     WavExporter wavExporter;
@@ -68,6 +72,7 @@ private:
     RandomizerPanel randomizerPanel;
     ScopePanel scopePanel;
     FxPanel fxPanel;
+    ThemeEditor themeEditor { themeManager };
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (RetroForgeEditor)
 };

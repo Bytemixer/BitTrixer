@@ -15,32 +15,42 @@
 
 // ============================================================================
 //  RetroLookAndFeel — the hardware front-panel aesthetic.
-//  Gray/blue scheme: charcoal panels, brushed-metal rotary pots with a blue
-//  pointer, slotted vertical faders, slide-style toggle switches, and
-//  colorful category buttons (each button keeps its own buttonColourId).
+//  Brushed-metal rotary pots, slotted vertical faders, slide-style toggle
+//  switches, colorful category buttons, and PCB-style signal traces drawn
+//  on the editor background.
+//
+//  RetroColors are MUTABLE globals (single instance each): the active Theme
+//  writes into them and the whole UI repaints — every paint() routine reads
+//  them live, so theme switching is instant.
 // ============================================================================
 
 namespace RetroColors
 {
-    const juce::Colour background   { 0xff23262b };
-    const juce::Colour panel        { 0xff2f333a };
-    const juce::Colour panelEdge    { 0xff1a1c20 };
-    const juce::Colour panelTitle   { 0xff9fb4cc };
-    const juce::Colour text         { 0xffd8dde5 };
-    const juce::Colour textDim      { 0xff8b939f };
-    const juce::Colour accent       { 0xff4da3ff };
-    const juce::Colour accentDark   { 0xff2f6fb5 };
-    const juce::Colour knobFace     { 0xff52575f };
-    const juce::Colour knobRim      { 0xff15171a };
-    const juce::Colour track        { 0xff1b1d21 };
-    const juce::Colour switchOff    { 0xff3c4148 };
-    const juce::Colour ledOn        { 0xff63d471 };
+    inline juce::Colour background   { 0xff23262b };
+    inline juce::Colour panel        { 0xff2f333a };
+    inline juce::Colour panelEdge    { 0xff1a1c20 };
+    inline juce::Colour panelTitle   { 0xff9fb4cc };
+    inline juce::Colour text         { 0xffd8dde5 };
+    inline juce::Colour textDim     { 0xff8b939f };
+    inline juce::Colour accent       { 0xff4da3ff };
+    inline juce::Colour accentDark   { 0xff2f6fb5 };
+    inline juce::Colour knobFace     { 0xff52575f };
+    inline juce::Colour knobRim      { 0xff15171a };
+    inline juce::Colour track        { 0xff1b1d21 };
+    inline juce::Colour switchOff    { 0xff3c4148 };
+    inline juce::Colour ledOn        { 0xff63d471 };
+    inline juce::Colour trace        { 0xff5580ab };   // PCB signal traces
+    inline bool rainbowTicks = false;                  // pride theme: per-panel tick colors
 }
 
 class RetroLookAndFeel : public juce::LookAndFeel_V4
 {
 public:
     RetroLookAndFeel();
+
+    // re-reads the RetroColors globals into the LookAndFeel colour ids;
+    // call after a theme switch, then sendLookAndFeelChange()/repaint
+    void applyThemeColours();
 
     void drawRotarySlider (juce::Graphics&, int x, int y, int w, int h,
                            float sliderPosProportional, float rotaryStartAngle,

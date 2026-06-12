@@ -15,6 +15,11 @@ using namespace RetroColors;
 
 RetroLookAndFeel::RetroLookAndFeel()
 {
+    applyThemeColours();
+}
+
+void RetroLookAndFeel::applyThemeColours()
+{
     setColour (juce::ResizableWindow::backgroundColourId, background);
     setColour (juce::Label::textColourId, text);
     setColour (juce::Slider::textBoxTextColourId, text);
@@ -42,7 +47,8 @@ void RetroLookAndFeel::drawRotarySlider (juce::Graphics& g, int x, int y, int w,
 {
     auto bounds = juce::Rectangle<float> ((float) x, (float) y, (float) w, (float) h)
                       .reduced (2.0f);
-    const float size = juce::jmin (bounds.getWidth(), bounds.getHeight());
+    // cap the pot diameter: smaller, uniform knobs across all panels
+    const float size = juce::jmin (juce::jmin (bounds.getWidth(), bounds.getHeight()), 42.0f);
     auto area = bounds.withSizeKeepingCentre (size, size);
     const auto centre = area.getCentre();
     const float radius = size * 0.5f;

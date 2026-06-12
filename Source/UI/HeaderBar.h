@@ -40,6 +40,20 @@ public:
         initButton (exportButton, "EXPORT WAV", onExport);
         initButton (aboutButton,  "ABOUT",      onAbout);
         exportButton.setColour (juce::TextButton::buttonColourId, RetroColors::accentDark);
+
+        themeBox.onChange = [this]
+        {
+            if (onThemeSelected && themeBox.getSelectedId() > 0)
+                onThemeSelected (themeBox.getSelectedId() - 1);
+        };
+        addAndMakeVisible (themeBox);
+    }
+
+    void setThemeNames (const juce::StringArray& names, int selectedIndex)
+    {
+        themeBox.clear (juce::dontSendNotification);
+        themeBox.addItemList (names, 1);
+        themeBox.setSelectedId (selectedIndex + 1, juce::dontSendNotification);
     }
 
     void setPresetName (const juce::String& name)
@@ -77,12 +91,16 @@ public:
         loadButton.setBounds (b.removeFromRight (64));
         b.removeFromRight (6);
         saveButton.setBounds (b.removeFromRight (64));
+        b.removeFromRight (6);
+        themeBox.setBounds (b.removeFromRight (92));
         presetLabel.setBounds (b.withTrimmedLeft (240));
     }
 
     std::function<void()> onSave, onLoad, onExport, onAbout;
+    std::function<void (int)> onThemeSelected;
 
 private:
     juce::Label presetLabel { {}, "Init" };
     juce::TextButton saveButton, loadButton, exportButton, aboutButton;
+    juce::ComboBox themeBox;
 };
