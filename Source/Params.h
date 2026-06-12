@@ -59,6 +59,12 @@ namespace Params
         inline constexpr const char* midiTrack   = "midi_track";
         inline constexpr const char* oscSync     = "osc_sync";
 
+        // discrete pitch jumps (the sfxr/bfxr/jfxr "arpeggio" ingredient)
+        inline constexpr const char* pj1Amt      = "pj1_amt";
+        inline constexpr const char* pj1Time     = "pj1_time";
+        inline constexpr const char* pj2Amt      = "pj2_amt";
+        inline constexpr const char* pj2Time     = "pj2_time";
+
         inline constexpr const char* noiseOn     = "noise_on";
         inline constexpr const char* noiseColor  = "noise_color";
         inline constexpr const char* noiseLevel  = "noise_level";
@@ -156,6 +162,11 @@ namespace Params
         bool  midiTrack  = false;
         SyncMode syncMode = SyncMode::Off;
 
+        float pj1AmtSemis = 0.0f;   // 0 = jump disabled
+        float pj1TimeSec  = 0.08f;
+        float pj2AmtSemis = 0.0f;
+        float pj2TimeSec  = 0.16f;
+
         bool  noiseOn    = false;
         float noiseColor = 0.0f;     // 0 white .. 1 pink
         float noiseLevel = 0.5f;
@@ -230,6 +241,10 @@ namespace Params
             baseFreq  = get (id::baseFreq);
             midiTrack = get (id::midiTrack);
             oscSync   = get (id::oscSync);
+            pj1Amt    = get (id::pj1Amt);
+            pj1Time   = get (id::pj1Time);
+            pj2Amt    = get (id::pj2Amt);
+            pj2Time   = get (id::pj2Time);
 
             noiseOn    = get (id::noiseOn);
             noiseColor = get (id::noiseColor);
@@ -308,6 +323,10 @@ namespace Params
             p.baseFreqHz = baseFreq->load();
             p.midiTrack  = midiTrack->load() > 0.5f;
             p.syncMode   = (SyncMode) (int) oscSync->load();
+            p.pj1AmtSemis = pj1Amt->load();
+            p.pj1TimeSec  = pj1Time->load();
+            p.pj2AmtSemis = pj2Amt->load();
+            p.pj2TimeSec  = pj2Time->load();
 
             p.noiseOn    = noiseOn->load() > 0.5f;
             p.noiseColor = noiseColor->load();
@@ -385,6 +404,10 @@ namespace Params
         std::atomic<float>* baseFreq {};
         std::atomic<float>* midiTrack {};
         std::atomic<float>* oscSync {};
+        std::atomic<float>* pj1Amt {};
+        std::atomic<float>* pj1Time {};
+        std::atomic<float>* pj2Amt {};
+        std::atomic<float>* pj2Time {};
 
         std::atomic<float>* noiseOn {};
         std::atomic<float>* noiseColor {};
@@ -513,6 +536,15 @@ namespace Params
                         freqRange (20.0f, 4000.0f), 440.0f, hzAttr));
         layout.add (std::make_unique<AudioParameterBool>  (ParameterID { id::midiTrack, 1 }, "MIDI Pitch Track", false));
         layout.add (std::make_unique<AudioParameterChoice>(ParameterID { id::oscSync, 1 },  "Osc Sync", syncNames, 0));
+
+        layout.add (std::make_unique<AudioParameterFloat> (ParameterID { id::pj1Amt, 1 },  "Pitch Jump 1 Amount",
+                        NormalisableRange<float> (-24.0f, 24.0f, 1.0f), 0.0f, semiAttr));
+        layout.add (std::make_unique<AudioParameterFloat> (ParameterID { id::pj1Time, 1 }, "Pitch Jump 1 Onset",
+                        timeRange (0.01f, 2.0f, 0.15f), 0.08f, secAttr));
+        layout.add (std::make_unique<AudioParameterFloat> (ParameterID { id::pj2Amt, 1 },  "Pitch Jump 2 Amount",
+                        NormalisableRange<float> (-24.0f, 24.0f, 1.0f), 0.0f, semiAttr));
+        layout.add (std::make_unique<AudioParameterFloat> (ParameterID { id::pj2Time, 1 }, "Pitch Jump 2 Onset",
+                        timeRange (0.01f, 2.0f, 0.15f), 0.16f, secAttr));
 
         // ---- noise ----
         layout.add (std::make_unique<AudioParameterBool>  (ParameterID { id::noiseOn, 1 },    "Noise On", false));

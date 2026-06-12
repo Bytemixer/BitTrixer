@@ -69,6 +69,7 @@ private:
         bool active = false;
         int  note   = kNoteNone;        // >= 0 MIDI; see tags below
         uint64_t startClock = 0;
+        uint64_t ageSamples = 0;        // for pitch-jump onsets
         int  gateRemaining = -1;        // samples until auto gate-off; -1 = held
 
         Envelope envF, envA;

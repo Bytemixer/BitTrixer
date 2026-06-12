@@ -65,6 +65,7 @@ void SynthEngine::Instance::start (const Params::Patch& p, int noteTag,
     active = true;
     note = noteTag;
     startClock = clockNow;
+    ageSamples = 0;
     gateRemaining = gateSamples;
     freqOverrideHz = overrideHz;
     var = v;
@@ -141,6 +142,13 @@ void SynthEngine::Instance::renderAdd (float* left, float* right, int n,
 
     const float base = freqOverrideHz > 0.0f ? freqOverrideHz : p.baseFreqHz;
 
+    // discrete pitch jumps (sfxr-style arpeggio steps)
+    const float ageSec = (float) ageSamples / fsf;
+    float jumpSemis = 0.0f;
+    if (p.pj1AmtSemis != 0.0f && ageSec >= p.pj1TimeSec) jumpSemis += p.pj1AmtSemis;
+    if (p.pj2AmtSemis != 0.0f && ageSec >= p.pj2TimeSec) jumpSemis += p.pj2AmtSemis;
+    ageSamples += (uint64_t) n;
+
     Voice::SubBlockCtx ctx;
     for (int i = 0; i < Params::kNumOscs; ++i)
     {
@@ -149,7 +157,7 @@ void SynthEngine::Instance::renderAdd (float* left, float* right, int n,
         ctx.oscWave[i] = (Oscillator::Wave) (int) o.wave;
         const float semis = o.pitchSemis + o.fineCents * 0.01f
                           + mv.allPitchSemis + mv.oscPitchSemis[i]
-                          + var.pitchSemis;
+                          + var.pitchSemis + jumpSemis;
         ctx.oscFreqHz[i] = clampf (base * std::exp2 (semis / 12.0f),
                                    0.05f, fsf * 0.45f);
         ctx.oscPwm[i]   = clampf (o.pwm + mv.pwm + var.pwm, 0.05f, 0.95f);

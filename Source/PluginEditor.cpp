@@ -93,7 +93,7 @@ RetroForgeEditor::RetroForgeEditor (RetroForgeProcessor& p)
     };
 
     header.setPresetName (presetManager.getCurrentName());
-    setSize (1180, 836);
+    setSize (1180, 850);
 }
 
 RetroForgeEditor::~RetroForgeEditor()
@@ -149,16 +149,16 @@ void RetroForgeEditor::resized()
 
     // ---- right column: pitch/voices, LFOs, matrix, trigger, generate ----
     auto right = b;
-    pitchPanel.setBounds (right.removeFromTop (112));
+    pitchPanel.setBounds (right.removeFromTop (172));
     right.removeFromTop (gap);
-    auto lfoRow = right.removeFromTop (126);
+    auto lfoRow = right.removeFromTop (116);
     lfo1Panel.setBounds (lfoRow.removeFromLeft ((lfoRow.getWidth() - gap) / 2));
     lfoRow.removeFromLeft (gap);
     lfo2Panel.setBounds (lfoRow);
     right.removeFromTop (gap);
-    modMatrixPanel.setBounds (right.removeFromTop (174));
+    modMatrixPanel.setBounds (right.removeFromTop (160));
     right.removeFromTop (gap);
-    triggerPanel.setBounds (right.removeFromTop (128));
+    triggerPanel.setBounds (right.removeFromTop (120));
     right.removeFromTop (gap);
     randomizerPanel.setBounds (right);
 }

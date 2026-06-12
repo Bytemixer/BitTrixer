@@ -37,7 +37,9 @@ public:
             juce::Colour (0xff63d471),   // powerup - green
             juce::Colour (0xffc95efb),   // hit     - purple
             juce::Colour (0xff4da3ff),   // jump    - blue
-            juce::Colour (0xff4dd6d2)    // blip    - teal
+            juce::Colour (0xff4dd6d2),   // blip    - teal
+            juce::Colour (0xffb8e84f),   // 1-up    - lime
+            juce::Colour (0xffd46a8a)    // lose    - dusky rose
         };
 
         for (int i = 0; i < Randomizer::kNumCategories; ++i)
@@ -59,13 +61,13 @@ public:
         auto top = b.removeFromTop (rowH).reduced (0, 2);
         auto bottom = b.reduced (0, 2);
 
-        // top row: RANDOM + first 3 categories; bottom row: last 4
-        const int cw = top.getWidth() / 4;
+        // top row: RANDOM + first 4 categories; bottom row: last 5
+        const int cw = top.getWidth() / 5;
         randomButton.setBounds (top.removeFromLeft (cw).reduced (2, 0));
-        for (int i = 0; i < 3; ++i)
+        for (int i = 0; i < 4; ++i)
             categoryButtons[i]->setBounds (top.removeFromLeft (cw).reduced (2, 0));
-        const int cw2 = bottom.getWidth() / 4;
-        for (int i = 3; i < Randomizer::kNumCategories; ++i)
+        const int cw2 = bottom.getWidth() / 5;
+        for (int i = 4; i < Randomizer::kNumCategories; ++i)
             categoryButtons[i]->setBounds (bottom.removeFromLeft (cw2).reduced (2, 0));
     }
 
