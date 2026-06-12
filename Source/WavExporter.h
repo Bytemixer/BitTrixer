@@ -75,10 +75,16 @@ public:
         return true;
     }
 
-    juce::AudioBuffer<float> renderPatch (const Params::Patch& patch)
+    juce::AudioBuffer<float> renderPatch (const Params::Patch& patchIn,
+                                          double maxSeconds = 12.0)
     {
         constexpr int    kBlock = 512;
-        const int        maxSamples = (int) (12.0 * sampleRate);
+        const int        maxSamples = (int) (maxSeconds * sampleRate);
+
+        // offline determinism: one shot only, no loop retriggers, no variate
+        Params::Patch patch = patchIn;
+        patch.loopOn = false;
+        patch.autoVarOn = false;
 
         SynthEngine engine;
         engine.setPatch (patch);

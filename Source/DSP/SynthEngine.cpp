@@ -51,6 +51,8 @@ void SynthEngine::Instance::prepare (double sampleRate)
     envA.prepare (sampleRate);
     lfo1.prepare (sampleRate);
     lfo2.prepare (sampleRate);
+    phaser.prepare (sampleRate);
+    flanger.prepare (sampleRate);
     for (auto& v : voices)
         v.prepare (sampleRate);
 }
@@ -82,6 +84,8 @@ void SynthEngine::Instance::start (const Params::Patch& p, int noteTag,
 
     lfo1.retrigger();
     lfo2.retrigger();
+    phaser.retrigger();
+    flanger.retrigger();
     envF.gateOn();   // analog semantics: continues from current level on steal
     envA.gateOn();
 }
@@ -169,11 +173,36 @@ void SynthEngine::Instance::renderAdd (float* left, float* right, int n,
     ctx.hpfHz    = p.hpfCutoff;
     ctx.driveAmt = p.vcaDrive;
     ctx.amp      = amp;
+    ctx.crushOn   = p.crushOn;
+    ctx.crushBits = p.crushBits;
+    ctx.crushDown = p.crushDown;
+
+    // voices render into a local scratch so the per-instance FX get applied
+    // to this sound only (not to other overlapping triggers)
+    float scratchL[kSubBlock] {};
+    float scratchR[kSubBlock] {};
 
     for (int i = 0; i < numVoices; ++i)
     {
         voices[(size_t) i].setNoiseColor (p.noiseColor);
-        voices[(size_t) i].renderAdd (left, right, n, ctx);
+        voices[(size_t) i].renderAdd (scratchL, scratchR, n, ctx);
+    }
+
+    if (p.phaseOn)
+    {
+        phaser.setParams (p.phaseRate, p.phaseDepth, p.phaseFb);
+        phaser.process (scratchL, scratchR, n);
+    }
+    if (p.flangeOn)
+    {
+        flanger.setParams (p.flangeRate, p.flangeDepth, p.flangeFb);
+        flanger.process (scratchL, scratchR, n);
+    }
+
+    for (int s = 0; s < n; ++s)
+    {
+        left[s]  += scratchL[s];
+        right[s] += scratchR[s];
     }
 
     if (! envA.isActive())
@@ -226,11 +255,6 @@ void SynthEngine::fire (int noteTag, float overrideHz, int gateSamples)
 {
     findFreeInstance()->start (patch, noteTag, overrideHz, gateSamples,
                                makeVariate(), nextRand(), clock);
-
-    // restart the scope capture for the new sound
-    scopeDecimCount = 0;
-    scopeWritePos.store (0, std::memory_order_release);
-    scopeGen.fetch_add (1, std::memory_order_relaxed);
 }
 
 SynthEngine::VariateOffsets SynthEngine::makeVariate()
@@ -324,17 +348,6 @@ void SynthEngine::render (float* left, float* right, int numSamples)
             masterGain += 0.005f * (masterTarget - masterGain);
             l[s] = softClip (l[s] * masterGain);
             r[s] = softClip (r[s] * masterGain);
-
-            if (++scopeDecimCount >= kScopeDecim)
-            {
-                scopeDecimCount = 0;
-                const int w = scopeWritePos.load (std::memory_order_relaxed);
-                if (w < kScopeSize)
-                {
-                    scopeBuf[(size_t) w] = (l[s] + r[s]) * 0.5f;
-                    scopeWritePos.store (w + 1, std::memory_order_release);
-                }
-            }
         }
 
         pos += n;

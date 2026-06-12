@@ -28,6 +28,7 @@
 #include "UI/TriggerPanel.h"
 #include "UI/RandomizerPanel.h"
 #include "UI/ScopePanel.h"
+#include "UI/FxPanel.h"
 
 // ============================================================================
 //  RetroForgeEditor
@@ -66,6 +67,7 @@ private:
     TriggerPanel triggerPanel;
     RandomizerPanel randomizerPanel;
     ScopePanel scopePanel;
+    FxPanel fxPanel;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (RetroForgeEditor)
 };

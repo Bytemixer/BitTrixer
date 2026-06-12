@@ -97,6 +97,18 @@ namespace Params
         inline constexpr const char* autoVarAmt  = "autovar_amt";
 
         inline constexpr const char* masterVol   = "master_vol";
+
+        inline constexpr const char* crushOn     = "fxcrush_on";
+        inline constexpr const char* crushBits   = "fxcrush_bits";
+        inline constexpr const char* crushDown   = "fxcrush_down";
+        inline constexpr const char* phaseOn     = "fxphase_on";
+        inline constexpr const char* phaseRate   = "fxphase_rate";
+        inline constexpr const char* phaseDepth  = "fxphase_depth";
+        inline constexpr const char* phaseFb     = "fxphase_fb";
+        inline constexpr const char* flangeOn    = "fxflange_on";
+        inline constexpr const char* flangeRate  = "fxflange_rate";
+        inline constexpr const char* flangeDepth = "fxflange_depth";
+        inline constexpr const char* flangeFb    = "fxflange_fb";
     }
 
     // ------------------------------------------------------------------
@@ -173,6 +185,19 @@ namespace Params
         float autoVarAmt = 0.15f;
 
         float masterVolDb = -6.0f;
+
+        // integrated FX
+        bool  crushOn = false;
+        float crushBits = 8.0f;       // 2..16
+        float crushDown = 1.0f;       // 1..40 sample-hold factor
+        bool  phaseOn = false;
+        float phaseRate = 1.0f;
+        float phaseDepth = 0.5f;
+        float phaseFb = 0.3f;
+        bool  flangeOn = false;
+        float flangeRate = 0.5f;
+        float flangeDepth = 0.5f;
+        float flangeFb = 0.4f;
     };
 
     // ------------------------------------------------------------------
@@ -251,6 +276,18 @@ namespace Params
             autoVarAmt = get (id::autoVarAmt);
 
             masterVol = get (id::masterVol);
+
+            crushOn    = get (id::crushOn);
+            crushBits  = get (id::crushBits);
+            crushDown  = get (id::crushDown);
+            phaseOn    = get (id::phaseOn);
+            phaseRate  = get (id::phaseRate);
+            phaseDepth = get (id::phaseDepth);
+            phaseFb    = get (id::phaseFb);
+            flangeOn    = get (id::flangeOn);
+            flangeRate  = get (id::flangeRate);
+            flangeDepth = get (id::flangeDepth);
+            flangeFb    = get (id::flangeFb);
         }
 
         Patch read() const
@@ -322,6 +359,18 @@ namespace Params
             p.autoVarAmt = autoVarAmt->load();
 
             p.masterVolDb = masterVol->load();
+
+            p.crushOn     = crushOn->load() > 0.5f;
+            p.crushBits   = crushBits->load();
+            p.crushDown   = crushDown->load();
+            p.phaseOn     = phaseOn->load() > 0.5f;
+            p.phaseRate   = phaseRate->load();
+            p.phaseDepth  = phaseDepth->load();
+            p.phaseFb     = phaseFb->load();
+            p.flangeOn    = flangeOn->load() > 0.5f;
+            p.flangeRate  = flangeRate->load();
+            p.flangeDepth = flangeDepth->load();
+            p.flangeFb    = flangeFb->load();
             return p;
         }
 
@@ -371,6 +420,18 @@ namespace Params
         std::atomic<float>* autoVarAmt {};
 
         std::atomic<float>* masterVol {};
+
+        std::atomic<float>* crushOn {};
+        std::atomic<float>* crushBits {};
+        std::atomic<float>* crushDown {};
+        std::atomic<float>* phaseOn {};
+        std::atomic<float>* phaseRate {};
+        std::atomic<float>* phaseDepth {};
+        std::atomic<float>* phaseFb {};
+        std::atomic<float>* flangeOn {};
+        std::atomic<float>* flangeRate {};
+        std::atomic<float>* flangeDepth {};
+        std::atomic<float>* flangeFb {};
     };
 
     // ------------------------------------------------------------------
@@ -539,6 +600,38 @@ namespace Params
         // ---- master ----
         layout.add (std::make_unique<AudioParameterFloat> (ParameterID { id::masterVol, 1 }, "Master Volume",
                         NormalisableRange<float> (-60.0f, 0.0f, 0.1f), -6.0f, dbAttr));
+
+        // ---- integrated FX ----
+        const auto bitsAttr = FAttr().withStringFromValueFunction ([] (float v, int)
+        {
+            return String (v, 1) + " bit";
+        });
+        const auto downAttr = FAttr().withStringFromValueFunction ([] (float v, int)
+        {
+            return "/" + String (v, 1);
+        });
+
+        layout.add (std::make_unique<AudioParameterBool>  (ParameterID { id::crushOn, 1 },   "Crush On", false));
+        layout.add (std::make_unique<AudioParameterFloat> (ParameterID { id::crushBits, 1 }, "Crush Bits",
+                        NormalisableRange<float> (2.0f, 16.0f, 0.1f), 8.0f, bitsAttr));
+        layout.add (std::make_unique<AudioParameterFloat> (ParameterID { id::crushDown, 1 }, "Crush Rate Div",
+                        timeRange (1.0f, 40.0f, 6.0f), 1.0f, downAttr));
+
+        layout.add (std::make_unique<AudioParameterBool>  (ParameterID { id::phaseOn, 1 },    "Phaser On", false));
+        layout.add (std::make_unique<AudioParameterFloat> (ParameterID { id::phaseRate, 1 },  "Phaser Rate",
+                        freqRange (0.05f, 8.0f), 1.0f, hzAttr));
+        layout.add (std::make_unique<AudioParameterFloat> (ParameterID { id::phaseDepth, 1 }, "Phaser Depth",
+                        NormalisableRange<float> (0.0f, 1.0f, 0.001f), 0.5f, unitAttr));
+        layout.add (std::make_unique<AudioParameterFloat> (ParameterID { id::phaseFb, 1 },    "Phaser Feedback",
+                        NormalisableRange<float> (0.0f, 0.9f, 0.001f), 0.3f, unitAttr));
+
+        layout.add (std::make_unique<AudioParameterBool>  (ParameterID { id::flangeOn, 1 },    "Flanger On", false));
+        layout.add (std::make_unique<AudioParameterFloat> (ParameterID { id::flangeRate, 1 },  "Flanger Rate",
+                        freqRange (0.05f, 5.0f), 0.5f, hzAttr));
+        layout.add (std::make_unique<AudioParameterFloat> (ParameterID { id::flangeDepth, 1 }, "Flanger Depth",
+                        NormalisableRange<float> (0.0f, 1.0f, 0.001f), 0.5f, unitAttr));
+        layout.add (std::make_unique<AudioParameterFloat> (ParameterID { id::flangeFb, 1 },    "Flanger Feedback",
+                        NormalisableRange<float> (0.0f, 0.95f, 0.001f), 0.4f, unitAttr));
 
         return layout;
     }
