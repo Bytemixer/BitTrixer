@@ -204,7 +204,7 @@ void RetroForgeEditor::drawSignalTraces (juce::Graphics& g)
 
     // ---- source bus: OSC1/2/3 + NOISE -> VCF (left channel, lane 1) ----
     {
-        const float busX = vcf.getX() - 9.0f;
+        const float busX = vcf.getX() - 19.0f;
         const float vcfInY = vcf.getY() + 60.0f;
         juce::Path p;
 
@@ -231,7 +231,7 @@ void RetroForgeEditor::drawSignalTraces (juce::Graphics& g)
 
     // ---- downstream: VCF -> VCA (left channel, lane 2) ----
     {
-        const float laneX = vcf.getX() - 4.0f;
+        const float laneX = vcf.getX() - 8.0f;
         const float outY = vcf.getBottom() - 18.0f;
         const float inY  = vca.getCentreY();
         juce::Path p;
@@ -270,9 +270,25 @@ void RetroForgeEditor::drawSignalTraces (juce::Graphics& g)
                     juce::Justification::centredLeft);
     }
 
+    // ---- env -> target connectors (dashed, through the panel gaps) ----
+    {
+        juce::Path p;
+        const float fx1 = envF.getX() + 56.0f;          // ENV F drives the VCF
+        p.startNewSubPath (fx1, envF.getY());
+        p.lineTo (fx1, vcf.getBottom());
+        const float ax = vca.getCentreX();              // ENV A drives the VCA
+        p.startNewSubPath (ax, envA.getBottom());
+        p.lineTo (ax, vca.getY());
+        strokeTrace (g, p, modCol, 1.6f, true);
+        solderPad (g, { fx1, envF.getY() }, modCol);
+        solderPad (g, { ax, envA.getBottom() }, modCol);
+        arrowInto (g, { fx1, vcf.getBottom() }, 3, modCol);
+        arrowInto (g, { ax, vca.getY() }, 2, modCol);
+    }
+
     // ---- modulation web (dashed): envs + matrix -> VCF, LFOs -> matrix ----
     {
-        const float busX = vcf.getRight() + 7.0f;
+        const float busX = vcf.getRight() + 15.0f;
         const float vcfInY = vcf.getBottom() - 24.0f;
         juce::Path p;
         p.startNewSubPath (busX, vcfInY);
@@ -311,33 +327,35 @@ void RetroForgeEditor::resized()
     auto b = getLocalBounds();
     header.setBounds (b.removeFromTop (46));
     b.reduce (8, 8);
-    constexpr int gap = 6;        // vertical gap within columns
-    constexpr int channel = 14;   // horizontal trace channels between columns
+    constexpr int gap = 6;        // vertical gap within the right column
+    constexpr int midGap = 28;    // generous gaps in the compacted mid column
+    constexpr int leftGap = 26;   // ... and between the oscillator strips
+    constexpr int channel = 30;   // horizontal trace channels between columns
 
     fxPanel.setBounds (b.removeFromBottom (104));
     b.removeFromBottom (gap);
 
-    // ---- left column: oscillators + noise ----
-    auto left = b.removeFromLeft (324);
-    osc1.setBounds (left.removeFromTop (168));
-    left.removeFromTop (gap);
-    osc2.setBounds (left.removeFromTop (168));
-    left.removeFromTop (gap);
-    osc3.setBounds (left.removeFromTop (168));
-    left.removeFromTop (gap);
+    // ---- left column: oscillators + noise (compact, airy gaps) ----
+    auto left = b.removeFromLeft (316);
+    osc1.setBounds (left.removeFromTop (156));
+    left.removeFromTop (leftGap);
+    osc2.setBounds (left.removeFromTop (156));
+    left.removeFromTop (leftGap);
+    osc3.setBounds (left.removeFromTop (156));
+    left.removeFromTop (leftGap);
     noisePanel.setBounds (left);
 
     b.removeFromLeft (channel);
 
-    // ---- middle column: filter, envelopes, vca + scope ----
-    auto mid = b.removeFromLeft (424);
-    filterPanel.setBounds (mid.removeFromTop (180));
-    mid.removeFromTop (gap);
-    envFPanel.setBounds (mid.removeFromTop (164));
-    mid.removeFromTop (gap);
-    envAPanel.setBounds (mid.removeFromTop (164));
-    mid.removeFromTop (gap);
-    vcaPanel.setBounds (mid.removeFromLeft (178));
+    // ---- middle column: filter, envelopes, vca + scope (compacted) ----
+    auto mid = b.removeFromLeft (400);
+    filterPanel.setBounds (mid.removeFromTop (160));
+    mid.removeFromTop (midGap);
+    envFPanel.setBounds (mid.removeFromTop (152));
+    mid.removeFromTop (midGap);
+    envAPanel.setBounds (mid.removeFromTop (152));
+    mid.removeFromTop (midGap);
+    vcaPanel.setBounds (mid.removeFromLeft (168));
     mid.removeFromLeft (gap);
     scopePanel.setBounds (mid);
 

@@ -398,6 +398,21 @@ void Randomizer::applyCategory (Category c)
                 set (modId (2, "depth"), invertedDive ? rnd (-0.7f, -0.35f)
                                                       : rnd (0.35f, 0.7f));
             }
+            if (chance (0.35f))                                    // sub layer: fattens the beam
+            {
+                setBool (oscId (3, "on"), true);
+                setChoice (oscId (3, "wave"), chance (0.5f) ? (int) OscWave::Sine
+                                                            : (int) OscWave::Triangle);
+                set (oscId (3, "pitch"), -12.0f);
+                set (oscId (3, "level"), rnd (0.4f, 0.7f));
+            }
+            if (chance (0.3f))                                     // discharge sizzle
+            {
+                setBool (id::noiseOn, true);
+                setChoice (id::noiseType, (int) NoiseType::Analog);
+                set (id::noiseColor, rnd (0.0f, 0.3f));
+                set (id::noiseLevel, rnd (0.15f, 0.35f));
+            }
             if (chance (0.3f))
             {
                 setBool (id::hpfOn, true);
@@ -525,10 +540,12 @@ void Randomizer::applyCategory (Category c)
 
         case Category::Hit:
         {
-            // impact: noise-dominant crunch with a low thunk, steep pitch drop,
-            // hard drive and a darkening filter snap — short and percussive
+            // impact family: low punches/kicks/smashes, or bright
+            // pierces/slashes/chops — both noise-led and percussive
+            const bool sharp = chance (0.5f);
             setChoice (oscId (1, "wave"), (int) OscWave::Square);
-            set (id::baseFreq, rndLog (80.0f, 220.0f));
+            set (id::baseFreq, sharp ? rndLog (350.0f, 1600.0f)   // pierce/slash
+                                     : rndLog (80.0f, 220.0f));   // punch/kick
             set (oscId (1, "level"), rnd (0.5f, 0.8f));
             setBool (id::noiseOn, true);
             if (chance (0.35f))                                    // digital smack
@@ -549,12 +566,19 @@ void Randomizer::applyCategory (Category c)
             set (id::envFDecay, rnd (0.04f, 0.12f));               // very fast
             set (id::envFCurve, -0.5f);
             set (id::envFRelease, 1.5f);                           // return drifts inaudibly
-            set (id::envADecay, rnd (0.07f, 0.16f));               // short + punchy
+            set (id::envADecay, sharp ? rnd (0.05f, 0.12f)         // slashes snap shut
+                                      : rnd (0.07f, 0.16f));
             set (id::envACurve, rnd (-0.8f, -0.5f));
             set (id::envARelease, 0.05f);
-            set (id::lpfCutoff, rndLog (1500.0f, 5000.0f));
+            set (id::lpfCutoff, sharp ? rndLog (3000.0f, 10000.0f) // bright edge
+                                      : rndLog (1500.0f, 5000.0f));
             set (id::lpfEnv, rnd (-0.5f, -0.2f));                  // darkening snap
             set (id::lpfRes, rnd (0.0f, 0.25f));
+            if (sharp && chance (0.5f))                            // thin out the body: slash/chop
+            {
+                setBool (id::hpfOn, true);
+                set (id::hpfCutoff, rndLog (150.0f, 600.0f));
+            }
             set (id::vcaDrive, rnd (0.4f, 0.8f));                  // crunch
             if (chance (0.4f))                                     // smashed-speaker grit
             {
