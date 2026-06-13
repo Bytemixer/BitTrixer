@@ -47,6 +47,15 @@ namespace Params
                                                    "PWM", "Fold", "Noise Lvl", "Cutoff", "Resonance",
                                                    "LFO1 Rate", "LFO2 Rate", "VCA Level" };
     inline const juce::StringArray polesNames    { "2-Pole", "4-Pole" };
+    inline const juce::StringArray rateNames     { "48 kHz", "44.1 kHz", "22 kHz", "11 kHz", "8 kHz" };
+    inline const juce::StringArray bitsNames     { "16-bit", "8-bit" };
+
+    inline float rateChoiceToHz (int choice) noexcept
+    {
+        switch (choice) { case 1: return 44100.0f; case 2: return 22050.0f;
+                          case 3: return 11025.0f; case 4: return 8000.0f;
+                          default: return 48000.0f; }
+    }
 
     // hard-sync routing: slave oscillators reset phase when the master wraps
 
@@ -103,8 +112,12 @@ namespace Params
         inline constexpr const char* loopRate    = "loop_rate";
         inline constexpr const char* autoVarOn   = "autovar_on";
         inline constexpr const char* autoVarAmt  = "autovar_amt";
+        inline constexpr const char* retrigRate  = "retrig_rate";
 
         inline constexpr const char* masterVol   = "master_vol";
+        inline constexpr const char* comp        = "comp";
+        inline constexpr const char* outRate     = "out_rate";
+        inline constexpr const char* outBits     = "out_bits";
 
         inline constexpr const char* crushOn     = "fxcrush_on";
         inline constexpr const char* crushBits   = "fxcrush_bits";
@@ -197,8 +210,12 @@ namespace Params
         float loopRate  = 1.0f;      // seconds between triggers
         bool  autoVarOn = false;
         float autoVarAmt = 0.15f;
+        float retrigHz  = 0.0f;      // 0 = off; else re-strike rate within a sound
 
         float masterVolDb = -6.0f;
+        float compAmount = 0.0f;     // 0 = off; power-law density/punch
+        float outRateHz = 48000.0f;  // target output sample rate (lo-fi decimation)
+        bool  out8bit   = false;     // 8-bit output quantization
 
         // integrated FX
         bool  crushOn = false;
@@ -294,8 +311,12 @@ namespace Params
             loopRate  = get (id::loopRate);
             autoVarOn = get (id::autoVarOn);
             autoVarAmt = get (id::autoVarAmt);
+            retrigRate = get (id::retrigRate);
 
             masterVol = get (id::masterVol);
+            comp      = get (id::comp);
+            outRate   = get (id::outRate);
+            outBits   = get (id::outBits);
 
             crushOn    = get (id::crushOn);
             crushBits  = get (id::crushBits);
@@ -382,8 +403,12 @@ namespace Params
             p.loopRate   = loopRate->load();
             p.autoVarOn  = autoVarOn->load() > 0.5f;
             p.autoVarAmt = autoVarAmt->load();
+            p.retrigHz   = retrigRate->load();
 
             p.masterVolDb = masterVol->load();
+            p.compAmount = comp->load();
+            p.outRateHz  = rateChoiceToHz ((int) outRate->load());
+            p.out8bit    = outBits->load() > 0.5f;
 
             p.crushOn     = crushOn->load() > 0.5f;
             p.crushBits   = crushBits->load();
@@ -448,8 +473,12 @@ namespace Params
         std::atomic<float>* loopRate {};
         std::atomic<float>* autoVarOn {};
         std::atomic<float>* autoVarAmt {};
+        std::atomic<float>* retrigRate {};
 
         std::atomic<float>* masterVol {};
+        std::atomic<float>* comp {};
+        std::atomic<float>* outRate {};
+        std::atomic<float>* outBits {};
 
         std::atomic<float>* crushOn {};
         std::atomic<float>* crushBits {};
@@ -637,10 +666,20 @@ namespace Params
         layout.add (std::make_unique<AudioParameterBool>  (ParameterID { id::autoVarOn, 1 }, "Auto Variate", false));
         layout.add (std::make_unique<AudioParameterFloat> (ParameterID { id::autoVarAmt, 1 }, "Variate Amount",
                         NormalisableRange<float> (0.0f, 1.0f, 0.001f), 0.15f, unitAttr));
+        const auto hzOffAttr = FAttr().withStringFromValueFunction ([] (float v, int)
+        {
+            return v < 0.25f ? juce::String ("Off") : juce::String (v, 1) + " Hz";
+        });
+        layout.add (std::make_unique<AudioParameterFloat> (ParameterID { id::retrigRate, 1 }, "Retrigger",
+                        NormalisableRange<float> (0.0f, 50.0f, 0.1f), 0.0f, hzOffAttr));
 
-        // ---- master ----
+        // ---- master / output ----
         layout.add (std::make_unique<AudioParameterFloat> (ParameterID { id::masterVol, 1 }, "Master Volume",
                         NormalisableRange<float> (-60.0f, 0.0f, 0.1f), -6.0f, dbAttr));
+        layout.add (std::make_unique<AudioParameterFloat> (ParameterID { id::comp, 1 }, "Compression",
+                        NormalisableRange<float> (0.0f, 1.0f, 0.001f), 0.0f, unitAttr));
+        layout.add (std::make_unique<AudioParameterChoice>(ParameterID { id::outRate, 1 }, "Output Rate", rateNames, 0));
+        layout.add (std::make_unique<AudioParameterChoice>(ParameterID { id::outBits, 1 }, "Output Bits", bitsNames, 0));
 
         // ---- integrated FX ----
         const auto bitsAttr = FAttr().withStringFromValueFunction ([] (float v, int)

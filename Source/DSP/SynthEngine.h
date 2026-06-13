@@ -72,6 +72,7 @@ private:
         uint64_t ageSamples = 0;        // for pitch-jump onsets / min-gate
         int  gateRemaining = -1;        // samples until auto gate-off; -1 = held
         int  minGateSamples = 0;        // manual triggers: >= 1 base-freq cycle
+        int  retrigCounter = 0;         // samples until the next retrigger
         double fs = 44100.0;
 
         Envelope envF, envA;
@@ -120,6 +121,10 @@ private:
     // smoothed master gain
     float masterGain = 0.5f;
     float masterTarget = 0.5f;
+
+    // master output lo-fi stage (sample-rate decimation + bit quantization)
+    float decimHold = 0.0f, decimHoldR = 0.0f;
+    float decimCount = 1.0e9f;
 
     uint32_t rng = 0x5EEDF00Du;
 };

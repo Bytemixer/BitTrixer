@@ -69,6 +69,7 @@ void SynthEngine::Instance::start (const Params::Patch& p, int noteTag,
     startClock = clockNow;
     ageSamples = 0;
     gateRemaining = gateSamples;
+    retrigCounter = p.retrigHz >= 0.25f ? (int) (fs / p.retrigHz) : 1000000000;
 
     // a quick TRIGGER click must still play at least one full waveform
     // cycle (30 ms floor so very short taps stay audible)
@@ -153,6 +154,24 @@ void SynthEngine::Instance::renderAdd (float* left, float* right, int n,
         gateRemaining -= n;
         if (gateRemaining < 0)
             gateOff();
+    }
+
+    // retrigger: re-strike the sound at the retrigger rate while it is gated
+    // (a stutter/arpeggio texture; the release tail still plays out at the end)
+    if (p.retrigHz >= 0.25f && ! envA.isReleasing())
+    {
+        retrigCounter -= n;
+        if (retrigCounter <= 0)
+        {
+            envF.retrigger();
+            envA.retrigger();
+            for (int i = 0; i < numVoices; ++i)
+                voices[(size_t) i].retrigger();
+            ageSamples = 0;
+            retrigCounter += (int) (fsf / p.retrigHz);
+            if (retrigCounter <= 0)
+                retrigCounter = (int) (fsf / p.retrigHz);
+        }
     }
 
     const float base = freqOverrideHz > 0.0f ? freqOverrideHz : p.baseFreqHz;
@@ -391,11 +410,54 @@ void SynthEngine::render (float* left, float* right, int numSamples)
                 l[s] = r[s] = 0.0f;
         }
 
+        // master output stage: gain -> compression -> safety clip -> lo-fi
+        //   compression: bfxr-style power-law density/punch (boosts quiet parts)
+        //   lo-fi:       sample-rate decimation + bit-depth quantization
+        const float compExp = 1.0f - 0.7f * clampf (patch.compAmount, 0.0f, 1.0f);
+        const bool  doComp  = patch.compAmount > 0.001f;
+
+        const float decimStep = patch.outRateHz < (float) fs
+                              ? (float) fs / patch.outRateHz : 1.0f;
+        const bool  doDecim = decimStep > 1.001f;
+
+        const float bitLevels = patch.out8bit ? 128.0f : 32768.0f;
+        const bool  doBits = patch.out8bit;
+
         for (int s = 0; s < n; ++s)
         {
             masterGain += 0.005f * (masterTarget - masterGain);
-            l[s] = softClip (l[s] * masterGain);
-            r[s] = softClip (r[s] * masterGain);
+            float lv = softClip (l[s] * masterGain);
+            float rv = softClip (r[s] * masterGain);
+
+            if (doComp)
+            {
+                lv = (lv < 0.0f ? -1.0f : 1.0f) * std::pow (std::fabs (lv), compExp);
+                rv = (rv < 0.0f ? -1.0f : 1.0f) * std::pow (std::fabs (rv), compExp);
+                lv = clampf (lv, -1.0f, 1.0f);
+                rv = clampf (rv, -1.0f, 1.0f);
+            }
+
+            if (doDecim)
+            {
+                decimCount += 1.0f;
+                if (decimCount >= decimStep)
+                {
+                    decimCount -= decimStep;
+                    decimHold = lv;            // mono-ish hold is plenty for SFX
+                    decimHoldR = rv;
+                }
+                lv = decimHold;
+                rv = decimHoldR;
+            }
+
+            if (doBits)
+            {
+                lv = std::round (lv * bitLevels) / bitLevels;
+                rv = std::round (rv * bitLevels) / bitLevels;
+            }
+
+            l[s] = lv;
+            r[s] = rv;
         }
 
         pos += n;

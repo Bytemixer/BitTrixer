@@ -59,6 +59,16 @@ public:
         stage = Stage::Attack;
     }
 
+    // hard re-strike from silence (used by the retrigger feature)
+    void retrigger() noexcept
+    {
+        level = 0.0f;
+        out   = 0.0f;
+        attackStart = 0.0f;
+        t = 0.0f;
+        stage = Stage::Attack;
+    }
+
     void gateOff() noexcept
     {
         if (stage == Stage::Idle)

@@ -454,7 +454,7 @@ void RetroForgeEditor::resized()
     mid.removeFromTop (midArrowGap);
     envelopesPanel.setBounds (mid.removeFromTop (376));
     mid.removeFromTop (midArrowGap);
-    vcaPanel.setBounds (mid.removeFromLeft (168));
+    vcaPanel.setBounds (mid.removeFromLeft (236));
     mid.removeFromLeft (gap);
     scopePanel.setBounds (mid);
 

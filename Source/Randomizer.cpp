@@ -20,9 +20,11 @@ namespace
     // it is part of a sound's design, so recipes set it per category)
     bool isProtected (const juce::String& pid)
     {
+        // output format + performance controls stay where the user set them
         return pid == id::masterVol || pid == id::loopOn || pid == id::loopRate
             || pid == id::autoVarOn || pid == id::autoVarAmt
-            || pid == id::midiTrack;
+            || pid == id::midiTrack  || pid == id::retrigRate
+            || pid == id::outRate    || pid == id::outBits;
     }
 }
 
@@ -251,6 +253,7 @@ void Randomizer::fullRandom()
     set (id::envACurve, rnd (-1.0f, 0.5f));
 
     set (id::vcaDrive, chance (0.4f) ? rnd (0.1f, 0.7f) : 0.0f);
+    set (id::comp, chance (0.35f) ? rnd (0.2f, 0.7f) : 0.0f);   // density/punch
 
     set (id::gateTime, rndLog (0.1f, 0.8f));
     setBool (oscId (2, "sync"), chance (0.18f));
@@ -456,6 +459,7 @@ void Randomizer::applyCategory (Category c)
             set (id::envACurve, rnd (-0.8f, -0.3f));               // exp die-away
             set (id::envARelease, rnd (0.2f, 0.5f));
             set (id::vcaDrive, rnd (0.3f, 0.8f));
+            set (id::comp, rnd (0.3f, 0.7f));                      // body/punch
             if (chance (0.45f))                                    // debris crunch
             {
                 setBool (id::crushOn, true);
@@ -581,6 +585,7 @@ void Randomizer::applyCategory (Category c)
                 set (id::hpfCutoff, rndLog (150.0f, 600.0f));
             }
             set (id::vcaDrive, rnd (0.4f, 0.8f));                  // crunch
+            set (id::comp, rnd (0.4f, 0.8f));                      // punch
             if (chance (0.4f))                                     // smashed-speaker grit
             {
                 setBool (id::crushOn, true);
