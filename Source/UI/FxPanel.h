@@ -54,6 +54,18 @@ public:
             if (x > 0.0f)
                 g.drawLine (x, (float) content().getY() + 4.0f,
                             x, (float) content().getBottom() - 4.0f, 1.0f);
+
+        // the phaser feeds the flanger in series (the crush group is NOT in
+        // series here — it sits before the VCF, see the background traces)
+        if (sep2 > 0.0f)
+        {
+            const float midY = (float) content().getCentreY();
+            juce::Path a;
+            a.addTriangle (sep2 - 3.0f, midY - 5.0f, sep2 - 3.0f, midY + 5.0f,
+                           sep2 + 6.0f, midY);
+            g.setColour (RetroColors::trace);
+            g.fillPath (a);
+        }
     }
 
     void resized() override
