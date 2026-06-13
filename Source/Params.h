@@ -49,7 +49,6 @@ namespace Params
                                                    "LFO1 Rate", "LFO2 Rate", "VCA Level" };
     inline const juce::StringArray polesNames    { "2-Pole", "4-Pole" };
     inline const juce::StringArray rateNames     { "48 kHz", "44.1 kHz", "22 kHz", "11 kHz", "8 kHz" };
-    inline const juce::StringArray bitsNames     { "16-bit", "8-bit" };
 
     inline float rateChoiceToHz (int choice) noexcept
     {
@@ -717,7 +716,7 @@ namespace Params
         layout.add (std::make_unique<AudioParameterFloat> (ParameterID { id::comp, 1 }, "Compression",
                         NormalisableRange<float> (0.0f, 1.0f, 0.001f), 0.0f, unitAttr));
         layout.add (std::make_unique<AudioParameterChoice>(ParameterID { id::outRate, 1 }, "Output Rate", rateNames, 0));
-        layout.add (std::make_unique<AudioParameterChoice>(ParameterID { id::outBits, 1 }, "Output Bits", bitsNames, 0));
+        layout.add (std::make_unique<AudioParameterBool>  (ParameterID { id::outBits, 1 }, "Output 8-bit", false));
 
         // ---- integrated FX ----
         const auto bitsAttr = FAttr().withStringFromValueFunction ([] (float v, int)
