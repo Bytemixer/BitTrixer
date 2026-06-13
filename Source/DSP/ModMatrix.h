@@ -34,6 +34,10 @@ struct ModValues
     float resonance = 0.0f;
     float lfoRateOct[Params::kNumLfos] { 0.0f, 0.0f };
     float vca = 0.0f;
+    float formVowel = 0.0f;     // 0..1 offset
+    float ringFreqOct = 0.0f;   // octaves
+    float tremDepth = 0.0f;     // 0..1 offset
+    float delayTimeOct = 0.0f;  // octaves
 };
 
 class ModMatrix
@@ -42,6 +46,8 @@ public:
     static constexpr float kPitchRangeSemis = 48.0f;
     static constexpr float kCutoffRangeOct  = 6.0f;
     static constexpr float kLfoRateRangeOct = 4.0f;
+    static constexpr float kRingFreqRangeOct  = 4.0f;
+    static constexpr float kDelayTimeRangeOct = 2.0f;
 
     // srcLfo1/2 are bipolar, srcEnvF/A unipolar (already inverted if set so)
     static ModValues compute (const Params::Patch& p,
@@ -82,6 +88,10 @@ public:
                 case Params::ModDest::Lfo1Rate:   mv.lfoRateOct[0]      += v * kLfoRateRangeOct; break;
                 case Params::ModDest::Lfo2Rate:   mv.lfoRateOct[1]      += v * kLfoRateRangeOct; break;
                 case Params::ModDest::VcaLevel:   mv.vca                += v; break;
+                case Params::ModDest::FormVowel:  mv.formVowel          += v; break;
+                case Params::ModDest::RingFreq:   mv.ringFreqOct        += v * kRingFreqRangeOct; break;
+                case Params::ModDest::TremDepth:  mv.tremDepth          += v; break;
+                case Params::ModDest::DelayTime:  mv.delayTimeOct       += v * kDelayTimeRangeOct; break;
                 default: break;
             }
         }

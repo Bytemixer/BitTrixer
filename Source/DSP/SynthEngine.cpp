@@ -237,12 +237,19 @@ void SynthEngine::Instance::renderAdd (float* left, float* right, int n,
 
     // per-instance effect chain (post-VCA). Crush is still applied per-voice
     // (pre-filter) inside the voices above; it joins this chain with reorder.
+    // FX params modulated by the matrix (Form Vowel / Ring Freq / Trem Depth /
+    // Delay Time) -- e.g. Step LFO -> Form Vowel makes the sound "talk".
+    const float ringFreqM  = clampf (p.ringFreq  * std::exp2 (mv.ringFreqOct),  20.0f, 4000.0f);
+    const float tremDepthM = clampf (p.tremDepth + mv.tremDepth,                0.0f,  1.0f);
+    const float formVowelM = clampf (p.formVowel + mv.formVowel,                0.0f,  1.0f);
+    const float delayTimeM = clampf (p.delayTime * std::exp2 (mv.delayTimeOct), 0.001f, 0.4f);
+
     fxChain.setPhaser  (p.phaseOn,  p.phaseRate,  p.phaseDepth,  p.phaseFb);
     fxChain.setFlanger (p.flangeOn, p.flangeRate, p.flangeDepth, p.flangeFb);
-    fxChain.setRing    (p.ringOn,   p.ringFreq,   p.ringMix,     p.ringWave);
-    fxChain.setTrem    (p.tremOn,   p.tremRate,   p.tremDepth,   p.tremWave);
-    fxChain.setFormant (p.formOn,   p.formVowel,  p.formReso,    p.formMix);
-    fxChain.setDelay   (p.delayOn,  p.delayTime * 1000.0f, p.delayFb, p.delayMix);
+    fxChain.setRing    (p.ringOn,   ringFreqM,    p.ringMix,     p.ringWave);
+    fxChain.setTrem    (p.tremOn,   p.tremRate,   tremDepthM,    p.tremWave);
+    fxChain.setFormant (p.formOn,   formVowelM,   p.formReso,    p.formMix);
+    fxChain.setDelay   (p.delayOn,  delayTimeM * 1000.0f, p.delayFb, p.delayMix);
     fxChain.process (scratchL, scratchR, n);
 
     for (int s = 0; s < n; ++s)

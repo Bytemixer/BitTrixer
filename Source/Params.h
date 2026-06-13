@@ -39,7 +39,8 @@ namespace Params
     enum class ModSrc   { Off = 0, Lfo1, Lfo2, FilterEnv, AmpEnv };
     enum class ModDest  { Off = 0, AllPitch, Osc1Pitch, Osc2Pitch, Osc3Pitch,
                           Pwm, Fold, NoiseLevel, Cutoff, Resonance,
-                          Lfo1Rate, Lfo2Rate, VcaLevel };
+                          Lfo1Rate, Lfo2Rate, VcaLevel,
+                          FormVowel, RingFreq, TremDepth, DelayTime };
 
     inline const juce::StringArray oscWaveNames  { "Sine", "Triangle", "Square", "Saw", "Rev Saw", "SuperSaw", "Tan", "Breaker" };
     inline const juce::StringArray noiseTypeNames { "Analog W>P", "LFSR Hiss", "LFSR Buzz", "Rasp" };
@@ -47,7 +48,8 @@ namespace Params
     inline const juce::StringArray modSrcNames   { "Off", "LFO 1", "LFO 2", "Filt Env", "Amp Env" };
     inline const juce::StringArray modDestNames  { "Off", "All Pitch", "Osc1 Pitch", "Osc2 Pitch", "Osc3 Pitch",
                                                    "PWM", "Fold", "Noise Lvl", "Cutoff", "Resonance",
-                                                   "LFO1 Rate", "LFO2 Rate", "VCA Level" };
+                                                   "LFO1 Rate", "LFO2 Rate", "VCA Level",
+                                                   "Form Vowel", "Ring Freq", "Trem Depth", "Delay Time" };
     inline const juce::StringArray polesNames    { "2-Pole", "4-Pole" };
     inline const juce::StringArray rateNames     { "48 kHz", "44.1 kHz", "22 kHz", "11 kHz", "8 kHz" };
     inline const juce::StringArray fxTypeNames   { "Off", "Crush", "Phaser", "Flanger", "Ring Mod", "Tremolo", "Formant", "Delay" };  // mirror FxChain::Type
