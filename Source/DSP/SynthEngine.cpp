@@ -444,15 +444,21 @@ void SynthEngine::render (float* left, float* right, int numSamples)
 
             if (doDecim)
             {
-                decimCount += 1.0f;
-                if (decimCount >= decimStep)
+                // sample & hold: capture a new sample every decimStep samples,
+                // hold it in between (the staircase = lower effective rate)
+                if (decimCount <= 0.0f)
                 {
-                    decimCount -= decimStep;
-                    decimHold = lv;            // mono-ish hold is plenty for SFX
+                    decimCount += decimStep;
+                    decimHold = lv;
                     decimHoldR = rv;
                 }
+                decimCount -= 1.0f;
                 lv = decimHold;
                 rv = decimHoldR;
+            }
+            else
+            {
+                decimCount = 0.0f;            // re-arm for the next time it engages
             }
 
             if (doBits)

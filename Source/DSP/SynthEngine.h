@@ -126,7 +126,7 @@ private:
 
     // master output lo-fi stage (sample-rate decimation + bit quantization)
     float decimHold = 0.0f, decimHoldR = 0.0f;
-    float decimCount = 1.0e9f;
+    float decimCount = 0.0f;
 
     uint32_t rng = 0x5EEDF00Du;
 };
