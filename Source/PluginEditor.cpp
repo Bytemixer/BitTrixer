@@ -15,8 +15,7 @@ RetroForgeEditor::RetroForgeEditor (RetroForgeProcessor& p)
     : AudioProcessorEditor (p), proc (p),
       randomizer (p.apvts),
       presetManager (p.apvts),
-      osc1 (p.apvts, 1), osc2 (p.apvts, 2), osc3 (p.apvts, 3),
-      noisePanel (p.apvts),
+      generatorsPanel (p.apvts),
       filterPanel (p.apvts),
       envFPanel (p.apvts, "Filter Envelope",
                  Params::id::envFAttack, Params::id::envFDecay,
@@ -37,7 +36,7 @@ RetroForgeEditor::RetroForgeEditor (RetroForgeProcessor& p)
     setLookAndFeel (&lookAndFeel);
 
     for (auto* c : std::initializer_list<juce::Component*> {
-             &header, &osc1, &osc2, &osc3, &noisePanel, &filterPanel,
+             &header, &generatorsPanel, &filterPanel,
              &envFPanel, &envAPanel, &vcaPanel, &pitchPanel,
              &lfo1Panel, &lfo2Panel, &modMatrixPanel,
              &triggerPanel, &randomizerPanel, &scopePanel, &fxPanel })
@@ -260,30 +259,19 @@ void RetroForgeEditor::drawSignalTraces (juce::Graphics& g)
     const float phaserInX  = fx.getX() + fx.getWidth() * 0.42f;
     const float flangerOutX = fx.getX() + fx.getWidth() * 0.88f;
 
-    // ---- leg 1: OSC1/2/3 + NOISE -> CRUSH (left channel, outer lane) ----
+    // ---- leg 1: SOUND GENERATORS -> CRUSH (left channel, outer lane) ----
     {
+        const auto gen = generatorsPanel.getBounds().toFloat();
         const float busX = vcf.getX() - 23.0f;
-        juce::Component* sources[4] = { &osc1, &osc2, &osc3, &noisePanel };
-        const float topY = (float) osc1.getBounds().getCentreY();
+        const float tapY = gen.getCentreY();
 
-        strokeTrace (g, chamfered ({ { busX, topY }, { busX, yLaneA },
+        // the generators' mixed output taps from the panel's right edge,
+        // runs the channel, and dives into the bitcrusher (pre-filter)
+        strokeTrace (g, chamfered ({ { gen.getRight(), tapY }, { busX, tapY },
+                                     { busX, yLaneA },
                                      { crushInX, yLaneA }, { crushInX, gapTop } }),
                      srcCol, 3.2f);
-        juce::Path stubs;
-        for (auto* s : sources)
-        {
-            const float cy = (float) s->getBounds().getCentreY();
-            stubs.startNewSubPath ((float) s->getRight(), cy);
-            stubs.lineTo (busX, cy);
-        }
-        strokeTrace (g, stubs, srcCol, 2.0f);
-        for (auto* s : sources)
-        {
-            const float cy = (float) s->getBounds().getCentreY();
-            solderPad (g, { (float) s->getRight(), cy }, srcCol);
-            if (cy > topY + 1.0f)
-                via (g, { busX, cy }, srcCol);
-        }
+        solderPad (g, { gen.getRight(), tapY }, srcCol);
         arrowInto (g, { crushInX, gapTop }, 2, srcCol);
     }
 
@@ -426,15 +414,9 @@ void RetroForgeEditor::resized()
     fxPanel.setBounds (b.removeFromBottom (104));
     b.removeFromBottom (16);   // routing channel above the FX strip
 
-    // ---- left column: oscillators + noise (compact, airy gaps) ----
-    auto left = b.removeFromLeft (316);
-    osc1.setBounds (left.removeFromTop (156));
-    left.removeFromTop (leftGap);
-    osc2.setBounds (left.removeFromTop (156));
-    left.removeFromTop (leftGap);
-    osc3.setBounds (left.removeFromTop (156));
-    left.removeFromTop (leftGap);
-    noisePanel.setBounds (left);
+    // ---- left column: all sound generators in one panel ----
+    juce::ignoreUnused (leftGap);
+    generatorsPanel.setBounds (b.removeFromLeft (316));
 
     b.removeFromLeft (channel);
 

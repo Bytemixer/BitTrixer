@@ -253,7 +253,8 @@ void Randomizer::fullRandom()
     set (id::vcaDrive, chance (0.4f) ? rnd (0.1f, 0.7f) : 0.0f);
 
     set (id::gateTime, rndLog (0.1f, 0.8f));
-    setChoice (id::oscSync, chance (0.18f) ? rndInt (1, 5) : 0);
+    setBool (oscId (2, "sync"), chance (0.18f));
+    setBool (oscId (3, "sync"), chance (0.12f));
 
     if (chance (0.3f))                                     // arpeggio-style jumps
     {
@@ -387,7 +388,7 @@ void Randomizer::applyCategory (Category c)
             set (id::lpfRes, rnd (0.35f, 0.7f));                   // the "pew" ring
             if (chance (0.4f))                                     // sync sweep zap
             {
-                setChoice (id::oscSync, 1);                        // 2>1
+                setBool (oscId (2, "sync"), true);                 // OSC 2 -> master
                 setBool (oscId (2, "on"), true);
                 setChoice (oscId (2, "wave"), (int) OscWave::Saw);
                 set (oscId (2, "pitch"), rnd (4.0f, 14.0f));

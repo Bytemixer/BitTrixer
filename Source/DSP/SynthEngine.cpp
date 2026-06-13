@@ -172,7 +172,8 @@ void SynthEngine::Instance::renderAdd (float* left, float* right, int n,
         ctx.oscLevel[i] = o.level;
     }
 
-    ctx.syncMode   = p.syncMode;
+    for (int i = 0; i < Params::kNumOscs; ++i)
+        ctx.oscSync[i] = p.osc[(size_t) i].sync;
     ctx.noiseOn    = p.noiseOn;
     ctx.noiseType  = p.noiseType;
     ctx.noiseLevel = clampf (p.noiseLevel + mv.noiseLevel, 0.0f, 1.0f);

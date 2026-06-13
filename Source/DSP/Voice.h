@@ -43,7 +43,7 @@ public:
         float oscFold[Params::kNumOscs] {};
         float oscLevel[Params::kNumOscs] {};
 
-        Params::SyncMode syncMode = Params::SyncMode::Off;
+        bool  oscSync[Params::kNumOscs] {};   // sync this osc to OSC 1 master
 
         bool  noiseOn = false;
         Params::NoiseType noiseType = Params::NoiseType::Analog;
@@ -125,16 +125,14 @@ public:
         if (ctx.crushOn)
             crusher.setParams (ctx.crushBits, ctx.crushDown);
 
-        using Sync = Params::SyncMode;
-        const Sync sync = ctx.syncMode;
-        const bool sync2 = sync == Sync::S2to1 || sync == Sync::S23to1 || sync == Sync::S2to1_3to2;
-        const bool sync3from1 = sync == Sync::S3to1 || sync == Sync::S23to1;
-        const bool sync3from2 = sync == Sync::S3to2 || sync == Sync::S2to1_3to2;
+        // OSC 1 is the sync master; OSC 2/3 hard-sync to it when their switch is on
+        const bool sync2 = ctx.oscSync[1];
+        const bool sync3 = ctx.oscSync[2];
 
         for (int s = 0; s < n; ++s)
         {
             float mix = 0.0f;
-            bool w1 = false, w2 = false;
+            bool w1 = false;
 
             if (ctx.oscOn[0])
             {
@@ -146,11 +144,10 @@ public:
                 if (sync2 && w1)
                     oscs[1].hardSync();
                 mix += oscs[1].tick (inc[1]) * ctx.oscLevel[1];
-                w2 = oscs[1].wrapped();
             }
             if (ctx.oscOn[2])
             {
-                if ((sync3from1 && w1) || (sync3from2 && w2))
+                if (sync3 && w1)
                     oscs[2].hardSync();
                 mix += oscs[2].tick (inc[2]) * ctx.oscLevel[2];
             }
