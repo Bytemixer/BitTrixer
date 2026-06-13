@@ -265,6 +265,7 @@ void SynthEngine::Instance::renderAdd (float* left, float* right, int n,
 void SynthEngine::prepare (double sampleRate, int /*maxBlockSize*/)
 {
     fs = sampleRate;
+    lofi.prepare ((float) sampleRate);
     for (auto& inst : instances)
         inst.prepare (sampleRate);
     reset();
@@ -284,6 +285,7 @@ void SynthEngine::reset()
     clock = 0;
     prevLoopOn = false;
     nextLoopTrigger = 0;
+    lofi.reset();
     masterGain = masterTarget = dbToGain (patch.masterVolDb);
 }
 
@@ -417,16 +419,12 @@ void SynthEngine::render (float* left, float* right, int numSamples)
 
         // master output stage: gain -> compression -> safety clip -> lo-fi
         //   compression: bfxr-style power-law density/punch (boosts quiet parts)
-        //   lo-fi:       sample-rate decimation + bit-depth quantization
+        //   lo-fi:       anti-aliased rate reduction + bit-depth quantization
         const float compExp = 1.0f - 0.7f * clampf (patch.compAmount, 0.0f, 1.0f);
         const bool  doComp  = patch.compAmount > 0.001f;
 
-        const float decimStep = patch.outRateHz < (float) fs
-                              ? (float) fs / patch.outRateHz : 1.0f;
-        const bool  doDecim = decimStep > 1.001f;
-
-        const float bitLevels = patch.out8bit ? 128.0f : 32768.0f;
-        const bool  doBits = patch.out8bit;
+        lofi.setRate (patch.outRateHz);
+        lofi.setBits8 (patch.out8bit);
 
         for (int s = 0; s < n; ++s)
         {
@@ -442,30 +440,7 @@ void SynthEngine::render (float* left, float* right, int numSamples)
                 rv = clampf (rv, -1.0f, 1.0f);
             }
 
-            if (doDecim)
-            {
-                // sample & hold: capture a new sample every decimStep samples,
-                // hold it in between (the staircase = lower effective rate)
-                if (decimCount <= 0.0f)
-                {
-                    decimCount += decimStep;
-                    decimHold = lv;
-                    decimHoldR = rv;
-                }
-                decimCount -= 1.0f;
-                lv = decimHold;
-                rv = decimHoldR;
-            }
-            else
-            {
-                decimCount = 0.0f;            // re-arm for the next time it engages
-            }
-
-            if (doBits)
-            {
-                lv = std::round (lv * bitLevels) / bitLevels;
-                rv = std::round (rv * bitLevels) / bitLevels;
-            }
+            lofi.process (lv, rv);
 
             l[s] = lv;
             r[s] = rv;
