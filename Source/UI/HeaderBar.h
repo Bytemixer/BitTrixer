@@ -12,6 +12,7 @@
 #pragma once
 
 #include "PanelCommon.h"
+#include "../Params.h"
 
 // ============================================================================
 //  HeaderBar — title, current preset name, and the file actions:
@@ -21,8 +22,21 @@
 class HeaderBar : public juce::Component
 {
 public:
-    HeaderBar()
+    explicit HeaderBar (juce::AudioProcessorValueTreeState& s)
     {
+        // global output sample rate lives in the top bar (it is a global
+        // format setting, not a per-section knob)
+        if (auto* choice = dynamic_cast<juce::AudioParameterChoice*> (s.getParameter (Params::id::outRate)))
+            rateBox.addItemList (choice->choices, 1);
+        rateAtt = std::make_unique<juce::AudioProcessorValueTreeState::ComboBoxAttachment> (
+            s, Params::id::outRate, rateBox);
+        addAndMakeVisible (rateBox);
+        rateLabel.setText ("RATE", juce::dontSendNotification);
+        rateLabel.setColour (juce::Label::textColourId, RetroColors::textDim);
+        rateLabel.setFont (juce::Font (juce::FontOptions (10.5f)));
+        rateLabel.setJustificationType (juce::Justification::centredRight);
+        addAndMakeVisible (rateLabel);
+
         presetLabel.setJustificationType (juce::Justification::centred);
         presetLabel.setColour (juce::Label::textColourId, RetroColors::text);
         presetLabel.setFont (juce::Font (juce::FontOptions (13.0f, juce::Font::italic)));
@@ -105,7 +119,10 @@ public:
         loadButton.setBounds (b.removeFromRight (64));
         b.removeFromRight (6);
         saveButton.setBounds (b.removeFromRight (64));
-        b.removeFromRight (6);
+        b.removeFromRight (10);
+        rateBox.setBounds (b.removeFromRight (78));
+        rateLabel.setBounds (b.removeFromRight (38));
+        b.removeFromRight (10);
         themeBox.setBounds (b.removeFromRight (92));
         presetLabel.setBounds (b.withTrimmedLeft (240));
     }
@@ -115,6 +132,9 @@ public:
 
 private:
     juce::Label presetLabel { {}, "Init" };
+    juce::Label rateLabel;
+    juce::ComboBox rateBox;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> rateAtt;
     juce::TextButton saveButton, loadButton, exportButton, aboutButton;
     juce::ComboBox themeBox;
 };

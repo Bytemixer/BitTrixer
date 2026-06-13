@@ -15,6 +15,7 @@ RetroForgeEditor::RetroForgeEditor (RetroForgeProcessor& p)
     : AudioProcessorEditor (p), proc (p),
       randomizer (p.apvts),
       presetManager (p.apvts),
+      header (p.apvts),
       generatorsPanel (p.apvts),
       filterPanel (p.apvts),
       envelopesPanel (p.apvts),
@@ -432,7 +433,7 @@ void RetroForgeEditor::resized()
     mid.removeFromTop (midArrowGap);
     envelopesPanel.setBounds (mid.removeFromTop (376));
     mid.removeFromTop (midArrowGap);
-    vcaPanel.setBounds (mid.removeFromLeft (236));
+    vcaPanel.setBounds (mid.removeFromLeft (200));
     mid.removeFromLeft (gap);
     scopePanel.setBounds (mid);
 
@@ -447,9 +448,9 @@ void RetroForgeEditor::resized()
     lfoRow.removeFromLeft (gap);
     stepLfoPanel.setBounds (lfoRow);
     right.removeFromTop (gap);
-    modMatrixPanel.setBounds (right.removeFromTop (160));
+    modMatrixPanel.setBounds (right.removeFromTop (146));
     right.removeFromTop (gap);
-    triggerPanel.setBounds (right.removeFromTop (120));
+    triggerPanel.setBounds (right.removeFromTop (146));
     right.removeFromTop (gap);
     randomizerPanel.setBounds (right);
 }
