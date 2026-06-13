@@ -93,11 +93,16 @@ private:
             auto b = getLocalBounds().reduced (2, 2);
             b.removeFromTop (14);                    // tag strip
 
-            auto right = b.removeFromRight (124);
-            display.setBounds (right.removeFromTop (46));
-            right.removeFromTop (2);
-            invert.setBounds (right.removeFromBottom (20).withTrimmedLeft (26));
-            curve.setBounds (right.withSizeKeepingCentre (64, right.getHeight()));
+            // CURVE pot + INV switch get the side column, spread vertically
+            auto right = b.removeFromRight (76);
+            invert.setBounds (right.removeFromBottom (24).withTrimmedLeft (16));
+            right.removeFromBottom (6);
+            curve.setBounds (right);                 // label + knob, room to breathe
+            b.removeFromRight (6);
+
+            // envelope shape window sits ABOVE the (now shorter) faders
+            display.setBounds (b.removeFromTop (52));
+            b.removeFromTop (4);
 
             const int fw = b.getWidth() / 4;
             a.setBounds  (b.removeFromLeft (fw).reduced (4, 0));
