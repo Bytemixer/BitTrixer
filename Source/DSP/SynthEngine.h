@@ -21,6 +21,7 @@
 #include "ModMatrix.h"
 #include "Phaser.h"
 #include "Flanger.h"
+#include "FxChain.h"
 #include "LofiStage.h"
 #include "../Params.h"
 
