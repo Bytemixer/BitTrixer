@@ -104,6 +104,14 @@ public:
         driftLp = 0.0f;
     }
 
+    // retrigger: restart the oscillators (the amp env hard-restarts from 0,
+    // so the phase reset is masked — no click)
+    void retrigger() noexcept
+    {
+        for (auto& o : oscs)
+            o.reset (0.0f);
+    }
+
     void renderAdd (float* left, float* right, int n, const SubBlockCtx& ctx) noexcept
     {
         // ---- slow analog drift: one random-walk step per sub-block ----

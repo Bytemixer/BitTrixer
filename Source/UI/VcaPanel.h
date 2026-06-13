@@ -15,7 +15,9 @@
 #include "../Params.h"
 
 // ============================================================================
-//  VcaPanel — VCA drive ("preamp push") and master output volume.
+//  VcaPanel — the output section: VCA drive ("preamp push"), compression
+//  (density/punch), master volume, plus the lo-fi output format (sample
+//  rate + bit depth) baked into the rendered/exported sound.
 // ============================================================================
 
 class VcaPanel : public SectionPanel
@@ -24,20 +26,43 @@ public:
     explicit VcaPanel (juce::AudioProcessorValueTreeState& s)
         : SectionPanel ("VCA / Output"),
           drive  (s, Params::id::vcaDrive,  "DRIVE"),
-          master (s, Params::id::masterVol, "MASTER")
+          comp   (s, Params::id::comp,      "COMP"),
+          master (s, Params::id::masterVol, "MASTER"),
+          rate   (s, Params::id::outRate),
+          bits   (s, Params::id::outBits, "8-BIT")
     {
         addAndMakeVisible (drive);
+        addAndMakeVisible (comp);
         addAndMakeVisible (master);
+        rateLabel.setText ("RATE", juce::dontSendNotification);
+        rateLabel.setColour (juce::Label::textColourId, RetroColors::textDim);
+        rateLabel.setFont (juce::Font (juce::FontOptions (10.5f)));
+        addAndMakeVisible (rateLabel);
+        addAndMakeVisible (rate);
+        addAndMakeVisible (bits);
     }
 
     void resized() override
     {
         auto b = content();
-        const int kw = b.getWidth() / 2;
-        drive.setBounds (b.removeFromLeft (kw).reduced (12, 0));
-        master.setBounds (b.reduced (12, 0));
+
+        // output-format row at the bottom: RATE selector + 8-bit switch
+        auto bottom = b.removeFromBottom (24);
+        rateLabel.setBounds (bottom.removeFromLeft (32));
+        rate.setBounds (bottom.removeFromLeft (94));
+        bottom.removeFromLeft (6);
+        bits.setBounds (bottom);
+
+        // DRIVE / COMP / MASTER knobs
+        const int kw = b.getWidth() / 3;
+        drive.setBounds (b.removeFromLeft (kw));
+        comp.setBounds  (b.removeFromLeft (kw));
+        master.setBounds (b);
     }
 
 private:
-    LabeledKnob drive, master;
+    LabeledKnob  drive, comp, master;
+    juce::Label  rateLabel;
+    ChoiceCombo  rate;
+    SwitchToggle bits;
 };

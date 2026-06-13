@@ -30,6 +30,7 @@ public:
           gate (s, Params::id::gateTime, "GATE"),
           loopOn (s, Params::id::loopOn, "LOOP"),
           loopRate (s, Params::id::loopRate, "INTERVAL"),
+          retrig (s, Params::id::retrigRate, "RETRIG"),
           autoVar (s, Params::id::autoVarOn, "AUTO"),
           varAmt (s, Params::id::autoVarAmt, "VAR AMT")
     {
@@ -50,6 +51,7 @@ public:
         addAndMakeVisible (gate);
         addAndMakeVisible (loopOn);
         addAndMakeVisible (loopRate);
+        addAndMakeVisible (retrig);
         addAndMakeVisible (autoVar);
         addAndMakeVisible (varAmt);
     }
@@ -57,22 +59,25 @@ public:
     void resized() override
     {
         auto b = content();
-        trigger.setBounds (b.removeFromLeft (108).reduced (2));
+        trigger.setBounds (b.removeFromLeft (96).reduced (2));
         b.removeFromLeft (6);
 
+        // top row of knobs: GATE, INTERVAL, RETRIG
         auto top = b.removeFromTop (b.getHeight() / 2);
         const int cw = top.getWidth() / 3;
         gate.setBounds (top.removeFromLeft (cw));
         loopRate.setBounds (top.removeFromLeft (cw));
-        loopOn.setBounds (top.withSizeKeepingCentre (top.getWidth(), 20));
+        retrig.setBounds (top);
 
-        const int cw2 = b.getWidth() / 3;
-        varAmt.setBounds (b.removeFromLeft (cw2));
-        auto sw = b.removeFromLeft (cw2);
-        autoVar.setBounds (sw.withSizeKeepingCentre (sw.getWidth(), 20));
-        auto btns = b.reduced (2, 4);
-        variateButton.setBounds (btns.removeFromTop (btns.getHeight() / 2).reduced (0, 2));
-        undoButton.setBounds (btns.reduced (0, 2));
+        // bottom: VAR AMT | LOOP+AUTO switches | VARIATE+UNDO buttons
+        const int bw = b.getWidth() / 3;
+        varAmt.setBounds (b.removeFromLeft (bw));
+        auto sw = b.removeFromLeft (bw);
+        loopOn.setBounds (sw.removeFromTop (sw.getHeight() / 2).withSizeKeepingCentre (sw.getWidth(), 18));
+        autoVar.setBounds (sw.withSizeKeepingCentre (sw.getWidth(), 18));
+        auto btns = b.reduced (2, 2);
+        variateButton.setBounds (btns.removeFromTop (btns.getHeight() / 2).reduced (0, 1));
+        undoButton.setBounds (btns.reduced (0, 1));
     }
 
     std::function<void()> onTrigger, onVariate, onUndo;
@@ -82,7 +87,7 @@ private:
     juce::TextButton variateButton, undoButton;
     LabeledKnob gate;
     SwitchToggle loopOn;
-    LabeledKnob loopRate;
+    LabeledKnob loopRate, retrig;
     SwitchToggle autoVar;
     LabeledKnob varAmt;
 };
