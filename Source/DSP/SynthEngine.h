@@ -21,6 +21,7 @@
 #include "ModMatrix.h"
 #include "Phaser.h"
 #include "Flanger.h"
+#include "LofiStage.h"
 #include "../Params.h"
 
 // ============================================================================
@@ -124,9 +125,8 @@ private:
     float masterGain = 0.5f;
     float masterTarget = 0.5f;
 
-    // master output lo-fi stage (sample-rate decimation + bit quantization)
-    float decimHold = 0.0f, decimHoldR = 0.0f;
-    float decimCount = 0.0f;
+    // master output lo-fi stage (anti-aliased rate reduction + bit crush)
+    LofiStage lofi;
 
     uint32_t rng = 0x5EEDF00Du;
 };
