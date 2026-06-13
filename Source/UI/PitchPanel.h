@@ -29,7 +29,6 @@ public:
           detune   (s, Params::id::uniDetune, "DETUNE"),
           spread   (s, Params::id::uniSpread, "SPREAD"),
           midiTrack (s, Params::id::midiTrack, "MIDI PITCH"),
-          sync     (s, Params::id::oscSync),
           j1Amt  (s, Params::id::pj1Amt,  "JUMP1 ST"),
           j1Time (s, Params::id::pj1Time, "JUMP1 AT"),
           j2Amt  (s, Params::id::pj2Amt,  "JUMP2 ST"),
@@ -44,21 +43,13 @@ public:
         addAndMakeVisible (j2Amt);
         addAndMakeVisible (j2Time);
         addAndMakeVisible (midiTrack);
-
-        syncLabel.setText ("SYNC", juce::dontSendNotification);
-        syncLabel.setColour (juce::Label::textColourId, RetroColors::textDim);
-        syncLabel.setFont (juce::Font (juce::FontOptions (10.5f)));
-        addAndMakeVisible (syncLabel);
-        addAndMakeVisible (sync);
     }
 
     void resized() override
     {
         auto b = content();
         auto sw = b.removeFromBottom (20);
-        midiTrack.setBounds (sw.removeFromLeft (130).withTrimmedLeft (4));
-        syncLabel.setBounds (sw.removeFromLeft (38));
-        sync.setBounds (sw.reduced (0, 0));
+        midiTrack.setBounds (sw.withTrimmedLeft (4));
 
         auto row1 = b.removeFromTop (b.getHeight() / 2);
         const int kw = row1.getWidth() / 4;
@@ -77,7 +68,5 @@ public:
 private:
     LabeledKnob baseFreq, voices, detune, spread;
     SwitchToggle midiTrack;
-    juce::Label syncLabel;
-    ChoiceCombo sync;
     LabeledKnob j1Amt, j1Time, j2Amt, j2Time;
 };

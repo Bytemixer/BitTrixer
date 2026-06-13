@@ -32,6 +32,8 @@ namespace Params
     enum class OscWave  { Sine = 0, Triangle, Square, Saw, RevSaw, SuperSaw, Tan, Breaker };
     enum class NoiseType { Analog = 0, LfsrHiss, LfsrBuzz, Rasp };
     enum class LfoWave  { Sine = 0, Triangle, Saw, RevSaw, Square, SampleHold, SampleGlide };
+    // Osc sync: OSC 1 is always the master; each other oscillator has its own
+    // sync switch that hard-syncs it to OSC 1 (per-osc bool, see OscPatch).
     enum class ModSrc   { Off = 0, Lfo1, Lfo2, FilterEnv, AmpEnv };
     enum class ModDest  { Off = 0, AllPitch, Osc1Pitch, Osc2Pitch, Osc3Pitch,
                           Pwm, Fold, NoiseLevel, Cutoff, Resonance,
@@ -47,8 +49,6 @@ namespace Params
     inline const juce::StringArray polesNames    { "2-Pole", "4-Pole" };
 
     // hard-sync routing: slave oscillators reset phase when the master wraps
-    enum class SyncMode { Off = 0, S2to1, S3to1, S23to1, S3to2, S2to1_3to2 };
-    inline const juce::StringArray syncNames     { "Off", "2>1", "3>1", "2+3>1", "3>2", "2>1 3>2" };
 
     // ---- ID helpers ----
     inline juce::String oscId  (int osc1Based, const char* suffix)  { return "osc"  + juce::String (osc1Based) + "_" + suffix; }
@@ -59,7 +59,6 @@ namespace Params
     {
         inline constexpr const char* baseFreq    = "base_freq";
         inline constexpr const char* midiTrack   = "midi_track";
-        inline constexpr const char* oscSync     = "osc_sync";
 
         // discrete pitch jumps (the sfxr/bfxr/jfxr "arpeggio" ingredient)
         inline constexpr const char* pj1Amt      = "pj1_amt";
@@ -126,6 +125,7 @@ namespace Params
     struct OscPatch
     {
         bool    on = false;
+        bool    sync = false;        // hard-sync this osc to OSC 1 (ignored for OSC 1)
         OscWave wave = OscWave::Square;
         float   pitchSemis = 0.0f;   // coarse, semitones
         float   fineCents  = 0.0f;
@@ -163,7 +163,6 @@ namespace Params
         std::array<OscPatch, kNumOscs> osc;
         float baseFreqHz = 440.0f;
         bool  midiTrack  = false;
-        SyncMode syncMode = SyncMode::Off;
 
         float pj1AmtSemis = 0.0f;   // 0 = jump disabled
         float pj1TimeSec  = 0.08f;
@@ -240,11 +239,12 @@ namespace Params
                 oscPwm[i]   = get (oscId (i + 1, "pwm"));
                 oscFold[i]  = get (oscId (i + 1, "fold"));
                 oscLevel[i] = get (oscId (i + 1, "level"));
+                // OSC 1 is the master; only OSC 2/3 carry a sync param
+                oscSync[i]  = i == 0 ? nullptr : get (oscId (i + 1, "sync"));
             }
 
             baseFreq  = get (id::baseFreq);
             midiTrack = get (id::midiTrack);
-            oscSync   = get (id::oscSync);
             pj1Amt    = get (id::pj1Amt);
             pj1Time   = get (id::pj1Time);
             pj2Amt    = get (id::pj2Amt);
@@ -317,6 +317,7 @@ namespace Params
             {
                 auto& o = p.osc[(size_t) i];
                 o.on         = oscOn[i]->load() > 0.5f;
+                o.sync       = oscSync[i] != nullptr && oscSync[i]->load() > 0.5f;
                 o.wave       = (OscWave) (int) oscWave[i]->load();
                 o.pitchSemis = oscPitch[i]->load();
                 o.fineCents  = oscFine[i]->load();
@@ -327,7 +328,6 @@ namespace Params
 
             p.baseFreqHz = baseFreq->load();
             p.midiTrack  = midiTrack->load() > 0.5f;
-            p.syncMode   = (SyncMode) (int) oscSync->load();
             p.pj1AmtSemis = pj1Amt->load();
             p.pj1TimeSec  = pj1Time->load();
             p.pj2AmtSemis = pj2Amt->load();
@@ -400,6 +400,7 @@ namespace Params
         }
 
         std::atomic<float>* oscOn[kNumOscs] {};
+        std::atomic<float>* oscSync[kNumOscs] {};   // [0] null (OSC 1 master)
         std::atomic<float>* oscWave[kNumOscs] {};
         std::atomic<float>* oscPitch[kNumOscs] {};
         std::atomic<float>* oscFine[kNumOscs] {};
@@ -409,7 +410,6 @@ namespace Params
 
         std::atomic<float>* baseFreq {};
         std::atomic<float>* midiTrack {};
-        std::atomic<float>* oscSync {};
         std::atomic<float>* pj1Amt {};
         std::atomic<float>* pj1Time {};
         std::atomic<float>* pj2Amt {};
@@ -525,6 +525,8 @@ namespace Params
         {
             const auto n = "Osc " + String (i) + " ";
             layout.add (std::make_unique<AudioParameterBool>  (ParameterID { oscId (i, "on"), 1 },    n + "On", i == 1));
+            if (i > 1)   // OSC 1 is the sync master; OSC 2/3 can sync to it
+                layout.add (std::make_unique<AudioParameterBool> (ParameterID { oscId (i, "sync"), 1 }, n + "Sync", false));
             layout.add (std::make_unique<AudioParameterChoice>(ParameterID { oscId (i, "wave"), 1 },  n + "Wave", oscWaveNames, (int) OscWave::Square));
             layout.add (std::make_unique<AudioParameterFloat> (ParameterID { oscId (i, "pitch"), 1 }, n + "Pitch",
                             NormalisableRange<float> (-24.0f, 24.0f, 1.0f), 0.0f, semiAttr));
@@ -542,7 +544,6 @@ namespace Params
         layout.add (std::make_unique<AudioParameterFloat> (ParameterID { id::baseFreq, 1 }, "Base Freq",
                         freqRange (20.0f, 4000.0f), 440.0f, hzAttr));
         layout.add (std::make_unique<AudioParameterBool>  (ParameterID { id::midiTrack, 1 }, "MIDI Pitch Track", false));
-        layout.add (std::make_unique<AudioParameterChoice>(ParameterID { id::oscSync, 1 },  "Osc Sync", syncNames, 0));
 
         layout.add (std::make_unique<AudioParameterFloat> (ParameterID { id::pj1Amt, 1 },  "Pitch Jump 1 Amount",
                         NormalisableRange<float> (-24.0f, 24.0f, 1.0f), 0.0f, semiAttr));

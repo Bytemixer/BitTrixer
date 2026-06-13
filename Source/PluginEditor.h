@@ -19,8 +19,7 @@
 #include "UI/Theme.h"
 #include "UI/ThemeEditor.h"
 #include "UI/HeaderBar.h"
-#include "UI/OscPanel.h"
-#include "UI/NoisePanel.h"
+#include "UI/GeneratorsPanel.h"
 #include "UI/PitchPanel.h"
 #include "UI/FilterPanel.h"
 #include "UI/EnvPanel.h"
@@ -60,8 +59,7 @@ private:
     WavExporter wavExporter;
 
     HeaderBar header;
-    OscPanel osc1, osc2, osc3;
-    NoisePanel noisePanel;
+    GeneratorsPanel generatorsPanel;
     FilterPanel filterPanel;
     EnvPanel envFPanel, envAPanel;
     VcaPanel vcaPanel;
