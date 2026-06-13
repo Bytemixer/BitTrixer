@@ -17,7 +17,7 @@
 #include "Flanger.h"
 #include "RingMod.h"
 #include "Tremolo.h"
-#include "AutoWah.h"
+#include "Formant.h"
 #include "Delay.h"
 
 // ============================================================================
@@ -32,10 +32,10 @@
 //    Crush   : Bits(2..16)      Downsample(1..32)   Mix
 //    Phaser  : Rate(0.05..8Hz)  Depth               Feedback
 //    Flanger : Rate(0.05..8Hz)  Depth               Feedback
-//    RingMod : Freq(20..4000Hz) Mix                 (unused)
-//    Tremolo : Rate(0.1..30Hz)  Depth               Shape(sine..square)
-//    Wah     : Freq(100..1500)  Reso                Sense
-//    Delay   : Time(1..400ms)   Feedback            Mix
+//    RingMod : Freq(20..4000Hz) Wet/Dry             (carrier wave via setWave)
+//    Tremolo : Rate(0.01..70Hz) Depth               (LFO wave via setWave)
+//    Formant : Vowel(a..u)      Reso                Wet/Dry
+//    Delay   : Time(1..400ms)   Feedback            Wet/Dry
 // ============================================================================
 
 class FxChain
@@ -45,7 +45,7 @@ public:
 
     enum class Type
     {
-        Off = 0, Crush, Phaser, Flanger, RingMod, Tremolo, Wah, Delay, kNumTypes
+        Off = 0, Crush, Phaser, Flanger, RingMod, Tremolo, Formant, Delay, kNumTypes
     };
 
     struct SlotConfig
@@ -96,21 +96,21 @@ private:
         Flanger  flanger;
         RingMod  ring;
         Tremolo  trem;
-        AutoWah  wah;
+        Formant  formant;
         Delay    delay;
 
         void prepare (double sr) noexcept
         {
             crushL.reset(); crushR.reset();
             phaser.prepare (sr); flanger.prepare (sr); ring.prepare (sr);
-            trem.prepare (sr);   wah.prepare (sr);     delay.prepare (sr);
+            trem.prepare (sr);   formant.prepare (sr); delay.prepare (sr);
         }
 
         void retrigger() noexcept
         {
             crushL.reset(); crushR.reset();
             phaser.retrigger(); flanger.retrigger(); ring.retrigger();
-            trem.retrigger();   wah.retrigger();     delay.retrigger();
+            trem.retrigger();   formant.retrigger(); delay.retrigger();
         }
 
         void configure (Type t, float a, float b, float c) noexcept
@@ -126,8 +126,8 @@ private:
                 case Type::Phaser:  phaser.setParams  (0.05f + a * 7.95f, b, c); break;
                 case Type::Flanger: flanger.setParams (0.05f + a * 7.95f, b, c); break;
                 case Type::RingMod: ring.setParams    (20.0f + a * 3980.0f, b);  break;
-                case Type::Tremolo: trem.setParams    (0.1f + a * 29.9f, b, c);  break;
-                case Type::Wah:     wah.setParams     (100.0f + a * 1400.0f, b, c); break;
+                case Type::Tremolo: trem.setParams    (0.01f + a * 69.99f, b);   break;
+                case Type::Formant: formant.setParams (a, b, c);                 break;
                 case Type::Delay:   delay.setParams   (1.0f + a * 399.0f, b, c); break;
                 default: break;
             }
@@ -150,7 +150,7 @@ private:
                 case Type::Flanger: flanger.process (l, r, n); break;
                 case Type::RingMod: ring.process    (l, r, n); break;
                 case Type::Tremolo: trem.process    (l, r, n); break;
-                case Type::Wah:     wah.process      (l, r, n); break;
+                case Type::Formant: formant.process (l, r, n); break;
                 case Type::Delay:   delay.process   (l, r, n); break;
                 default: break;   // Off: passthrough
             }

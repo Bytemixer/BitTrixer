@@ -50,7 +50,7 @@ namespace Params
                                                    "LFO1 Rate", "LFO2 Rate", "VCA Level" };
     inline const juce::StringArray polesNames    { "2-Pole", "4-Pole" };
     inline const juce::StringArray rateNames     { "48 kHz", "44.1 kHz", "22 kHz", "11 kHz", "8 kHz" };
-    inline const juce::StringArray fxTypeNames   { "Off", "Crush", "Phaser", "Flanger", "Ring Mod", "Tremolo", "Wah", "Delay" };  // mirror FxChain::Type
+    inline const juce::StringArray fxTypeNames   { "Off", "Crush", "Phaser", "Flanger", "Ring Mod", "Tremolo", "Formant", "Delay" };  // mirror FxChain::Type
 
     inline float rateChoiceToHz (int choice) noexcept
     {

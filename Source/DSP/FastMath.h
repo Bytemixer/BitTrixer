@@ -45,6 +45,20 @@ namespace FastMath
         return sinCycle (radians * invTwoPi);
     }
 
+    // selectable -1..1 waveform over a 0..1 cycle, for LFO / carrier shapes:
+    // 0 = sine, 1 = triangle, 2 = square, 3 = saw. Pure (no state).
+    inline float waveCycle (int type, float p) noexcept
+    {
+        p -= std::floor (p);
+        switch (type)
+        {
+            case 1:  return 1.0f - 4.0f * std::fabs (p - 0.5f);   // triangle
+            case 2:  return p < 0.5f ? 1.0f : -1.0f;              // square
+            case 3:  return 2.0f * p - 1.0f;                      // saw
+            default: return sinCycle (p);                         // sine
+        }
+    }
+
     // tanh with a hard input clamp: identical saturation curve everywhere,
     // exactly +/-1 beyond |x| = 3 (no divergence, no NaN).
     inline float tanh (float x) noexcept
