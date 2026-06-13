@@ -81,8 +81,7 @@ private:
         Envelope envF, envA;
         LFO lfo1;            // LFO 1: classic LFO
         StepLFO stepLfo;     // LFO 2: step sequencer (the RetroForge twist)
-        Phaser phaser;       // per-instance FX: retrigger with the sound,
-        Flanger flanger;     // applied to the summed unison stack
+        FxChain fxChain;     // per-instance effect chain (retriggers with the sound)
         std::array<Voice, Params::kMaxUnison> voices;
         int numVoices = 1;
 
