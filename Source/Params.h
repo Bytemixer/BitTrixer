@@ -28,6 +28,7 @@ namespace Params
     inline constexpr int   kNumModSlots = 6;
     inline constexpr int   kMaxUnison   = 16;
     inline constexpr int   kMaxSteps    = 8;
+    inline constexpr int   kFxSlots     = 6;     // reorderable FX chain slots (mirror FxChain::kSlots)
 
     // ---- enum orderings (must match the choice arrays below) ----
     enum class OscWave  { Sine = 0, Triangle, Square, Saw, RevSaw, SuperSaw, Tan, Breaker };
@@ -49,6 +50,7 @@ namespace Params
                                                    "LFO1 Rate", "LFO2 Rate", "VCA Level" };
     inline const juce::StringArray polesNames    { "2-Pole", "4-Pole" };
     inline const juce::StringArray rateNames     { "48 kHz", "44.1 kHz", "22 kHz", "11 kHz", "8 kHz" };
+    inline const juce::StringArray fxTypeNames   { "Off", "Crush", "Phaser", "Flanger", "Ring Mod", "Tremolo", "Wah", "Delay" };  // mirror FxChain::Type
 
     inline float rateChoiceToHz (int choice) noexcept
     {
@@ -64,6 +66,7 @@ namespace Params
     inline juce::String lfoId  (int lfo1Based, const char* suffix)  { return "lfo"  + juce::String (lfo1Based) + "_" + suffix; }
     inline juce::String modId  (int slot1Based, const char* suffix) { return "mod"  + juce::String (slot1Based) + "_" + suffix; }
     inline juce::String stepValId (int step1Based)                  { return "step_val" + juce::String (step1Based); }
+    inline juce::String fxId   (int slot1Based, const char* suffix) { return "fxslot" + juce::String (slot1Based) + "_" + suffix; }
 
     namespace id
     {
@@ -237,6 +240,12 @@ namespace Params
         float flangeRate = 0.5f;
         float flangeDepth = 0.5f;
         float flangeFb = 0.4f;
+
+        // reorderable FX chain: per-slot type index (FxChain::Type) + 3 generic params A/B/C
+        std::array<int,   kFxSlots> fxSlotType { 0, 0, 0, 0, 0, 0 };
+        std::array<float, kFxSlots> fxSlotA { 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f };
+        std::array<float, kFxSlots> fxSlotB { 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f };
+        std::array<float, kFxSlots> fxSlotC { 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f };
     };
 
     // ------------------------------------------------------------------
@@ -343,6 +352,14 @@ namespace Params
             flangeRate  = get (id::flangeRate);
             flangeDepth = get (id::flangeDepth);
             flangeFb    = get (id::flangeFb);
+
+            for (int k = 0; k < kFxSlots; ++k)
+            {
+                fxSlotType[k] = get (fxId (k + 1, "type"));
+                fxSlotA[k]    = get (fxId (k + 1, "a"));
+                fxSlotB[k]    = get (fxId (k + 1, "b"));
+                fxSlotC[k]    = get (fxId (k + 1, "c"));
+            }
         }
 
         Patch read() const
@@ -441,6 +458,14 @@ namespace Params
             p.flangeRate  = flangeRate->load();
             p.flangeDepth = flangeDepth->load();
             p.flangeFb    = flangeFb->load();
+
+            for (int k = 0; k < kFxSlots; ++k)
+            {
+                p.fxSlotType[(size_t) k] = (int) fxSlotType[k]->load();
+                p.fxSlotA[(size_t) k]    = fxSlotA[k]->load();
+                p.fxSlotB[(size_t) k]    = fxSlotB[k]->load();
+                p.fxSlotC[(size_t) k]    = fxSlotC[k]->load();
+            }
             return p;
         }
 
@@ -516,6 +541,11 @@ namespace Params
         std::atomic<float>* flangeRate {};
         std::atomic<float>* flangeDepth {};
         std::atomic<float>* flangeFb {};
+
+        std::atomic<float>* fxSlotType[kFxSlots] {};
+        std::atomic<float>* fxSlotA[kFxSlots] {};
+        std::atomic<float>* fxSlotB[kFxSlots] {};
+        std::atomic<float>* fxSlotC[kFxSlots] {};
     };
 
     // ------------------------------------------------------------------
@@ -749,6 +779,19 @@ namespace Params
                         NormalisableRange<float> (0.0f, 1.0f, 0.001f), 0.5f, unitAttr));
         layout.add (std::make_unique<AudioParameterFloat> (ParameterID { id::flangeFb, 1 },    "Flanger Feedback",
                         NormalisableRange<float> (0.0f, 0.95f, 0.001f), 0.4f, unitAttr));
+
+        // ---- reorderable FX chain slots (type + 3 generic A/B/C params each) ----
+        for (int k = 1; k <= kFxSlots; ++k)
+        {
+            const auto n = "FX " + String (k) + " ";
+            layout.add (std::make_unique<AudioParameterChoice>(ParameterID { fxId (k, "type"), 1 }, n + "Type", fxTypeNames, 0));
+            layout.add (std::make_unique<AudioParameterFloat> (ParameterID { fxId (k, "a"), 1 }, n + "A",
+                            NormalisableRange<float> (0.0f, 1.0f, 0.001f), 0.5f, unitAttr));
+            layout.add (std::make_unique<AudioParameterFloat> (ParameterID { fxId (k, "b"), 1 }, n + "B",
+                            NormalisableRange<float> (0.0f, 1.0f, 0.001f), 0.5f, unitAttr));
+            layout.add (std::make_unique<AudioParameterFloat> (ParameterID { fxId (k, "c"), 1 }, n + "C",
+                            NormalisableRange<float> (0.0f, 1.0f, 0.001f), 0.5f, unitAttr));
+        }
 
         return layout;
     }
