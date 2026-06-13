@@ -29,12 +29,13 @@ RetroForgeEditor::RetroForgeEditor (RetroForgeProcessor& p)
 {
     setLookAndFeel (&lookAndFeel);
 
+    addAndMakeVisible (content);
     for (auto* c : std::initializer_list<juce::Component*> {
              &header, &generatorsPanel, &filterPanel,
              &envelopesPanel, &vcaPanel, &pitchPanel,
              &lfo1Panel, &stepLfoPanel, &modMatrixPanel,
              &triggerPanel, &randomizerPanel, &scopePanel, &fxPanel })
-        addAndMakeVisible (c);
+        content.addAndMakeVisible (c);
 
     // ---- wiring ----
     triggerPanel.onTrigger = [this] { proc.uiOneShot(); };
@@ -102,14 +103,21 @@ RetroForgeEditor::RetroForgeEditor (RetroForgeProcessor& p)
     {
         lookAndFeel.applyThemeColours();
         sendLookAndFeelChange();
+        content.repaint();
         repaint();
     };
     themeEditor.setVisible (false);
-    addChildComponent (themeEditor);
+    addChildComponent (themeEditor);       // fullscreen overlay (unscaled)
     themeManager.onThemeChanged();   // apply persisted theme on open
 
     header.setPresetName (presetManager.getCurrentName());
-    setSize (1180, 850);
+
+    // resizable, aspect-locked: the design is 1180x850, everything scales
+    setResizable (true, true);
+    setResizeLimits (1004, 723, 2360, 1700);   // ~0.85x .. 2x
+    if (auto* c = getConstrainer())
+        c->setFixedAspectRatio (1180.0 / 850.0);
+    setSize (1475, 1063);                       // 1.25x default (bigger knobs)
 }
 
 RetroForgeEditor::~RetroForgeEditor()
@@ -123,6 +131,11 @@ void RetroForgeEditor::previewSound()
 }
 
 void RetroForgeEditor::paint (juce::Graphics& g)
+{
+    g.fillAll (RetroColors::background);   // fills any letterbox margin
+}
+
+void RetroForgeEditor::paintContent (juce::Graphics& g)
 {
     g.fillAll (RetroColors::background);
     drawSignalTraces (g);
@@ -403,7 +416,18 @@ void RetroForgeEditor::resized()
 {
     themeEditor.setBounds (getLocalBounds());
 
-    auto b = getLocalBounds();
+    // the layout is authored at a fixed design size; scale the content holder
+    // to the actual window (aspect ratio is locked, so the scale is uniform)
+    constexpr int baseW = 1180, baseH = 850;
+    const float scale = (float) getWidth() / (float) baseW;
+    content.setTransform (juce::AffineTransform::scale (scale));
+    content.setBounds (0, 0, baseW, baseH);
+    layoutPanels ({ 0, 0, baseW, baseH });
+}
+
+void RetroForgeEditor::layoutPanels (juce::Rectangle<int> bounds)
+{
+    auto b = bounds;
     header.setBounds (b.removeFromTop (46));
     b.reduce (8, 8);
     constexpr int gap = 6;        // vertical gap within the right column
