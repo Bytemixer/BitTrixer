@@ -49,7 +49,9 @@ public:
 
 private:
     void previewSound();
+    void paintContent (juce::Graphics&);
     void drawSignalTraces (juce::Graphics&);
+    void layoutPanels (juce::Rectangle<int> bounds);
 
     RetroForgeProcessor& proc;
 
@@ -58,6 +60,16 @@ private:
     Randomizer randomizer;
     PresetManager presetManager;
     WavExporter wavExporter;
+
+    // the whole UI lives at a fixed "design" resolution inside this holder,
+    // which is scaled by a transform so everything resizes proportionally
+    struct Content : juce::Component
+    {
+        explicit Content (RetroForgeEditor& e) : owner (e) {}
+        void paint (juce::Graphics& g) override { owner.paintContent (g); }
+        RetroForgeEditor& owner;
+    };
+    Content content { *this };
 
     HeaderBar header;
     GeneratorsPanel generatorsPanel;
