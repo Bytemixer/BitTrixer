@@ -13,6 +13,7 @@
 
 #include <cmath>
 #include <array>
+#include <algorithm>
 
 // ============================================================================
 //  StepLFO — a step-sequencer LFO (the unique RetroForge twist). Advances
@@ -36,17 +37,18 @@ public:
 
     void retrigger() noexcept
     {
-        phase = 0.0f;
+        elapsed = 0.0f;
         step = 0;
         age = 0.0f;
         glided = stepVals[0];
         lastOut = 0.0f;
     }
 
-    void setRate  (float hz) noexcept       { rateHz = hz < 0.0f ? 0.0f : hz; }
+    void setRate  (float hz) noexcept       { rateHz = hz < 0.01f ? 0.01f : hz; }
     void setDelay (float seconds) noexcept  { delaySec = seconds < 0.0f ? 0.0f : seconds; }
     void setSteps (int n) noexcept          { numSteps = n < 2 ? 2 : (n > kMaxSteps ? kMaxSteps : n); }
-    void setSmooth (bool s) noexcept        { smooth = s; }
+    void setGlide (float g) noexcept        { glide = g < 0.0f ? 0.0f : (g > 1.0f ? 1.0f : g); }
+    void setSkew  (float s) noexcept        { skew = s < -1.0f ? -1.0f : (s > 1.0f ? 1.0f : s); }
     void setStepValue (int i, float v) noexcept
     {
         if (i >= 0 && i < kMaxSteps)
@@ -58,21 +60,23 @@ public:
 
     float tick() noexcept
     {
-        const float inc = rateHz / fs;        // rateHz = steps per second
-        phase += inc;
-        if (phase >= 1.0f)
+        // SKEW staggers durations: even steps shorter / odd longer (or vice
+        // versa). A two-step pattern with skew makes step 1 short, step 2 long.
+        const float dur = stepDuration (step);
+        elapsed += 1.0f / fs;
+        if (elapsed >= dur)
         {
-            phase -= 1.0f;
+            elapsed -= dur;
             step = (step + 1) % numSteps;
         }
 
         const float target = stepVals[(size_t) step];
         float out;
-        if (smooth)
+        if (glide > 0.001f)
         {
-            // glide over a quarter of a step's duration
-            const float tau = 0.25f / (rateHz > 0.1f ? rateHz : 0.1f);
-            const float a = 1.0f - std::exp (-1.0f / (tau * fs));
+            // glide over up to half the step duration as the knob opens
+            const float tau = glide * stepDuration (step) * 0.5f;
+            const float a = 1.0f - std::exp (-1.0f / (std::max (0.0001f, tau) * fs));
             glided += a * (target - glided);
             out = glided;
         }
@@ -94,15 +98,23 @@ public:
     }
 
 private:
+    float stepDuration (int s) const noexcept
+    {
+        const float base = 1.0f / rateHz;        // average step length (seconds)
+        const float k = (s & 1) ? (1.0f + skew * 0.85f) : (1.0f - skew * 0.85f);
+        return base * k;
+    }
+
     float fs = 44100.0f;
     float rateHz = 8.0f;
     float delaySec = 0.0f;
     int   numSteps = 4;
     int   step = 0;
-    float phase = 0.0f;
+    float elapsed = 0.0f;
     float age = 0.0f;
     float glided = 0.0f;
     float lastOut = 0.0f;
-    bool  smooth = false;
+    float glide = 0.0f;
+    float skew = 0.0f;
     std::array<float, kMaxSteps> stepVals {};
 };

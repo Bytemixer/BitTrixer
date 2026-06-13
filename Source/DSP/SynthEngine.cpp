@@ -134,7 +134,8 @@ void SynthEngine::Instance::renderAdd (float* left, float* right, int n,
     stepLfo.setRate (p.lfo[1].rateHz * std::exp2 (mv.lfoRateOct[1]));
     stepLfo.setDelay (p.lfo[1].delaySec);
     stepLfo.setSteps (p.stepCount);
-    stepLfo.setSmooth (p.stepSmooth);
+    stepLfo.setGlide (p.stepGlide);
+    stepLfo.setSkew (p.stepSkew);
     for (int k = 0; k < Params::kMaxSteps; ++k)
         stepLfo.setStepValue (k, p.stepVals[(size_t) k]);
 

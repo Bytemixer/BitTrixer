@@ -443,14 +443,14 @@ void RetroForgeEditor::resized()
     auto right = b;
     pitchPanel.setBounds (right.removeFromTop (172));
     right.removeFromTop (gap);
-    auto lfoRow = right.removeFromTop (116);
+    auto lfoRow = right.removeFromTop (132);
     lfo1Panel.setBounds (lfoRow.removeFromLeft (150));
     lfoRow.removeFromLeft (gap);
     stepLfoPanel.setBounds (lfoRow);
     right.removeFromTop (gap);
-    modMatrixPanel.setBounds (right.removeFromTop (146));
+    modMatrixPanel.setBounds (right.removeFromTop (138));
     right.removeFromTop (gap);
-    triggerPanel.setBounds (right.removeFromTop (146));
+    triggerPanel.setBounds (right.removeFromTop (138));
     right.removeFromTop (gap);
     randomizerPanel.setBounds (right);
 }

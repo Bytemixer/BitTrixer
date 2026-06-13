@@ -116,7 +116,8 @@ namespace Params
         inline constexpr const char* autoVarAmt  = "autovar_amt";
         inline constexpr const char* retrigRate  = "retrig_rate";
         inline constexpr const char* stepCount   = "step_count";
-        inline constexpr const char* stepSmooth  = "step_smooth";
+        inline constexpr const char* stepGlide   = "step_glide";
+        inline constexpr const char* stepSkew    = "step_skew";
 
         inline constexpr const char* masterVol   = "master_vol";
         inline constexpr const char* comp        = "comp";
@@ -193,7 +194,8 @@ namespace Params
 
         std::array<LfoPatch, kNumLfos>   lfo;   // lfo[1] = Step LFO (uses rate/delay)
         int   stepCount = 4;
-        bool  stepSmooth = false;
+        float stepGlide = 0.0f;     // 0 = hard steps .. 1 = fully glided
+        float stepSkew  = 0.0f;     // -1..+1 stagger of step durations (swing)
         std::array<float, kMaxSteps> stepVals { -0.6f, -0.2f, 0.2f, 0.6f, 0.0f, 0.0f, 0.0f, 0.0f };
         std::array<ModSlot, kNumModSlots> mod;
 
@@ -287,7 +289,8 @@ namespace Params
             }
 
             stepCount  = get (id::stepCount);
-            stepSmooth = get (id::stepSmooth);
+            stepGlide  = get (id::stepGlide);
+            stepSkew   = get (id::stepSkew);
             for (int k = 0; k < kMaxSteps; ++k)
                 stepVal[k] = get (stepValId (k + 1));
 
@@ -380,7 +383,8 @@ namespace Params
             }
 
             p.stepCount  = (int) stepCount->load();
-            p.stepSmooth = stepSmooth->load() > 0.5f;
+            p.stepGlide  = stepGlide->load();
+            p.stepSkew   = stepSkew->load();
             for (int k = 0; k < kMaxSteps; ++k)
                 p.stepVals[(size_t) k] = stepVal[k]->load();
 
@@ -467,7 +471,8 @@ namespace Params
         std::atomic<float>* lfoDelay[kNumLfos] {};
 
         std::atomic<float>* stepCount {};
-        std::atomic<float>* stepSmooth {};
+        std::atomic<float>* stepGlide {};
+        std::atomic<float>* stepSkew {};
         std::atomic<float>* stepVal[kMaxSteps] {};
 
         std::atomic<float>* modSrc[kNumModSlots] {};
@@ -625,7 +630,10 @@ namespace Params
 
         // ---- step LFO (LFO 2) ----
         layout.add (std::make_unique<AudioParameterInt>   (ParameterID { id::stepCount, 1 }, "Step Count", 2, kMaxSteps, 4));
-        layout.add (std::make_unique<AudioParameterBool>  (ParameterID { id::stepSmooth, 1 }, "Step Glide", false));
+        layout.add (std::make_unique<AudioParameterFloat> (ParameterID { id::stepGlide, 1 }, "Step Glide",
+                        NormalisableRange<float> (0.0f, 1.0f, 0.001f), 0.0f, unitAttr));
+        layout.add (std::make_unique<AudioParameterFloat> (ParameterID { id::stepSkew, 1 }, "Step Skew",
+                        NormalisableRange<float> (-1.0f, 1.0f, 0.001f), 0.0f, unitAttr));
         const float stepDefaults[kMaxSteps] = { -0.6f, -0.2f, 0.2f, 0.6f, 0.0f, 0.0f, 0.0f, 0.0f };
         for (int k = 1; k <= kMaxSteps; ++k)
             layout.add (std::make_unique<AudioParameterFloat> (ParameterID { stepValId (k), 1 },
