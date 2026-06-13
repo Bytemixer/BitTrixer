@@ -29,6 +29,7 @@ namespace Params
     inline constexpr int   kMaxUnison   = 16;
     inline constexpr int   kMaxSteps    = 8;
     inline constexpr int   kFxSlots     = 6;     // reorderable FX chain slots (mirror FxChain::kSlots)
+    inline constexpr int   kFxChainLen  = 7;     // FX chain effects/order length (mirror FxChain::kCount)
 
     // ---- enum orderings (must match the choice arrays below) ----
     enum class OscWave  { Sine = 0, Triangle, Square, Saw, RevSaw, SuperSaw, Tan, Breaker };
@@ -70,6 +71,7 @@ namespace Params
     inline juce::String modId  (int slot1Based, const char* suffix) { return "mod"  + juce::String (slot1Based) + "_" + suffix; }
     inline juce::String stepValId (int step1Based)                  { return "step_val" + juce::String (step1Based); }
     inline juce::String fxId   (int slot1Based, const char* suffix) { return "fxslot" + juce::String (slot1Based) + "_" + suffix; }
+    inline juce::String fxOrderId (int pos)                         { return "fxorder" + juce::String (pos); }
 
     namespace id
     {
@@ -276,6 +278,9 @@ namespace Params
         float delayFb = 0.4f;
         float delayMix = 0.4f;
 
+        // FX chain processing order (position -> FxChain::Effect index)
+        std::array<int, kFxChainLen> fxOrder { 0, 1, 2, 3, 4, 5, 6 };
+
         // reorderable FX chain: per-slot type index (FxChain::Type) + 3 generic params A/B/C
         std::array<int,   kFxSlots> fxSlotType { 0, 0, 0, 0, 0, 0 };
         std::array<float, kFxSlots> fxSlotA { 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f };
@@ -391,6 +396,8 @@ namespace Params
             tremOn   = get (id::tremOn);   tremRate  = get (id::tremRate);   tremDepth = get (id::tremDepth); tremWave = get (id::tremWave);
             formOn   = get (id::formOn);   formVowel = get (id::formVowel);  formReso  = get (id::formReso);  formMix  = get (id::formMix);
             delayOn  = get (id::delayOn);  delayTime = get (id::delayTime);  delayFb   = get (id::delayFb);   delayMix = get (id::delayMix);
+            for (int k = 0; k < kFxChainLen; ++k)
+                fxOrder[k] = get (fxOrderId (k));
 
             for (int k = 0; k < kFxSlots; ++k)
             {
@@ -501,6 +508,8 @@ namespace Params
             p.tremOn  = tremOn->load() > 0.5f;  p.tremRate  = tremRate->load();  p.tremDepth = tremDepth->load(); p.tremWave = (int) tremWave->load();
             p.formOn  = formOn->load() > 0.5f;  p.formVowel = formVowel->load(); p.formReso = formReso->load(); p.formMix  = formMix->load();
             p.delayOn = delayOn->load() > 0.5f; p.delayTime = delayTime->load(); p.delayFb  = delayFb->load();  p.delayMix = delayMix->load();
+            for (int k = 0; k < kFxChainLen; ++k)
+                p.fxOrder[(size_t) k] = (int) fxOrder[k]->load();
 
             for (int k = 0; k < kFxSlots; ++k)
             {
@@ -588,6 +597,7 @@ namespace Params
         std::atomic<float>* tremOn {};  std::atomic<float>* tremRate {};  std::atomic<float>* tremDepth {}; std::atomic<float>* tremWave {};
         std::atomic<float>* formOn {};  std::atomic<float>* formVowel {}; std::atomic<float>* formReso {};  std::atomic<float>* formMix {};
         std::atomic<float>* delayOn {}; std::atomic<float>* delayTime {}; std::atomic<float>* delayFb {};   std::atomic<float>* delayMix {};
+        std::atomic<float>* fxOrder[kFxChainLen] {};
 
         std::atomic<float>* fxSlotType[kFxSlots] {};
         std::atomic<float>* fxSlotA[kFxSlots] {};
@@ -856,6 +866,11 @@ namespace Params
                         NormalisableRange<float> (0.0f, 1.0f, 0.001f), 0.4f, unitAttr));
         layout.add (std::make_unique<AudioParameterFloat> (ParameterID { id::delayMix, 1 },   "Delay Wet/Dry",
                         NormalisableRange<float> (0.0f, 1.0f, 0.001f), 0.4f, unitAttr));
+
+        // FX chain order: one int per chain position (default identity)
+        for (int k = 0; k < kFxChainLen; ++k)
+            layout.add (std::make_unique<AudioParameterInt> (ParameterID { fxOrderId (k), 1 },
+                            "FX Order " + String (k + 1), 0, kFxChainLen - 1, k));
 
         // ---- reorderable FX chain slots (type + 3 generic A/B/C params each) ----
         for (int k = 1; k <= kFxSlots; ++k)

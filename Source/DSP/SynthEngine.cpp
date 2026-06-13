@@ -220,9 +220,6 @@ void SynthEngine::Instance::renderAdd (float* left, float* right, int n,
     ctx.hpfHz    = p.hpfCutoff;
     ctx.driveAmt = p.vcaDrive;
     ctx.amp      = amp;
-    ctx.crushOn   = p.crushOn;
-    ctx.crushBits = p.crushBits;
-    ctx.crushDown = p.crushDown;
 
     // voices render into a local scratch so the per-instance FX get applied
     // to this sound only (not to other overlapping triggers)
@@ -235,8 +232,7 @@ void SynthEngine::Instance::renderAdd (float* left, float* right, int n,
         voices[(size_t) i].renderAdd (scratchL, scratchR, n, ctx);
     }
 
-    // per-instance effect chain (post-VCA). Crush is still applied per-voice
-    // (pre-filter) inside the voices above; it joins this chain with reorder.
+    // per-instance effect chain (post-VCA), processed in the user's order.
     // FX params modulated by the matrix (Form Vowel / Ring Freq / Trem Depth /
     // Delay Time) -- e.g. Step LFO -> Form Vowel makes the sound "talk".
     const float ringFreqM  = clampf (p.ringFreq  * std::exp2 (mv.ringFreqOct),  20.0f, 4000.0f);
@@ -244,6 +240,8 @@ void SynthEngine::Instance::renderAdd (float* left, float* right, int n,
     const float formVowelM = clampf (p.formVowel + mv.formVowel,                0.0f,  1.0f);
     const float delayTimeM = clampf (p.delayTime * std::exp2 (mv.delayTimeOct), 0.001f, 0.4f);
 
+    fxChain.setOrder   (p.fxOrder.data());
+    fxChain.setCrush   (p.crushOn,  p.crushBits,  p.crushDown);
     fxChain.setPhaser  (p.phaseOn,  p.phaseRate,  p.phaseDepth,  p.phaseFb);
     fxChain.setFlanger (p.flangeOn, p.flangeRate, p.flangeDepth, p.flangeFb);
     fxChain.setRing    (p.ringOn,   ringFreqM,    p.ringMix,     p.ringWave);
