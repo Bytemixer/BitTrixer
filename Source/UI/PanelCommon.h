@@ -110,6 +110,14 @@ struct LabeledKnob : public juce::Component
     {
         auto b = getLocalBounds();
         label.setBounds (b.removeFromTop (12));
+        b.removeFromTop (4);                      // breathing room under the label
+
+        // A fixed knob region so the SAME knob is the SAME size in every
+        // panel, regardless of how tall its cell is (a short cell no longer
+        // shrinks the rotary). Extra cell height becomes bottom padding.
+        constexpr int knobRegion = 52;            // ~37px rotary + value box
+        if (b.getHeight() > knobRegion)
+            b = b.removeFromTop (knobRegion);
         slider.setBounds (b);
     }
 

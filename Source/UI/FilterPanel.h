@@ -39,19 +39,47 @@ public:
         addAndMakeVisible (hpfFreq);
     }
 
+    void paint (juce::Graphics& g) override
+    {
+        SectionPanel::paint (g);
+        // divider between the LPF group and the HPF group
+        if (hpfDivX > 0.0f)
+        {
+            g.setColour (RetroColors::panelEdge.withAlpha (0.8f));
+            g.drawLine (hpfDivX, (float) content().getY() + 2.0f,
+                        hpfDivX, (float) content().getBottom() - 2.0f, 1.0f);
+        }
+        // sub-section labels
+        g.setColour (RetroColors::textDim);
+        g.setFont (juce::Font (juce::FontOptions (9.5f, juce::Font::bold)));
+        g.drawText ("LOW-PASS", lpfLabel, juce::Justification::centredLeft);
+        g.drawText ("HIGH-PASS", hpfLabel, juce::Justification::centredLeft);
+    }
+
     void resized() override
     {
         auto b = content();
-        auto right = b.removeFromRight (88);
-        poles.setBounds (right.removeFromTop (22));
-        right.removeFromTop (8);
-        hpfOn.setBounds (right.removeFromTop (22));
 
-        const int kw = b.getWidth() / 4;
+        // ---- HPF group on the right (switch + cutoff), behind a divider ----
+        auto hpf = b.removeFromRight (96);
+        hpfDivX = (float) hpf.getX() - 4.0f;
+        hpfLabel = hpf.removeFromTop (12);
+        hpfOn.setBounds (hpf.removeFromTop (24).withTrimmedLeft (6));
+        hpfFreq.setBounds (hpf);
+
+        b.removeFromRight (8);   // gap for the divider
+
+        // ---- LPF group on the left: label, then knobs + slope selector ----
+        lpfLabel = b.removeFromTop (12);
+        // 2/4-pole slope sits with the LPF controls it actually affects
+        auto slope = b.removeFromRight (78);
+        slope.removeFromTop (4);
+        poles.setBounds (slope.removeFromTop (24));
+
+        const int kw = b.getWidth() / 3;
         cutoff.setBounds (b.removeFromLeft (kw));
         res.setBounds    (b.removeFromLeft (kw));
         envAmt.setBounds (b.removeFromLeft (kw));
-        hpfFreq.setBounds (b);
     }
 
 private:
@@ -59,4 +87,6 @@ private:
     ChoiceCombo  poles;
     SwitchToggle hpfOn;
     LabeledKnob  hpfFreq;
+    juce::Rectangle<int> lpfLabel, hpfLabel;
+    float hpfDivX = 0.0f;
 };

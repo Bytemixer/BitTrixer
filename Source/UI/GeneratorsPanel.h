@@ -50,10 +50,10 @@ public:
         auto b = content();
         dividers.clear();
 
-        // noise is the short band; the three oscillators share the rest
-        // evenly. Each band centres a compact control block, so taller bands
-        // read as deliberate breathing room rather than floating knobs.
-        const int noiseH = 70;
+        // noise is the shorter band; the three oscillators share the rest.
+        // noiseH must still fit a full control block so its knobs match the
+        // oscillator knobs exactly (the knob region is fixed, see LabeledKnob).
+        const int noiseH = 100;
         const int divGap = 6;
         const int oscH = (b.getHeight() - noiseH - divGap * Params::kNumOscs)
                        / Params::kNumOscs;
@@ -124,8 +124,9 @@ private:
 
         void resized() override
         {
-            // centre an 84px control block in the band (no floating knobs)
-            constexpr int blockH = 84;
+            // centre a 90px control block in the band (no floating knobs);
+            // 20 top row + 70 knob row fits the full fixed knob region
+            constexpr int blockH = 90;
             auto full = getLocalBounds().reduced (2, 2);
             auto b = full.withTrimmedTop (juce::jmax (0, (full.getHeight() - blockH) / 2))
                          .withHeight (juce::jmin (full.getHeight(), blockH));
@@ -180,7 +181,13 @@ private:
 
         void resized() override
         {
-            auto b = getLocalBounds().reduced (2, 2);
+            // same centred 90px block as the oscillator bands, so the noise
+            // knobs are exactly the oscillator knob size
+            constexpr int blockH = 90;
+            auto full = getLocalBounds().reduced (2, 2);
+            auto b = full.withTrimmedTop (juce::jmax (0, (full.getHeight() - blockH) / 2))
+                         .withHeight (juce::jmin (full.getHeight(), blockH));
+
             auto top = b.removeFromTop (20);
             tag.setBounds (top.removeFromLeft (48));
             onSwitch.setBounds (top.removeFromLeft (32));
