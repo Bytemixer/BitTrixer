@@ -18,8 +18,9 @@
 // ============================================================================
 //  Formant — imposes vowel-like resonances on the signal: three parallel
 //  bandpass filters tuned to the F1/F2/F3 formants of a vowel, summed. The
-//  vowel control morphs A -> E -> I -> O -> U; sweeping it (e.g. an LFO via
-//  the mod matrix) makes the sound "talk" (wah / yoy / vowel sweeps). A chain
+//  vowel control morphs ee -> eh -> ah -> oh -> oo (ordered so F2 falls
+//  monotonically -- the sweep never doubles back through "ah"); sweeping it
+//  (e.g. an LFO via the mod matrix) makes the sound "talk". A chain
 //  slot; per trigger-instance, retriggered so each shot starts clean.
 // ============================================================================
 
@@ -39,7 +40,7 @@ public:
         lpR.fill (0.0f); bpR.fill (0.0f);
     }
 
-    // vowel01: 0 = "a" .. 1 = "u" (morphs through A E I O U)
+    // vowel01: 0 = "ee" .. 1 = "oo" (smooth front-to-back sweep ee-eh-ah-oh-oo)
     // reso01:  0 = soft .. 1 = sharp/vocal     mix01: 0 = dry .. 1 = wet
     void setParams (float vowel01, float reso01, float mix01) noexcept
     {
@@ -72,14 +73,16 @@ public:
     }
 
 private:
-    static constexpr int kVowels = 5;   // a e i o u
+    static constexpr int kVowels = 5;   // ee eh ah oh oo -- ordered along the
+                                        // vowel path so F2 falls monotonically
+                                        // (no doubling back through "ah")
     static constexpr float kFormants[kVowels][3] =
     {
-        { 730.0f, 1090.0f, 2440.0f },   // a
-        { 530.0f, 1840.0f, 2480.0f },   // e
-        { 270.0f, 2290.0f, 3010.0f },   // i
-        { 570.0f,  840.0f, 2410.0f },   // o
-        { 300.0f,  870.0f, 2240.0f },   // u
+        { 270.0f, 2290.0f, 3010.0f },   // ee
+        { 530.0f, 1840.0f, 2480.0f },   // eh
+        { 730.0f, 1090.0f, 2440.0f },   // ah
+        { 570.0f,  840.0f, 2410.0f },   // oh
+        { 300.0f,  870.0f, 2240.0f },   // oo
     };
     static constexpr float kGain[3] = { 1.0f, 0.6f, 0.35f };   // higher formants softer
 
