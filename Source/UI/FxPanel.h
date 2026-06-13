@@ -11,130 +11,258 @@
 
 #pragma once
 
+#include <array>
+#include <vector>
+#include <memory>
+#include <cstring>
 #include "PanelCommon.h"
 #include "../Params.h"
 
 // ============================================================================
-//  FxPanel — the FX chain strip: seven named effects in a row, each an enable
-//  switch + its knobs (RingMod / Tremolo also carry a waveform selector).
-//   * CRUSH    : per voice, pre-filter (the filter smooths the grit)
-//   * the rest : per trigger-instance, after the voice sum, in series
-//  All retrigger with the sound, so they are part of the SFX itself.
-//  (Drag-to-reorder + moving Crush into the chain land in a later pass.)
+//  FxPanel — the FX chain: seven named effect strips you can drag (by the grip
+//  header) to reorder the signal path. Each strip is one effect: a grip/name
+//  header, an enable switch (+ wave selector for RingMod/Tremolo), and its
+//  knobs. The chain order is stored in the fxOrder params; dragging rewrites
+//  them, and a timer keeps the layout in sync with external changes (presets).
 // ============================================================================
 
-class FxPanel : public SectionPanel
+struct EffectStrip : public juce::Component
 {
-public:
-    explicit FxPanel (juce::AudioProcessorValueTreeState& s)
-        : SectionPanel ("FX chain"),
-          crushOn (s, Params::id::crushOn, "CRUSH"),
-          crushBits (s, Params::id::crushBits, "BITS", false),
-          crushDown (s, Params::id::crushDown, "DIV", false),
-          phaseOn (s, Params::id::phaseOn, "PHASER"),
-          phaseRate (s, Params::id::phaseRate, "RATE", false),
-          phaseDepth (s, Params::id::phaseDepth, "DEPTH", false),
-          phaseFb (s, Params::id::phaseFb, "FDBK", false),
-          flangeOn (s, Params::id::flangeOn, "FLANGER"),
-          flangeRate (s, Params::id::flangeRate, "RATE", false),
-          flangeDepth (s, Params::id::flangeDepth, "DEPTH", false),
-          flangeFb (s, Params::id::flangeFb, "FDBK", false),
-          ringOn (s, Params::id::ringOn, "RING"),
-          ringFreq (s, Params::id::ringFreq, "FREQ", false),
-          ringMix (s, Params::id::ringMix, "WET", false),
-          ringWave (s, Params::id::ringWave),
-          tremOn (s, Params::id::tremOn, "TREM"),
-          tremRate (s, Params::id::tremRate, "SPEED", false),
-          tremDepth (s, Params::id::tremDepth, "DEPTH", false),
-          tremWave (s, Params::id::tremWave),
-          formOn (s, Params::id::formOn, "FORMANT"),
-          formVowel (s, Params::id::formVowel, "VOWEL", false),
-          formReso (s, Params::id::formReso, "RESO", false),
-          formMix (s, Params::id::formMix, "WET", false),
-          delayOn (s, Params::id::delayOn, "DELAY"),
-          delayTime (s, Params::id::delayTime, "TIME", false),
-          delayFb (s, Params::id::delayFb, "FDBK", false),
-          delayMix (s, Params::id::delayMix, "WET", false)
+    struct KnobDef { juce::String id, label; };
+    static constexpr int kHandleH = 16;
+
+    EffectStrip (juce::AudioProcessorValueTreeState& s, int effectId_, juce::String displayName,
+                 const juce::String& switchId, const juce::String& switchName,
+                 std::initializer_list<KnobDef> knobDefs, const juce::String& comboId = {})
+        : effectId (effectId_), name (std::move (displayName)),
+          enable (s, switchId, switchName)
     {
-        for (auto* c : std::initializer_list<juce::Component*> {
-                 &crushOn, &crushBits, &crushDown,
-                 &phaseOn, &phaseRate, &phaseDepth, &phaseFb,
-                 &flangeOn, &flangeRate, &flangeDepth, &flangeFb,
-                 &ringOn, &ringFreq, &ringMix, &ringWave,
-                 &tremOn, &tremRate, &tremDepth, &tremWave,
-                 &formOn, &formVowel, &formReso, &formMix,
-                 &delayOn, &delayTime, &delayFb, &delayMix })
-            addAndMakeVisible (c);
+        addAndMakeVisible (enable);
+        for (auto& kd : knobDefs)
+        {
+            knobs.push_back (std::make_unique<LabeledKnob> (s, kd.id, kd.label, false));
+            addAndMakeVisible (*knobs.back());
+        }
+        if (comboId.isNotEmpty())
+        {
+            combo = std::make_unique<ChoiceCombo> (s, comboId);
+            addAndMakeVisible (*combo);
+        }
     }
 
     void paint (juce::Graphics& g) override
     {
-        SectionPanel::paint (g);
-        g.setColour (RetroColors::panelEdge);
-        for (float x : sepX)
-            if (x > 0.0f)
-                g.drawLine (x, (float) content().getY() + 2.0f,
-                            x, (float) content().getBottom() - 2.0f, 1.0f);
+        auto h = getLocalBounds().removeFromTop (kHandleH).toFloat().reduced (1.0f, 1.0f);
+        g.setColour (RetroColors::panelEdge.withAlpha (0.45f));
+        g.fillRoundedRectangle (h, 3.0f);
+
+        // grip dots
+        g.setColour (RetroColors::textDim.withAlpha (0.7f));
+        for (int c = 0; c < 2; ++c)
+            for (int row = 0; row < 3; ++row)
+                g.fillRect (h.getX() + 4.0f + (float) c * 3.0f, h.getY() + 4.0f + (float) row * 3.0f, 1.6f, 1.6f);
+
+        g.setColour (RetroColors::panelTitle);
+        g.setFont (juce::Font (juce::FontOptions (9.5f, juce::Font::bold)));
+        g.drawText (name, h.withTrimmedLeft (14.0f), juce::Justification::centredLeft);
     }
 
     void resized() override
     {
-        auto b = content();
-        const int colW = b.getWidth() / 7;
-
-        int sepIdx = 0;
-        auto nextCol = [&] () -> juce::Rectangle<int>
+        auto b = getLocalBounds();
+        b.removeFromTop (kHandleH);                 // drag handle
+        auto top = b.removeFromTop (22);
+        if (combo) combo->setBounds (top.removeFromRight (60));
+        enable.setBounds (top);
+        b.removeFromTop (3);
+        if (! knobs.empty())
         {
-            auto c = b.removeFromLeft (colW);
-            if (sepIdx < 6) sepX[(size_t) sepIdx++] = (float) b.getX();
-            return c.reduced (3, 1);
-        };
-
-        auto knobRow = [] (juce::Rectangle<int> row, std::initializer_list<LabeledKnob*> knobs)
-        {
-            const int kw = row.getWidth() / (int) knobs.size();
-            for (auto* k : knobs) k->setBounds (row.removeFromLeft (kw));
-        };
-
-        // a column whose enable switch shares its top row with a wave selector
-        auto headRowWithCombo = [] (juce::Rectangle<int>& col, SwitchToggle& sw, ChoiceCombo& combo)
-        {
-            auto top = col.removeFromTop (20);
-            combo.setBounds (top.removeFromRight (62));
-            sw.setBounds (top);
-            col.removeFromTop (2);
-        };
-
-        { auto c = nextCol(); crushOn.setBounds (c.removeFromTop (20)); c.removeFromTop (2);
-          knobRow (c, { &crushBits, &crushDown }); }
-
-        { auto c = nextCol(); phaseOn.setBounds (c.removeFromTop (20)); c.removeFromTop (2);
-          knobRow (c, { &phaseRate, &phaseDepth, &phaseFb }); }
-
-        { auto c = nextCol(); flangeOn.setBounds (c.removeFromTop (20)); c.removeFromTop (2);
-          knobRow (c, { &flangeRate, &flangeDepth, &flangeFb }); }
-
-        { auto c = nextCol(); headRowWithCombo (c, ringOn, ringWave);
-          knobRow (c, { &ringFreq, &ringMix }); }
-
-        { auto c = nextCol(); headRowWithCombo (c, tremOn, tremWave);
-          knobRow (c, { &tremRate, &tremDepth }); }
-
-        { auto c = nextCol(); formOn.setBounds (c.removeFromTop (20)); c.removeFromTop (2);
-          knobRow (c, { &formVowel, &formReso, &formMix }); }
-
-        { auto c = b.reduced (3, 1); delayOn.setBounds (c.removeFromTop (20)); c.removeFromTop (2);
-          knobRow (c, { &delayTime, &delayFb, &delayMix }); }
+            const int kw = b.getWidth() / (int) knobs.size();
+            for (auto& k : knobs) k->setBounds (b.removeFromLeft (kw));
+        }
     }
 
-private:
-    SwitchToggle crushOn;   LabeledKnob crushBits, crushDown;
-    SwitchToggle phaseOn;   LabeledKnob phaseRate, phaseDepth, phaseFb;
-    SwitchToggle flangeOn;  LabeledKnob flangeRate, flangeDepth, flangeFb;
-    SwitchToggle ringOn;    LabeledKnob ringFreq, ringMix;     ChoiceCombo ringWave;
-    SwitchToggle tremOn;    LabeledKnob tremRate, tremDepth;   ChoiceCombo tremWave;
-    SwitchToggle formOn;    LabeledKnob formVowel, formReso, formMix;
-    SwitchToggle delayOn;   LabeledKnob delayTime, delayFb, delayMix;
+    void mouseDown (const juce::MouseEvent& e) override { if (e.y < kHandleH && onDragStart) onDragStart (this, e); }
+    void mouseDrag (const juce::MouseEvent& e) override { if (onDrag)    onDrag    (this, e); }
+    void mouseUp   (const juce::MouseEvent& e) override { if (onDragEnd) onDragEnd (this, e); }
 
-    float sepX[6] { 0, 0, 0, 0, 0, 0 };
+    int effectId;
+    juce::String name;
+    SwitchToggle enable;
+    std::vector<std::unique_ptr<LabeledKnob>> knobs;
+    std::unique_ptr<ChoiceCombo> combo;
+    std::function<void (EffectStrip*, const juce::MouseEvent&)> onDragStart, onDrag, onDragEnd;
+};
+
+// ---------------------------------------------------------------------------
+
+class FxPanel : public SectionPanel, private juce::Timer
+{
+public:
+    explicit FxPanel (juce::AudioProcessorValueTreeState& s)
+        : SectionPanel ("FX chain  (drag a panel by its grip to reorder)")
+    {
+        using K = EffectStrip::KnobDef;
+        namespace id = Params::id;
+        strips[0] = std::make_unique<EffectStrip> (s, 0, "CRUSH",   id::crushOn,  "CRUSH",
+                        std::initializer_list<K> { { id::crushBits, "BITS" }, { id::crushDown, "DIV" } });
+        strips[1] = std::make_unique<EffectStrip> (s, 1, "PHASER",  id::phaseOn,  "PHASER",
+                        std::initializer_list<K> { { id::phaseRate, "RATE" }, { id::phaseDepth, "DEPTH" }, { id::phaseFb, "FDBK" } });
+        strips[2] = std::make_unique<EffectStrip> (s, 2, "FLANGER", id::flangeOn, "FLANGER",
+                        std::initializer_list<K> { { id::flangeRate, "RATE" }, { id::flangeDepth, "DEPTH" }, { id::flangeFb, "FDBK" } });
+        strips[3] = std::make_unique<EffectStrip> (s, 3, "RING MOD", id::ringOn,  "RING",
+                        std::initializer_list<K> { { id::ringFreq, "FREQ" }, { id::ringMix, "WET" } }, id::ringWave);
+        strips[4] = std::make_unique<EffectStrip> (s, 4, "TREMOLO", id::tremOn,   "TREM",
+                        std::initializer_list<K> { { id::tremRate, "SPEED" }, { id::tremDepth, "DEPTH" } }, id::tremWave);
+        strips[5] = std::make_unique<EffectStrip> (s, 5, "FORMANT", id::formOn,   "FORMANT",
+                        std::initializer_list<K> { { id::formVowel, "VOWEL" }, { id::formReso, "RESO" }, { id::formMix, "WET" } });
+        strips[6] = std::make_unique<EffectStrip> (s, 6, "DELAY",   id::delayOn,  "DELAY",
+                        std::initializer_list<K> { { id::delayTime, "TIME" }, { id::delayFb, "FDBK" }, { id::delayMix, "WET" } });
+
+        for (auto& st : strips)
+        {
+            addAndMakeVisible (*st);
+            st->onDragStart = [this] (EffectStrip* e, const juce::MouseEvent& ev) { beginDrag (e, ev); };
+            st->onDrag      = [this] (EffectStrip* e, const juce::MouseEvent& ev) { doDrag (e, ev); };
+            st->onDragEnd   = [this] (EffectStrip* e, const juce::MouseEvent& ev) { endDrag (e, ev); };
+        }
+
+        for (int i = 0; i < Params::kFxChainLen; ++i)
+            orderP[i] = dynamic_cast<juce::AudioParameterInt*> (s.getParameter (Params::fxOrderId (i)));
+
+        startTimerHz (8);
+    }
+
+    ~FxPanel() override { stopTimer(); }
+
+    void paint (juce::Graphics& g) override
+    {
+        SectionPanel::paint (g);
+        auto b = content();
+        const int colW = b.getWidth() / Params::kFxChainLen;
+
+        g.setColour (RetroColors::panelEdge);
+        for (int i = 1; i < Params::kFxChainLen; ++i)
+            g.drawLine ((float) (b.getX() + i * colW), (float) b.getY() + 2.0f,
+                        (float) (b.getX() + i * colW), (float) b.getBottom() - 2.0f, 1.0f);
+
+        if (dragged != nullptr && dragTargetCol >= 0)
+        {
+            const float x = (float) (b.getX() + dragTargetCol * colW);
+            g.setColour (RetroColors::accent);
+            g.fillRect (x - 1.5f, (float) b.getY(), 3.0f, (float) b.getHeight());
+        }
+    }
+
+    void resized() override { layoutStrips(); }
+
+private:
+    void readOrder (int* out) const
+    {
+        for (int i = 0; i < Params::kFxChainLen; ++i)
+        {
+            const int e = orderP[i] ? orderP[i]->get() : i;
+            out[i] = (e >= 0 && e < Params::kFxChainLen) ? e : i;
+        }
+    }
+
+    int colOf (int effectId) const
+    {
+        int ord[Params::kFxChainLen];
+        readOrder (ord);
+        for (int i = 0; i < Params::kFxChainLen; ++i)
+            if (ord[i] == effectId) return i;
+        return 0;
+    }
+
+    void layoutStrips()
+    {
+        auto b = content();
+        colWidth = b.getWidth() / Params::kFxChainLen;
+        stripY = b.getY();
+        stripH = b.getHeight();
+        contentX = b.getX();
+
+        int ord[Params::kFxChainLen];
+        readOrder (ord);
+        std::memcpy (lastOrder, ord, sizeof (ord));
+
+        for (int i = 0; i < Params::kFxChainLen; ++i)
+        {
+            int eff = ord[i];
+            if (eff < 0 || eff >= Params::kFxChainLen) eff = i;
+            if (strips[(size_t) eff] && strips[(size_t) eff].get() != dragged)
+                strips[(size_t) eff]->setBounds (b.getX() + i * colWidth, b.getY(), colWidth, b.getHeight());
+        }
+    }
+
+    void writeOrder (const int* ord)
+    {
+        for (int i = 0; i < Params::kFxChainLen; ++i)
+            if (orderP[i] != nullptr)
+                orderP[i]->setValueNotifyingHost (orderP[i]->convertTo0to1 ((float) ord[i]));
+    }
+
+    void beginDrag (EffectStrip* st, const juce::MouseEvent& e)
+    {
+        dragged = st;
+        grabDX = e.x;
+        dragTargetCol = colOf (st->effectId);
+        st->toFront (false);
+        repaint();
+    }
+
+    void doDrag (EffectStrip* st, const juce::MouseEvent& e)
+    {
+        auto pe = e.getEventRelativeTo (this);
+        st->setBounds (pe.x - grabDX, stripY, colWidth, stripH);
+        const int rel = pe.x - contentX;
+        dragTargetCol = juce::jlimit (0, Params::kFxChainLen - 1, colWidth > 0 ? rel / colWidth : 0);
+        repaint();
+    }
+
+    void endDrag (EffectStrip* st, const juce::MouseEvent&)
+    {
+        if (dragged == st && dragTargetCol >= 0)
+        {
+            int ord[Params::kFxChainLen];
+            readOrder (ord);
+
+            // remove this effect, re-insert at the target column
+            int rebuilt[Params::kFxChainLen];
+            int w = 0;
+            for (int i = 0; i < Params::kFxChainLen; ++i)
+                if (ord[i] != st->effectId) rebuilt[w++] = ord[i];   // w ends at kFxChainLen-1
+
+            const int to = juce::jlimit (0, w, dragTargetCol);
+            int finalOrd[Params::kFxChainLen];
+            for (int i = 0, r = 0; i < Params::kFxChainLen; ++i)
+                finalOrd[i] = (i == to) ? st->effectId : rebuilt[r++];
+
+            writeOrder (finalOrd);
+        }
+
+        dragged = nullptr;
+        dragTargetCol = -1;
+        layoutStrips();
+        repaint();
+    }
+
+    void timerCallback() override
+    {
+        if (dragged != nullptr) return;
+        int ord[Params::kFxChainLen];
+        readOrder (ord);
+        if (std::memcmp (ord, lastOrder, sizeof (ord)) != 0)
+            layoutStrips();
+    }
+
+    std::array<std::unique_ptr<EffectStrip>, Params::kFxChainLen> strips;
+    juce::AudioParameterInt* orderP[Params::kFxChainLen] {};
+
+    EffectStrip* dragged = nullptr;
+    int dragTargetCol = -1;
+    int grabDX = 0;
+    int colWidth = 0, stripY = 0, stripH = 0, contentX = 0;
+    int lastOrder[Params::kFxChainLen] { 0, 1, 2, 3, 4, 5, 6 };
 };
