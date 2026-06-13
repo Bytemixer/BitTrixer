@@ -51,6 +51,7 @@ namespace Params
     inline const juce::StringArray polesNames    { "2-Pole", "4-Pole" };
     inline const juce::StringArray rateNames     { "48 kHz", "44.1 kHz", "22 kHz", "11 kHz", "8 kHz" };
     inline const juce::StringArray fxTypeNames   { "Off", "Crush", "Phaser", "Flanger", "Ring Mod", "Tremolo", "Formant", "Delay" };  // mirror FxChain::Type
+    inline const juce::StringArray fxWaveNames   { "Sine", "Tri", "Square", "Saw" };   // RingMod carrier / Tremolo LFO shape
 
     inline float rateChoiceToHz (int choice) noexcept
     {
@@ -137,6 +138,22 @@ namespace Params
         inline constexpr const char* flangeRate  = "fxflange_rate";
         inline constexpr const char* flangeDepth = "fxflange_depth";
         inline constexpr const char* flangeFb    = "fxflange_fb";
+        inline constexpr const char* ringOn      = "fxring_on";
+        inline constexpr const char* ringFreq    = "fxring_freq";
+        inline constexpr const char* ringMix     = "fxring_mix";
+        inline constexpr const char* ringWave    = "fxring_wave";
+        inline constexpr const char* tremOn      = "fxtrem_on";
+        inline constexpr const char* tremRate    = "fxtrem_rate";
+        inline constexpr const char* tremDepth   = "fxtrem_depth";
+        inline constexpr const char* tremWave    = "fxtrem_wave";
+        inline constexpr const char* formOn      = "fxform_on";
+        inline constexpr const char* formVowel   = "fxform_vowel";
+        inline constexpr const char* formReso    = "fxform_reso";
+        inline constexpr const char* formMix     = "fxform_mix";
+        inline constexpr const char* delayOn     = "fxdelay_on";
+        inline constexpr const char* delayTime   = "fxdelay_time";
+        inline constexpr const char* delayFb     = "fxdelay_fb";
+        inline constexpr const char* delayMix    = "fxdelay_mix";
     }
 
     // ------------------------------------------------------------------
@@ -240,6 +257,22 @@ namespace Params
         float flangeRate = 0.5f;
         float flangeDepth = 0.5f;
         float flangeFb = 0.4f;
+        bool  ringOn = false;
+        float ringFreq = 200.0f;
+        float ringMix = 1.0f;
+        int   ringWave = 0;
+        bool  tremOn = false;
+        float tremRate = 5.0f;
+        float tremDepth = 0.5f;
+        int   tremWave = 0;
+        bool  formOn = false;
+        float formVowel = 0.0f;
+        float formReso = 0.5f;
+        float formMix = 1.0f;
+        bool  delayOn = false;
+        float delayTime = 0.12f;      // seconds (1 ms .. 400 ms)
+        float delayFb = 0.4f;
+        float delayMix = 0.4f;
 
         // reorderable FX chain: per-slot type index (FxChain::Type) + 3 generic params A/B/C
         std::array<int,   kFxSlots> fxSlotType { 0, 0, 0, 0, 0, 0 };
@@ -352,6 +385,10 @@ namespace Params
             flangeRate  = get (id::flangeRate);
             flangeDepth = get (id::flangeDepth);
             flangeFb    = get (id::flangeFb);
+            ringOn   = get (id::ringOn);   ringFreq  = get (id::ringFreq);   ringMix   = get (id::ringMix);   ringWave = get (id::ringWave);
+            tremOn   = get (id::tremOn);   tremRate  = get (id::tremRate);   tremDepth = get (id::tremDepth); tremWave = get (id::tremWave);
+            formOn   = get (id::formOn);   formVowel = get (id::formVowel);  formReso  = get (id::formReso);  formMix  = get (id::formMix);
+            delayOn  = get (id::delayOn);  delayTime = get (id::delayTime);  delayFb   = get (id::delayFb);   delayMix = get (id::delayMix);
 
             for (int k = 0; k < kFxSlots; ++k)
             {
@@ -458,6 +495,10 @@ namespace Params
             p.flangeRate  = flangeRate->load();
             p.flangeDepth = flangeDepth->load();
             p.flangeFb    = flangeFb->load();
+            p.ringOn  = ringOn->load() > 0.5f;  p.ringFreq  = ringFreq->load();  p.ringMix  = ringMix->load();  p.ringWave = (int) ringWave->load();
+            p.tremOn  = tremOn->load() > 0.5f;  p.tremRate  = tremRate->load();  p.tremDepth = tremDepth->load(); p.tremWave = (int) tremWave->load();
+            p.formOn  = formOn->load() > 0.5f;  p.formVowel = formVowel->load(); p.formReso = formReso->load(); p.formMix  = formMix->load();
+            p.delayOn = delayOn->load() > 0.5f; p.delayTime = delayTime->load(); p.delayFb  = delayFb->load();  p.delayMix = delayMix->load();
 
             for (int k = 0; k < kFxSlots; ++k)
             {
@@ -541,6 +582,10 @@ namespace Params
         std::atomic<float>* flangeRate {};
         std::atomic<float>* flangeDepth {};
         std::atomic<float>* flangeFb {};
+        std::atomic<float>* ringOn {};  std::atomic<float>* ringFreq {};  std::atomic<float>* ringMix {};   std::atomic<float>* ringWave {};
+        std::atomic<float>* tremOn {};  std::atomic<float>* tremRate {};  std::atomic<float>* tremDepth {}; std::atomic<float>* tremWave {};
+        std::atomic<float>* formOn {};  std::atomic<float>* formVowel {}; std::atomic<float>* formReso {};  std::atomic<float>* formMix {};
+        std::atomic<float>* delayOn {}; std::atomic<float>* delayTime {}; std::atomic<float>* delayFb {};   std::atomic<float>* delayMix {};
 
         std::atomic<float>* fxSlotType[kFxSlots] {};
         std::atomic<float>* fxSlotA[kFxSlots] {};
@@ -779,6 +824,36 @@ namespace Params
                         NormalisableRange<float> (0.0f, 1.0f, 0.001f), 0.5f, unitAttr));
         layout.add (std::make_unique<AudioParameterFloat> (ParameterID { id::flangeFb, 1 },    "Flanger Feedback",
                         NormalisableRange<float> (0.0f, 0.95f, 0.001f), 0.4f, unitAttr));
+
+        layout.add (std::make_unique<AudioParameterBool>  (ParameterID { id::ringOn, 1 },   "Ring Mod On", false));
+        layout.add (std::make_unique<AudioParameterFloat> (ParameterID { id::ringFreq, 1 }, "Ring Freq",
+                        freqRange (20.0f, 4000.0f), 200.0f, hzAttr));
+        layout.add (std::make_unique<AudioParameterFloat> (ParameterID { id::ringMix, 1 },  "Ring Wet/Dry",
+                        NormalisableRange<float> (0.0f, 1.0f, 0.001f), 1.0f, unitAttr));
+        layout.add (std::make_unique<AudioParameterChoice>(ParameterID { id::ringWave, 1 }, "Ring Wave", fxWaveNames, 0));
+
+        layout.add (std::make_unique<AudioParameterBool>  (ParameterID { id::tremOn, 1 },    "Tremolo On", false));
+        layout.add (std::make_unique<AudioParameterFloat> (ParameterID { id::tremRate, 1 },  "Tremolo Speed",
+                        freqRange (0.01f, 70.0f), 5.0f, hzAttr));
+        layout.add (std::make_unique<AudioParameterFloat> (ParameterID { id::tremDepth, 1 }, "Tremolo Depth",
+                        NormalisableRange<float> (0.0f, 1.0f, 0.001f), 0.5f, unitAttr));
+        layout.add (std::make_unique<AudioParameterChoice>(ParameterID { id::tremWave, 1 }, "Tremolo Wave", fxWaveNames, 0));
+
+        layout.add (std::make_unique<AudioParameterBool>  (ParameterID { id::formOn, 1 },    "Formant On", false));
+        layout.add (std::make_unique<AudioParameterFloat> (ParameterID { id::formVowel, 1 }, "Formant Vowel",
+                        NormalisableRange<float> (0.0f, 1.0f, 0.001f), 0.0f, unitAttr));
+        layout.add (std::make_unique<AudioParameterFloat> (ParameterID { id::formReso, 1 },  "Formant Reso",
+                        NormalisableRange<float> (0.0f, 1.0f, 0.001f), 0.5f, unitAttr));
+        layout.add (std::make_unique<AudioParameterFloat> (ParameterID { id::formMix, 1 },   "Formant Wet/Dry",
+                        NormalisableRange<float> (0.0f, 1.0f, 0.001f), 1.0f, unitAttr));
+
+        layout.add (std::make_unique<AudioParameterBool>  (ParameterID { id::delayOn, 1 },    "Delay On", false));
+        layout.add (std::make_unique<AudioParameterFloat> (ParameterID { id::delayTime, 1 },  "Delay Time",
+                        timeRange (0.001f, 0.4f, 0.12f), 0.12f, secAttr));
+        layout.add (std::make_unique<AudioParameterFloat> (ParameterID { id::delayFb, 1 },    "Delay Feedback",
+                        NormalisableRange<float> (0.0f, 1.0f, 0.001f), 0.4f, unitAttr));
+        layout.add (std::make_unique<AudioParameterFloat> (ParameterID { id::delayMix, 1 },   "Delay Wet/Dry",
+                        NormalisableRange<float> (0.0f, 1.0f, 0.001f), 0.4f, unitAttr));
 
         // ---- reorderable FX chain slots (type + 3 generic A/B/C params each) ----
         for (int k = 1; k <= kFxSlots; ++k)

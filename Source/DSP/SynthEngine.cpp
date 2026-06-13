@@ -53,8 +53,7 @@ void SynthEngine::Instance::prepare (double sampleRate)
     envA.prepare (sampleRate);
     lfo1.prepare (sampleRate);
     stepLfo.prepare (sampleRate);
-    phaser.prepare (sampleRate);
-    flanger.prepare (sampleRate);
+    fxChain.prepare (sampleRate);
     for (auto& v : voices)
         v.prepare (sampleRate);
 }
@@ -101,8 +100,7 @@ void SynthEngine::Instance::start (const Params::Patch& p, int noteTag,
 
     lfo1.retrigger();
     stepLfo.retrigger();
-    phaser.retrigger();
-    flanger.retrigger();
+    fxChain.retrigger();
     envF.gateOn();   // analog semantics: continues from current level on steal
     envA.gateOn();
 }
@@ -237,16 +235,15 @@ void SynthEngine::Instance::renderAdd (float* left, float* right, int n,
         voices[(size_t) i].renderAdd (scratchL, scratchR, n, ctx);
     }
 
-    if (p.phaseOn)
-    {
-        phaser.setParams (p.phaseRate, p.phaseDepth, p.phaseFb);
-        phaser.process (scratchL, scratchR, n);
-    }
-    if (p.flangeOn)
-    {
-        flanger.setParams (p.flangeRate, p.flangeDepth, p.flangeFb);
-        flanger.process (scratchL, scratchR, n);
-    }
+    // per-instance effect chain (post-VCA). Crush is still applied per-voice
+    // (pre-filter) inside the voices above; it joins this chain with reorder.
+    fxChain.setPhaser  (p.phaseOn,  p.phaseRate,  p.phaseDepth,  p.phaseFb);
+    fxChain.setFlanger (p.flangeOn, p.flangeRate, p.flangeDepth, p.flangeFb);
+    fxChain.setRing    (p.ringOn,   p.ringFreq,   p.ringMix,     p.ringWave);
+    fxChain.setTrem    (p.tremOn,   p.tremRate,   p.tremDepth,   p.tremWave);
+    fxChain.setFormant (p.formOn,   p.formVowel,  p.formReso,    p.formMix);
+    fxChain.setDelay   (p.delayOn,  p.delayTime * 1000.0f, p.delayFb, p.delayMix);
+    fxChain.process (scratchL, scratchR, n);
 
     for (int s = 0; s < n; ++s)
     {
