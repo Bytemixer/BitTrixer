@@ -32,7 +32,8 @@ public:
           loopRate (s, Params::id::loopRate, "INTERVAL"),
           retrig (s, Params::id::retrigRate, "RETRIG"),
           autoVar (s, Params::id::autoVarOn, "AUTO"),
-          varAmt (s, Params::id::autoVarAmt, "VAR AMT")
+          varAmt (s, Params::id::autoVarAmt, "VAR AMT"),
+          bits (s, Params::id::outBits, "8-BIT")
     {
         trigger.setButtonText ("TRIGGER");
         trigger.setColour (juce::TextButton::buttonColourId, RetroColors::accentDark);
@@ -54,28 +55,31 @@ public:
         addAndMakeVisible (retrig);
         addAndMakeVisible (autoVar);
         addAndMakeVisible (varAmt);
+        addAndMakeVisible (bits);
     }
 
     void resized() override
     {
         auto b = content();
-        trigger.setBounds (b.removeFromLeft (96).reduced (2));
-        b.removeFromLeft (6);
+        // TRIGGER button with the 8-bit output switch tucked beneath it
+        auto left = b.removeFromLeft (90);
+        bits.setBounds (left.removeFromBottom (20));
+        left.removeFromBottom (4);
+        trigger.setBounds (left.reduced (2, 0));
+        b.removeFromLeft (8);
 
-        // top row of knobs: GATE, INTERVAL, RETRIG
-        auto top = b.removeFromTop (b.getHeight() / 2);
-        const int cw = top.getWidth() / 3;
-        gate.setBounds (top.removeFromLeft (cw));
-        loopRate.setBounds (top.removeFromLeft (cw));
-        retrig.setBounds (top);
+        // a clean 4-knob row (reasonable size) over a switch/button row
+        auto knobs = b.removeFromTop (b.getHeight() * 64 / 100);
+        const int kw = knobs.getWidth() / 4;
+        gate.setBounds     (knobs.removeFromLeft (kw));
+        loopRate.setBounds (knobs.removeFromLeft (kw));
+        retrig.setBounds   (knobs.removeFromLeft (kw));
+        varAmt.setBounds   (knobs);
 
-        // bottom: VAR AMT | LOOP+AUTO switches | VARIATE+UNDO buttons
-        const int bw = b.getWidth() / 3;
-        varAmt.setBounds (b.removeFromLeft (bw));
-        auto sw = b.removeFromLeft (bw);
-        loopOn.setBounds (sw.removeFromTop (sw.getHeight() / 2).withSizeKeepingCentre (sw.getWidth(), 18));
-        autoVar.setBounds (sw.withSizeKeepingCentre (sw.getWidth(), 18));
-        auto btns = b.reduced (2, 2);
+        auto sw = b.removeFromLeft (b.getWidth() / 2);
+        loopOn.setBounds  (sw.removeFromTop (sw.getHeight() / 2).withSizeKeepingCentre (sw.getWidth() - 6, 18));
+        autoVar.setBounds (sw.withSizeKeepingCentre (sw.getWidth() - 6, 18));
+        auto btns = b.reduced (2, 1);
         variateButton.setBounds (btns.removeFromTop (btns.getHeight() / 2).reduced (0, 1));
         undoButton.setBounds (btns.reduced (0, 1));
     }
@@ -90,4 +94,5 @@ private:
     LabeledKnob loopRate, retrig;
     SwitchToggle autoVar;
     LabeledKnob varAmt;
+    SwitchToggle bits;
 };

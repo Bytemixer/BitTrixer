@@ -16,8 +16,8 @@
 
 // ============================================================================
 //  VcaPanel — the output section: VCA drive ("preamp push"), compression
-//  (density/punch), master volume, plus the lo-fi output format (sample
-//  rate + bit depth) baked into the rendered/exported sound.
+//  (density/punch) and master volume. (Output sample rate lives in the top
+//  bar; the 8-bit switch lives by the Trigger button.)
 // ============================================================================
 
 class VcaPanel : public SectionPanel
@@ -27,33 +27,16 @@ public:
         : SectionPanel ("VCA / Output"),
           drive  (s, Params::id::vcaDrive,  "DRIVE"),
           comp   (s, Params::id::comp,      "COMP"),
-          master (s, Params::id::masterVol, "MASTER"),
-          rate   (s, Params::id::outRate),
-          bits   (s, Params::id::outBits, "8-BIT")
+          master (s, Params::id::masterVol, "MASTER")
     {
         addAndMakeVisible (drive);
         addAndMakeVisible (comp);
         addAndMakeVisible (master);
-        rateLabel.setText ("RATE", juce::dontSendNotification);
-        rateLabel.setColour (juce::Label::textColourId, RetroColors::textDim);
-        rateLabel.setFont (juce::Font (juce::FontOptions (10.5f)));
-        addAndMakeVisible (rateLabel);
-        addAndMakeVisible (rate);
-        addAndMakeVisible (bits);
     }
 
     void resized() override
     {
         auto b = content();
-
-        // output-format row at the bottom: RATE selector + 8-bit switch
-        auto bottom = b.removeFromBottom (24);
-        rateLabel.setBounds (bottom.removeFromLeft (32));
-        rate.setBounds (bottom.removeFromLeft (94));
-        bottom.removeFromLeft (6);
-        bits.setBounds (bottom);
-
-        // DRIVE / COMP / MASTER knobs
         const int kw = b.getWidth() / 3;
         drive.setBounds (b.removeFromLeft (kw));
         comp.setBounds  (b.removeFromLeft (kw));
@@ -61,8 +44,5 @@ public:
     }
 
 private:
-    LabeledKnob  drive, comp, master;
-    juce::Label  rateLabel;
-    ChoiceCombo  rate;
-    SwitchToggle bits;
+    LabeledKnob drive, comp, master;
 };
