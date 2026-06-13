@@ -25,7 +25,7 @@ struct Theme
     juce::String name;
     juce::Colour background, panel, panelEdge, panelTitle, text, textDim,
                  accent, accentDark, knobFace, knobRim, track, switchOff,
-                 ledOn, trace;
+                 ledOn, trace, traceCtrl;
     bool prideMode = false;
 
     void apply() const
@@ -44,6 +44,7 @@ struct Theme
         RetroColors::switchOff  = switchOff;
         RetroColors::ledOn      = ledOn;
         RetroColors::trace      = trace;
+        RetroColors::traceCtrl  = traceCtrl;
         RetroColors::prideMode  = prideMode;
     }
 
@@ -69,6 +70,7 @@ struct Theme
         t.switchOff  = panel.brighter (0.12f);
         t.ledOn      = led;
         t.trace      = trace;
+        t.traceCtrl  = trace.withRotatedHue (0.5f).withSaturation (0.55f); // contrasting hue
         return t;
     }
 };
@@ -92,7 +94,8 @@ namespace ThemePresets
         t.track      = juce::Colour (0xff1b1d21);
         t.switchOff  = juce::Colour (0xff3c4148);
         t.ledOn      = juce::Colour (0xff63d471);
-        t.trace      = juce::Colour (0xff5580ab);
+        t.trace      = juce::Colour (0xff5580ab);   // audio: blue
+        t.traceCtrl  = juce::Colour (0xffd0913f);   // control: amber
         return t;
     }
 
@@ -113,7 +116,8 @@ namespace ThemePresets
         t.track      = juce::Colour (0xffbfc5cd);
         t.switchOff  = juce::Colour (0xffb4bbc5);
         t.ledOn      = juce::Colour (0xff2fa84f);
-        t.trace      = juce::Colour (0xff9aa6b6);
+        t.trace      = juce::Colour (0xff5f86b8);   // audio: blue
+        t.traceCtrl  = juce::Colour (0xffb9742a);   // control: amber
         return t;
     }
 
@@ -134,7 +138,8 @@ namespace ThemePresets
         t.track      = juce::Colour (0xffecd5e2);
         t.switchOff  = juce::Colour (0xffe4c5d6);
         t.ledOn      = juce::Colour (0xff8ad48a);
-        t.trace      = juce::Colour (0xffd9aac6);
+        t.trace      = juce::Colour (0xffd98ab8);   // audio: pink
+        t.traceCtrl  = juce::Colour (0xff6fc2a0);   // control: mint
         return t;
     }
 
@@ -156,7 +161,8 @@ namespace ThemePresets
         t.track      = juce::Colour (0xff19191f);
         t.switchOff  = juce::Colour (0xff3c3848);
         t.ledOn      = juce::Colour (0xff8ad48a);
-        t.trace      = juce::Colour (0xff7a5fd0);
+        t.trace      = juce::Colour (0xff7a5fd0);   // audio: violet
+        t.traceCtrl  = juce::Colour (0xffd0a05f);   // control: gold
         return t;
     }
 
@@ -182,6 +188,7 @@ namespace ThemePresets
         t.switchOff  = juce::Colour (0xff3b3a40);
         t.ledOn      = juce::Colour (0xff008026);   // flag green
         t.trace      = juce::Colour (0xff2fa84f);
+        t.traceCtrl  = juce::Colour (0xff732982);   // flag purple (control)
         t.prideMode  = true;
         return t;
     }

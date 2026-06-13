@@ -39,7 +39,8 @@ namespace RetroColors
     inline juce::Colour track        { 0xff1b1d21 };
     inline juce::Colour switchOff    { 0xff3c4148 };
     inline juce::Colour ledOn        { 0xff63d471 };
-    inline juce::Colour trace        { 0xff5580ab };   // PCB signal traces
+    inline juce::Colour trace        { 0xff5580ab };   // audio-signal traces
+    inline juce::Colour traceCtrl    { 0xffd0913f };   // control/modulation traces
     inline bool prideMode = false;                     // pride theme: flag stripes everywhere
 
     // the six-stripe LGBTQ+ flag, used by the pride theme

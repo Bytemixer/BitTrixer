@@ -209,6 +209,20 @@ namespace
         g.setColour (RetroColors::background);
         g.fillEllipse (pt.x - 1.0f, pt.y - 1.0f, 2.0f, 2.0f);
     }
+
+    // numbered stage node: shows the signal-flow order along the audio path
+    void stageBadge (juce::Graphics& g, juce::Point<float> c, int n, juce::Colour fill)
+    {
+        g.setColour (fill);
+        g.fillEllipse (c.x - 8.0f, c.y - 8.0f, 16.0f, 16.0f);
+        g.setColour (RetroColors::background);
+        g.drawEllipse (c.x - 8.0f, c.y - 8.0f, 16.0f, 16.0f, 1.6f);
+        g.setColour (fill.contrasting (0.95f));
+        g.setFont (juce::Font (juce::FontOptions (10.0f, juce::Font::bold)));
+        g.drawText (juce::String (n),
+                    juce::Rectangle<float> (c.x - 8.0f, c.y - 8.0f, 16.0f, 16.0f).toNearestInt(),
+                    juce::Justification::centred);
+    }
 }
 
 void RetroForgeEditor::drawSignalTraces (juce::Graphics& g)
@@ -219,13 +233,15 @@ void RetroForgeEditor::drawSignalTraces (juce::Graphics& g)
     auto leg = [pride] (int i) {
         return pride ? RetroColors::kPrideFlag[i].brighter (0.15f) : RetroColors::trace;
     };
-    const auto srcCol    = leg (0);                     // red    : sources -> CRUSH
-    const auto vcfCol    = leg (1);                     // orange : CRUSH -> VCF
-    const auto vcaCol    = leg (2);                     // yellow : VCF -> VCA
-    const auto phaseCol  = leg (3);                     // green  : VCA -> PHASER
-    const auto outCol    = leg (4);                     // blue   : FLANGER -> OUT
+    // audio path: one colour (or the pride ribbon); control path: a
+    // contrasting colour, like the blue-audio / red-control synth diagrams
+    const auto srcCol    = leg (0);
+    const auto vcfCol    = leg (1);
+    const auto vcaCol    = leg (2);
+    const auto phaseCol  = leg (3);
+    const auto outCol    = leg (4);
     const auto envCol    = pride ? RetroColors::kPrideFlag[5].brighter (0.45f)
-                                 : RetroColors::trace.withAlpha (0.55f); // purple
+                                 : RetroColors::traceCtrl;
     const auto modCol    = envCol;
 
     const auto vcf   = filterPanel.getBounds().toFloat();
@@ -262,12 +278,12 @@ void RetroForgeEditor::drawSignalTraces (juce::Graphics& g)
         strokeTrace (g, chamfered ({ { outX, gen.getBottom() }, { outX, laneY },
                                      { crushInX, laneY }, { crushInX, gapTop } }, 12.0f),
                      srcCol, 3.4f);
-        solderPad (g, { outX, gen.getBottom() }, srcCol);
         arrowInto (g, { crushInX, gapTop }, 2, srcCol);
         g.setColour (srcCol);
         g.setFont (juce::Font (juce::FontOptions (8.5f, juce::Font::bold)));
-        g.drawText ("SOURCES", (int) outX + 8, (int) laneY - 12, 70, 11,
+        g.drawText ("SOURCES", (int) outX + 12, (int) laneY - 12, 70, 11,
                     juce::Justification::centredLeft);
+        stageBadge (g, { outX, gen.getBottom() }, 1, srcCol);     // 1: generators
     }
 
     // ---- leg 2: CRUSH -> VCF (left channel, inner lane) ----
@@ -280,6 +296,9 @@ void RetroForgeEditor::drawSignalTraces (juce::Graphics& g)
                      vcfCol, 3.2f);
         solderPad (g, { crushOutX, gapTop }, vcfCol);
         arrowInto (g, { vcf.getX(), vcfInY }, 0, vcfCol);
+        stageBadge (g, { crushInX + (crushOutX - crushInX) * 0.5f, gapTop - 13.0f },
+                    2, vcfCol);                                   // 2: bitcrush (pre-filter)
+        stageBadge (g, { vcf.getX() - 14.0f, vcfInY }, 3, vcfCol); // 3: VCF
     }
 
     // ---- leg 3: VCF -> VCA (left channel, panel-hugging lane) ----
@@ -292,6 +311,7 @@ void RetroForgeEditor::drawSignalTraces (juce::Graphics& g)
                      vcaCol, 3.2f);
         solderPad (g, { vcf.getX(), outY }, vcaCol);
         arrowInto (g, { vca.getX(), inY }, 0, vcaCol);
+        stageBadge (g, { vca.getX() - 14.0f, inY }, 4, vcaCol);   // 4: VCA
     }
 
     // ---- leg 4: VCA -> PHASER ----
@@ -302,6 +322,7 @@ void RetroForgeEditor::drawSignalTraces (juce::Graphics& g)
                      phaseCol, 3.0f);
         solderPad (g, { x, vca.getBottom() }, phaseCol);
         arrowInto (g, { phaserInX, gapTop }, 2, phaseCol);
+        stageBadge (g, { phaserInX, gapTop - 13.0f }, 5, phaseCol); // 5: phaser+flanger FX
     }
 
     // ---- leg 5: FLANGER -> OUT (scope window monitors the output) ----
@@ -312,6 +333,7 @@ void RetroForgeEditor::drawSignalTraces (juce::Graphics& g)
                      outCol, 3.0f);
         solderPad (g, { flangerOutX, gapTop }, outCol);
         arrowInto (g, { x, scope.getBottom() }, 3, outCol);
+        stageBadge (g, { x - 16.0f, scope.getBottom() }, 6, outCol); // 6: output
         g.setColour (outCol);
         g.setFont (juce::Font (juce::FontOptions (9.0f, juce::Font::bold)));
         g.drawText ("OUT", (int) x + 6, (int) scope.getBottom() - 4, 26, 10,
