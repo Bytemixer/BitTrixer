@@ -288,7 +288,7 @@ void RetroForgeEditor::drawSignalTraces (juce::Graphics& g)
 
     // ---- leg 2: CRUSH -> VCF (left channel, inner lane) ----
     {
-        const float busX = vcf.getX() - 13.0f;
+        const float busX = vcf.getX() - 22.0f;        // further left, into the channel
         const float vcfInY = vcf.getY() + 60.0f;
         strokeTrace (g, chamfered ({ { crushOutX, gapTop }, { crushOutX, yLaneB },
                                      { busX, yLaneB }, { busX, vcfInY },
@@ -298,7 +298,7 @@ void RetroForgeEditor::drawSignalTraces (juce::Graphics& g)
         arrowInto (g, { vcf.getX(), vcfInY }, 0, vcfCol);
         stageBadge (g, { crushInX + (crushOutX - crushInX) * 0.5f, gapTop - 13.0f },
                     2, vcfCol);                                   // 2: bitcrush (pre-filter)
-        stageBadge (g, { vcf.getX() - 14.0f, vcfInY }, 3, vcfCol); // 3: VCF
+        stageBadge (g, { vcf.getX() - 13.0f, vcfInY }, 3, vcfCol); // 3: VCF
     }
 
     // ---- leg 3: VCF -> VCA (left channel, panel-hugging lane) ----
@@ -376,8 +376,6 @@ void RetroForgeEditor::drawSignalTraces (juce::Graphics& g)
         const float matrixOutY = mtx.getBottom() - 14.0f;
         const float vcfModInY  = vcf.getBottom() - 22.0f;
 
-        juce::ignoreUnused (inLaneX, matrixInY);
-
         // LFO1 / LFO2 drop straight down into the matrix top
         juce::Path lfo;
         lfo.startNewSubPath (lfo1b.getCentreX(), lfo1b.getBottom());
@@ -385,6 +383,17 @@ void RetroForgeEditor::drawSignalTraces (juce::Graphics& g)
         lfo.startNewSubPath (lfo2b.getCentreX(), lfo2b.getBottom());
         lfo.lineTo (lfo2b.getCentreX(), mtx.getY());
         strokeTrace (g, lfo, modCol, 1.3f, true);
+
+        // ENV F / ENV A are also selectable matrix sources
+        strokeTrace (g, chamfered ({ { envF.getRight(), envF.getCentreY() },
+                                     { inLaneX, envF.getCentreY() },
+                                     { inLaneX, matrixInY },
+                                     { mtx.getX(), matrixInY } }, 5.0f),
+                     modCol, 1.3f, true);
+        strokeTrace (g, chamfered ({ { envA.getRight(), envA.getCentreY() },
+                                     { inLaneX, envA.getCentreY() },
+                                     { inLaneX, matrixInY } }, 5.0f),
+                     modCol, 1.3f, true);
 
         // matrix OUTPUT -> back across to the VCF (nearest audio destination)
         strokeTrace (g, chamfered ({ { mtx.getX(), matrixOutY },
@@ -395,9 +404,13 @@ void RetroForgeEditor::drawSignalTraces (juce::Graphics& g)
 
         solderPad (g, { lfo1b.getCentreX(), lfo1b.getBottom() }, modCol);
         solderPad (g, { lfo2b.getCentreX(), lfo2b.getBottom() }, modCol);
+        solderPad (g, { envF.getRight(), envF.getCentreY() }, modCol);
+        solderPad (g, { envA.getRight(), envA.getCentreY() }, modCol);
         solderPad (g, { mtx.getX(), matrixOutY }, modCol);
+        via (g, { inLaneX, matrixInY }, modCol);
         arrowInto (g, { lfo1b.getCentreX(), mtx.getY() }, 2, modCol);
         arrowInto (g, { lfo2b.getCentreX(), mtx.getY() }, 2, modCol);
+        arrowInto (g, { mtx.getX(), matrixInY }, 0, modCol);
         arrowInto (g, { vcf.getRight(), vcfModInY }, 1, modCol);
         modLabel (modCol, { outLaneX, (matrixOutY + vcfModInY) * 0.5f },
                   "MOD", juce::Justification::centredRight);
@@ -430,13 +443,13 @@ void RetroForgeEditor::resized()
     b.removeFromLeft (channel);
 
     // ---- middle column: filter, both envelopes (one panel), vca + scope.
-    //      tighter gaps now that the inter-panel routing is just a small
-    //      arrow, giving the envelopes more vertical room ----
-    constexpr int midArrowGap = 20;
+    //      the inter-panel routing is just a small arrow now, so the gaps
+    //      are LFO->matrix sized and the envelopes take the reclaimed room ----
+    constexpr int midArrowGap = 10;
     auto mid = b.removeFromLeft (400);
     filterPanel.setBounds (mid.removeFromTop (152));
     mid.removeFromTop (midArrowGap);
-    envelopesPanel.setBounds (mid.removeFromTop (360));
+    envelopesPanel.setBounds (mid.removeFromTop (376));
     mid.removeFromTop (midArrowGap);
     vcaPanel.setBounds (mid.removeFromLeft (168));
     mid.removeFromLeft (gap);
