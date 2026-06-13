@@ -11,6 +11,7 @@
 
 #pragma once
 
+#include "Bitcrusher.h"
 #include "Phaser.h"
 #include "Flanger.h"
 #include "RingMod.h"
@@ -19,30 +20,43 @@
 #include "Delay.h"
 
 // ============================================================================
-//  FxChain — the per-instance effect chain that runs after the voice sum
-//  (retriggered with the sound). A pedalboard of named effects, each with its
-//  own enable; disabled effects are skipped. Crush is NOT here yet -- it still
-//  sits per-voice, pre-filter -- it joins the chain when drag-reorder lands.
-//
-//  Fixed processing order for now (Phaser -> Flanger -> RingMod -> Tremolo ->
-//  Formant -> Delay); a user-defined order arrives with the drag-reorder UI.
+//  FxChain — the per-instance effect pedalboard that runs after the voice sum
+//  (retriggered with the sound). Seven effects, each with its own enable, run
+//  in a user-defined order (see setOrder). Crush now lives here too (post-VCA),
+//  so it reorders like the rest. Disabled effects are skipped.
 // ============================================================================
 
 class FxChain
 {
 public:
+    static constexpr int kCount = 7;
+    enum class Effect { Crush = 0, Phaser, Flanger, RingMod, Tremolo, Formant, Delay };
+
     void prepare (double sampleRate) noexcept
     {
+        crushL.reset(); crushR.reset();
         phaser.prepare (sampleRate); flanger.prepare (sampleRate); ring.prepare (sampleRate);
         trem.prepare (sampleRate);   formant.prepare (sampleRate); delay.prepare (sampleRate);
     }
 
     void retrigger() noexcept
     {
+        crushL.reset(); crushR.reset();
         phaser.retrigger(); flanger.retrigger(); ring.retrigger();
         trem.retrigger();   formant.retrigger(); delay.retrigger();
     }
 
+    // order is a permutation of 0..kCount-1 (chain position -> Effect)
+    void setOrder (const int* order) noexcept
+    {
+        for (int i = 0; i < kCount; ++i)
+        {
+            const int e = order[i];
+            ord[i] = (e >= 0 && e < kCount) ? e : i;
+        }
+    }
+
+    void setCrush   (bool on, float bits, float down) noexcept           { crushOn = on; crushL.setParams (bits, down); crushR.setParams (bits, down); }
     void setPhaser  (bool on, float rate, float depth, float fb) noexcept { phaseOn = on;  phaser.setParams (rate, depth, fb); }
     void setFlanger (bool on, float rate, float depth, float fb) noexcept { flangeOn = on; flanger.setParams (rate, depth, fb); }
     void setRing    (bool on, float freq, float mix, int wave) noexcept   { ringOn = on;   ring.setWave (wave); ring.setParams (freq, mix); }
@@ -52,15 +66,30 @@ public:
 
     void process (float* left, float* right, int n) noexcept
     {
-        if (phaseOn)  phaser.process  (left, right, n);
-        if (flangeOn) flanger.process (left, right, n);
-        if (ringOn)   ring.process    (left, right, n);
-        if (tremOn)   trem.process    (left, right, n);
-        if (formOn)   formant.process (left, right, n);
-        if (delayOn)  delay.process   (left, right, n);
+        for (int i = 0; i < kCount; ++i)
+            runEffect (ord[i], left, right, n);
     }
 
 private:
+    void runEffect (int e, float* l, float* r, int n) noexcept
+    {
+        switch ((Effect) e)
+        {
+            case Effect::Crush:
+                if (crushOn)
+                    for (int s = 0; s < n; ++s) { l[s] = crushL.tick (l[s]); r[s] = crushR.tick (r[s]); }
+                break;
+            case Effect::Phaser:  if (phaseOn)  phaser.process  (l, r, n); break;
+            case Effect::Flanger: if (flangeOn) flanger.process (l, r, n); break;
+            case Effect::RingMod: if (ringOn)   ring.process    (l, r, n); break;
+            case Effect::Tremolo: if (tremOn)   trem.process    (l, r, n); break;
+            case Effect::Formant: if (formOn)   formant.process (l, r, n); break;
+            case Effect::Delay:   if (delayOn)  delay.process   (l, r, n); break;
+            default: break;
+        }
+    }
+
+    Bitcrusher crushL, crushR;
     Phaser  phaser;
     Flanger flanger;
     RingMod ring;
@@ -68,6 +97,8 @@ private:
     Formant formant;
     Delay   delay;
 
-    bool phaseOn = false, flangeOn = false, ringOn = false,
+    bool crushOn = false, phaseOn = false, flangeOn = false, ringOn = false,
          tremOn = false, formOn = false, delayOn = false;
+
+    int ord[kCount] { 0, 1, 2, 3, 4, 5, 6 };
 };

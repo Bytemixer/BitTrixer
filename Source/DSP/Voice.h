@@ -17,7 +17,6 @@
 #include "NoiseGen.h"
 #include "LadderFilter.h"
 #include "Drive.h"
-#include "Bitcrusher.h"
 #include "FastMath.h"
 #include "../Params.h"
 
@@ -57,10 +56,6 @@ public:
 
         float driveAmt = 0.0f;
         const float* amp = nullptr;             // per-sample VCA gain
-
-        bool  crushOn = false;                  // bitcrusher: post-mix, pre-VCF
-        float crushBits = 8.0f;
-        float crushDown = 1.0f;
     };
 
     void prepare (double sampleRate) noexcept
@@ -100,7 +95,6 @@ public:
     {
         filter.reset();
         noise.reset();
-        crusher.reset();
         driftLp = 0.0f;
     }
 
@@ -137,8 +131,6 @@ public:
         noise.setType ((NoiseGen::Type) (int) ctx.noiseType);
         noise.setColor (noiseColor);
         drive.setAmount (ctx.driveAmt);
-        if (ctx.crushOn)
-            crusher.setParams (ctx.crushBits, ctx.crushDown);
 
         // The sync master is the first ENABLED oscillator (normally OSC 1, but
         // if it is off the role falls through to OSC 2, then OSC 3). Any other
@@ -168,9 +160,6 @@ public:
 
             mix = FastMath::tanh (mix);               // mixer bus warmth
 
-            if (ctx.crushOn)
-                mix = crusher.tick (mix);             // lo-fi grit, smoothed by the VCF
-
             float y = filter.tick (mix);
             y *= ctx.amp[s];                          // VCA
             y = drive.tick (y);                       // amp "preamp push"
@@ -196,7 +185,6 @@ private:
     NoiseGen     noise;
     LadderFilter filter;
     Drive        drive;
-    Bitcrusher   crusher;
 
     float detuneRatio = 1.0f;
     float panL = 0.7071f, panR = 0.7071f;
