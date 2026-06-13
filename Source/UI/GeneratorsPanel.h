@@ -50,18 +50,19 @@ public:
         auto b = content();
         dividers.clear();
 
-        // compact bands, with the leftover column height spread evenly as
-        // breathing room so nothing floats
-        const int oscH = 96, noiseH = 84;
-        const int contentH = Params::kNumOscs * oscH + noiseH;
-        const int slack = juce::jmax (0, b.getHeight() - contentH);
-        const int gap = slack / (Params::kNumOscs + 1);
+        // noise is the short band; the three oscillators share the rest
+        // evenly. Each band centres a compact control block, so taller bands
+        // read as deliberate breathing room rather than floating knobs.
+        const int noiseH = 70;
+        const int divGap = 6;
+        const int oscH = (b.getHeight() - noiseH - divGap * Params::kNumOscs)
+                       / Params::kNumOscs;
 
         for (int i = 0; i < oscs.size(); ++i)
         {
             oscs[i]->setBounds (b.removeFromTop (oscH));
-            b.removeFromTop (gap);
-            dividers.push_back ((float) b.getY() - gap * 0.5f);
+            b.removeFromTop (divGap);
+            dividers.push_back ((float) b.getY() - divGap * 0.5f);
         }
         noise->setBounds (b.removeFromTop (noiseH));
     }
@@ -123,7 +124,12 @@ private:
 
         void resized() override
         {
-            auto b = getLocalBounds().reduced (2, 2);
+            // centre an 84px control block in the band (no floating knobs)
+            constexpr int blockH = 84;
+            auto full = getLocalBounds().reduced (2, 2);
+            auto b = full.withTrimmedTop (juce::jmax (0, (full.getHeight() - blockH) / 2))
+                         .withHeight (juce::jmin (full.getHeight(), blockH));
+
             auto top = b.removeFromTop (20);
             tag.setBounds (top.removeFromLeft (48));
             onSwitch.setBounds (top.removeFromLeft (32));
@@ -137,12 +143,12 @@ private:
             wave.setBounds (top);
 
             b.removeFromTop (2);
-            const int kw = b.getWidth() / 5;
+            const int kw = b.getWidth() / 5;       // shared 5-column knob grid
             pitch.setBounds (b.removeFromLeft (kw));
             fine.setBounds  (b.removeFromLeft (kw));
             pwm.setBounds   (b.removeFromLeft (kw));
             fold.setBounds  (b.removeFromLeft (kw));
-            level.setBounds (b);
+            level.setBounds (b.removeFromLeft (kw));
         }
 
         int index;
@@ -162,7 +168,7 @@ private:
             : tag ("NOISE", juce::Colour (0xffb07cc6)),
               onSwitch (s, Params::id::noiseOn, ""),
               type (s, Params::id::noiseType),
-              color (s, Params::id::noiseColor, "COLOR / CLOCK"),
+              color (s, Params::id::noiseColor, "COLOR"),
               level (s, Params::id::noiseLevel, "LEVEL")
         {
             addAndMakeVisible (tag);
@@ -176,15 +182,18 @@ private:
         {
             auto b = getLocalBounds().reduced (2, 2);
             auto top = b.removeFromTop (20);
-            tag.setBounds (top.removeFromLeft (50));
-            onSwitch.setBounds (top.removeFromLeft (34));
+            tag.setBounds (top.removeFromLeft (48));
+            onSwitch.setBounds (top.removeFromLeft (32));
             top.removeFromLeft (3);
             type.setBounds (top);
 
             b.removeFromTop (2);
-            const int kw = b.getWidth() / 2;
+            // same 5-column grid as the oscillators: COLOR + LEVEL occupy the
+            // first two cells so every generator knob is the same size and
+            // column-aligned. Cells 3-5 stay open (room for the routing tap).
+            const int kw = b.getWidth() / 5;
             color.setBounds (b.removeFromLeft (kw));
-            level.setBounds (b);
+            level.setBounds (b.removeFromLeft (kw));
         }
 
         BandTag tag;

@@ -250,7 +250,6 @@ void RetroForgeEditor::drawSignalTraces (juce::Graphics& g)
     // The 16px channel above the FX strip carries the down/up runs.
 
     const float gapTop = fx.getY();
-    const float yLaneA = gapTop - 12.0f;   // sources -> crush
     const float yLaneB = gapTop - 7.0f;    // crush -> VCF / flanger -> OUT
     const float yLaneC = gapTop - 3.0f;    // VCA -> phaser
 
@@ -259,20 +258,23 @@ void RetroForgeEditor::drawSignalTraces (juce::Graphics& g)
     const float phaserInX  = fx.getX() + fx.getWidth() * 0.42f;
     const float flangerOutX = fx.getX() + fx.getWidth() * 0.88f;
 
-    // ---- leg 1: SOUND GENERATORS -> CRUSH (left channel, outer lane) ----
+    // ---- leg 1: SOUND GENERATORS -> CRUSH (down the open routing lane) ----
     {
         const auto gen = generatorsPanel.getBounds().toFloat();
-        const float busX = vcf.getX() - 23.0f;
-        const float tapY = gen.getCentreY();
+        const float outX = gen.getCentreX();
+        const float laneY = (gen.getBottom() + gapTop) * 0.5f;   // mid routing lane
 
-        // the generators' mixed output taps from the panel's right edge,
-        // runs the channel, and dives into the bitcrusher (pre-filter)
-        strokeTrace (g, chamfered ({ { gen.getRight(), tapY }, { busX, tapY },
-                                     { busX, yLaneA },
-                                     { crushInX, yLaneA }, { crushInX, gapTop } }),
-                     srcCol, 3.2f);
-        solderPad (g, { gen.getRight(), tapY }, srcCol);
+        // all generators sum and flow out the bottom, run the open lane, and
+        // dive into the bitcrusher (which sits BEFORE the filter)
+        strokeTrace (g, chamfered ({ { outX, gen.getBottom() }, { outX, laneY },
+                                     { crushInX, laneY }, { crushInX, gapTop } }, 12.0f),
+                     srcCol, 3.4f);
+        solderPad (g, { outX, gen.getBottom() }, srcCol);
         arrowInto (g, { crushInX, gapTop }, 2, srcCol);
+        g.setColour (srcCol);
+        g.setFont (juce::Font (juce::FontOptions (8.5f, juce::Font::bold)));
+        g.drawText ("SOURCES", (int) outX + 8, (int) laneY - 12, 70, 11,
+                    juce::Justification::centredLeft);
     }
 
     // ---- leg 2: CRUSH -> VCF (left channel, inner lane) ----
@@ -414,9 +416,14 @@ void RetroForgeEditor::resized()
     fxPanel.setBounds (b.removeFromBottom (104));
     b.removeFromBottom (16);   // routing channel above the FX strip
 
-    // ---- left column: all sound generators in one panel ----
+    // ---- left column: all sound generators in one panel, leaving an open
+    //      routing lane below it for the source -> filter-chain traces ----
     juce::ignoreUnused (leftGap);
-    generatorsPanel.setBounds (b.removeFromLeft (316));
+    {
+        auto leftCol = b.removeFromLeft (316);
+        leftCol.removeFromBottom (132);          // routing lane (background)
+        generatorsPanel.setBounds (leftCol);
+    }
 
     b.removeFromLeft (channel);
 
