@@ -20,7 +20,7 @@ RetroForgeEditor::RetroForgeEditor (RetroForgeProcessor& p)
       envelopesPanel (p.apvts),
       vcaPanel (p.apvts),
       pitchPanel (p.apvts),
-      lfo1Panel (p.apvts, 1), lfo2Panel (p.apvts, 2),
+      lfo1Panel (p.apvts, 1), stepLfoPanel (p.apvts),
       modMatrixPanel (p.apvts),
       triggerPanel (p.apvts),
       scopePanel (p.apvts, [&p] { return p.snapshotPatch(); }),
@@ -31,7 +31,7 @@ RetroForgeEditor::RetroForgeEditor (RetroForgeProcessor& p)
     for (auto* c : std::initializer_list<juce::Component*> {
              &header, &generatorsPanel, &filterPanel,
              &envelopesPanel, &vcaPanel, &pitchPanel,
-             &lfo1Panel, &lfo2Panel, &modMatrixPanel,
+             &lfo1Panel, &stepLfoPanel, &modMatrixPanel,
              &triggerPanel, &randomizerPanel, &scopePanel, &fxPanel })
         addAndMakeVisible (c);
 
@@ -239,7 +239,7 @@ void RetroForgeEditor::drawSignalTraces (juce::Graphics& g)
     const auto envA  = envelopesPanel.ampBandBounds().toFloat();
     const auto mtx   = modMatrixPanel.getBounds().toFloat();
     const auto lfo1b = lfo1Panel.getBounds().toFloat();
-    const auto lfo2b = lfo2Panel.getBounds().toFloat();
+    const auto lfo2b = stepLfoPanel.getBounds().toFloat();
 
     // The chain as the engine really runs it:
     //   sources -> CRUSH (pre-filter!) -> VCF -> VCA -> PHASER -> FLANGER -> OUT
@@ -443,9 +443,9 @@ void RetroForgeEditor::resized()
     pitchPanel.setBounds (right.removeFromTop (172));
     right.removeFromTop (gap);
     auto lfoRow = right.removeFromTop (116);
-    lfo1Panel.setBounds (lfoRow.removeFromLeft ((lfoRow.getWidth() - gap) / 2));
+    lfo1Panel.setBounds (lfoRow.removeFromLeft (150));
     lfoRow.removeFromLeft (gap);
-    lfo2Panel.setBounds (lfoRow);
+    stepLfoPanel.setBounds (lfoRow);
     right.removeFromTop (gap);
     modMatrixPanel.setBounds (right.removeFromTop (160));
     right.removeFromTop (gap);

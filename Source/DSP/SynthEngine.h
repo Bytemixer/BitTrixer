@@ -17,6 +17,7 @@
 #include "Voice.h"
 #include "Envelope.h"
 #include "LFO.h"
+#include "StepLFO.h"
 #include "ModMatrix.h"
 #include "Phaser.h"
 #include "Flanger.h"
@@ -76,7 +77,8 @@ private:
         double fs = 44100.0;
 
         Envelope envF, envA;
-        LFO lfo1, lfo2;
+        LFO lfo1;            // LFO 1: classic LFO
+        StepLFO stepLfo;     // LFO 2: step sequencer (the RetroForge twist)
         Phaser phaser;       // per-instance FX: retrigger with the sound,
         Flanger flanger;     // applied to the summed unison stack
         std::array<Voice, Params::kMaxUnison> voices;

@@ -204,13 +204,17 @@ void Randomizer::fullRandom()
 
     set (id::baseFreq, rndLog (60.0f, 2500.0f));
 
-    // LFOs
-    for (int j = 1; j <= kNumLfos; ++j)
-    {
-        setChoice (lfoId (j, "wave"), rndInt (0, 6));
-        set (lfoId (j, "rate"), rndLog (0.2f, 30.0f));
-        set (lfoId (j, "delay"), chance (0.25f) ? rnd (0.0f, 0.5f) : 0.0f);
-    }
+    // LFO 1 (classic)
+    setChoice (lfoId (1, "wave"), rndInt (0, 6));
+    set (lfoId (1, "rate"), rndLog (0.2f, 30.0f));
+    set (lfoId (1, "delay"), chance (0.25f) ? rnd (0.0f, 0.5f) : 0.0f);
+
+    // LFO 2 = the Step LFO: a fresh random sequence
+    set (lfoId (2, "rate"), rndLog (2.0f, 24.0f));     // step advance rate
+    set (id::stepCount, (float) rndInt (3, 8));
+    setBool (id::stepSmooth, chance (0.3f));
+    for (int k = 1; k <= kMaxSteps; ++k)
+        set (stepValId (k), rnd (-1.0f, 1.0f));
 
     // mod matrix: slot 1 is the classic pitch sweep most of the time
     if (chance (0.75f))
