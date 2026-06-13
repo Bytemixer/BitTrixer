@@ -270,7 +270,7 @@ namespace Params
         float tremDepth = 0.5f;
         int   tremWave = 0;
         bool  formOn = false;
-        float formVowel = 0.0f;
+        float formVowel = 0.5f;       // centred so bipolar mod sweeps both ways
         float formReso = 0.5f;
         float formMix = 1.0f;
         bool  delayOn = false;
@@ -853,7 +853,7 @@ namespace Params
 
         layout.add (std::make_unique<AudioParameterBool>  (ParameterID { id::formOn, 1 },    "Formant On", false));
         layout.add (std::make_unique<AudioParameterFloat> (ParameterID { id::formVowel, 1 }, "Formant Vowel",
-                        NormalisableRange<float> (0.0f, 1.0f, 0.001f), 0.0f, unitAttr));
+                        NormalisableRange<float> (0.0f, 1.0f, 0.001f), 0.5f, unitAttr));
         layout.add (std::make_unique<AudioParameterFloat> (ParameterID { id::formReso, 1 },  "Formant Reso",
                         NormalisableRange<float> (0.0f, 1.0f, 0.001f), 0.5f, unitAttr));
         layout.add (std::make_unique<AudioParameterFloat> (ParameterID { id::formMix, 1 },   "Formant Wet/Dry",
