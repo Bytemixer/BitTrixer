@@ -29,26 +29,27 @@ public:
           editor (s),
           steps (s, Params::id::stepCount, "STEPS"),
           rate  (s, Params::lfoId (2, "rate"), "RATE"),
-          glide (s, Params::id::stepSmooth, "GLIDE")
+          glide (s, Params::id::stepGlide, "GLIDE"),
+          skew  (s, Params::id::stepSkew, "SKEW")
     {
         addAndMakeVisible (editor);
         addAndMakeVisible (steps);
         addAndMakeVisible (rate);
         addAndMakeVisible (glide);
+        addAndMakeVisible (skew);
     }
 
     void resized() override
     {
         auto b = content();
-        // controls column on the left, the draggable step graph on the right
-        auto left = b.removeFromLeft (62);
-        steps.setBounds (left.removeFromTop (left.getHeight() / 2));
-        rate.setBounds  (left);
-        b.removeFromLeft (4);
-
-        auto bottom = b.removeFromBottom (20);
-        glide.setBounds (bottom.withTrimmedLeft (2));
-        editor.setBounds (b.reduced (0, 2));
+        // the draggable step graph on top, four controls in a row beneath it
+        auto knobs = b.removeFromBottom (60);
+        const int kw = knobs.getWidth() / 4;
+        steps.setBounds (knobs.removeFromLeft (kw));
+        rate.setBounds  (knobs.removeFromLeft (kw));
+        glide.setBounds (knobs.removeFromLeft (kw));
+        skew.setBounds  (knobs);
+        editor.setBounds (b.removeFromBottom (b.getHeight()).reduced (0, 2));
     }
 
 private:
@@ -123,6 +124,5 @@ private:
     };
 
     StepEditor   editor;
-    LabeledKnob  steps, rate;
-    SwitchToggle glide;
+    LabeledKnob  steps, rate, glide, skew;
 };

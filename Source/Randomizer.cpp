@@ -212,7 +212,8 @@ void Randomizer::fullRandom()
     // LFO 2 = the Step LFO: a fresh random sequence
     set (lfoId (2, "rate"), rndLog (2.0f, 24.0f));     // step advance rate
     set (id::stepCount, (float) rndInt (3, 8));
-    setBool (id::stepSmooth, chance (0.3f));
+    set (id::stepGlide, chance (0.3f) ? rnd (0.2f, 0.9f) : 0.0f);
+    set (id::stepSkew,  chance (0.35f) ? rnd (-0.7f, 0.7f) : 0.0f);
     for (int k = 1; k <= kMaxSteps; ++k)
         set (stepValId (k), rnd (-1.0f, 1.0f));
 
