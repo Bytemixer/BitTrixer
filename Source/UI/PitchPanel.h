@@ -48,7 +48,7 @@ public:
     void resized() override
     {
         auto b = content();
-        auto sw = b.removeFromBottom (20);
+        auto sw = b.removeFromTop (20);
         midiTrack.setBounds (sw.withTrimmedLeft (4));
 
         auto row1 = b.removeFromTop (b.getHeight() / 2);

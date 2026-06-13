@@ -72,8 +72,10 @@ public:
     }
 
     // Called at trigger time. detuneCents/pan position this voice within the
-    // unison stack; the seed decorrelates phases, noise and drift.
-    void start (float detuneCents, float pan, uint32_t seed) noexcept
+    // unison stack; phaseOffset spreads the unison voices; waves let each
+    // oscillator start at its rising zero crossing (no onset pop).
+    void start (float detuneCents, float pan, uint32_t seed, float phaseOffset,
+                const Oscillator::Wave* waves) noexcept
     {
         rng = seed != 0 ? seed : 0xB16B00B5u;
         detuneRatio = std::pow (2.0f, detuneCents / 1200.0f);
@@ -83,8 +85,13 @@ public:
         panL = std::cos (a);
         panR = std::sin (a);
 
-        for (auto& o : oscs)
-            o.reset (nextRand01());
+        for (int i = 0; i < Params::kNumOscs; ++i)
+        {
+            oscs[(size_t) i].setWave (waves[i]);
+            float p = Oscillator::zeroCrossingPhase (waves[i]) + phaseOffset;
+            p -= std::floor (p);
+            oscs[(size_t) i].reset (p);
+        }
         noise.seed (nextRandU32());
         // keep filter state (anti-click on voice steal), drift keeps walking
     }
@@ -125,31 +132,27 @@ public:
         if (ctx.crushOn)
             crusher.setParams (ctx.crushBits, ctx.crushDown);
 
-        // OSC 1 is the sync master; OSC 2/3 hard-sync to it when their switch is on
-        const bool sync2 = ctx.oscSync[1];
-        const bool sync3 = ctx.oscSync[2];
+        // The sync master is the first ENABLED oscillator (normally OSC 1, but
+        // if it is off the role falls through to OSC 2, then OSC 3). Any other
+        // enabled oscillator with its sync switch on hard-syncs to the master.
+        int master = -1;
+        for (int i = 0; i < Params::kNumOscs; ++i)
+            if (ctx.oscOn[i]) { master = i; break; }
 
         for (int s = 0; s < n; ++s)
         {
             float mix = 0.0f;
-            bool w1 = false;
+            bool wMaster = false;
 
-            if (ctx.oscOn[0])
+            for (int i = 0; i < Params::kNumOscs; ++i)
             {
-                mix += oscs[0].tick (inc[0]) * ctx.oscLevel[0];
-                w1 = oscs[0].wrapped();
-            }
-            if (ctx.oscOn[1])
-            {
-                if (sync2 && w1)
-                    oscs[1].hardSync();
-                mix += oscs[1].tick (inc[1]) * ctx.oscLevel[1];
-            }
-            if (ctx.oscOn[2])
-            {
-                if (sync3 && w1)
-                    oscs[2].hardSync();
-                mix += oscs[2].tick (inc[2]) * ctx.oscLevel[2];
+                if (! ctx.oscOn[i])
+                    continue;
+                if (i != master && ctx.oscSync[i] && wMaster)
+                    oscs[(size_t) i].hardSync();
+                mix += oscs[(size_t) i].tick (inc[i]) * ctx.oscLevel[i];
+                if (i == master)
+                    wMaster = oscs[(size_t) i].wrapped();
             }
 
             if (ctx.noiseOn)

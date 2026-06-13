@@ -80,14 +80,22 @@ void SynthEngine::Instance::start (const Params::Patch& p, int noteTag,
     numVoices = p.uniVoices < 1 ? 1
               : (p.uniVoices > Params::kMaxUnison ? Params::kMaxUnison : p.uniVoices);
 
+    Oscillator::Wave waves[Params::kNumOscs];
+    for (int j = 0; j < Params::kNumOscs; ++j)
+        waves[j] = (Oscillator::Wave) (int) p.osc[(size_t) j].wave;
+
     uint32_t s = seed;
     for (int i = 0; i < numVoices; ++i)
     {
         s ^= s << 13; s ^= s >> 17; s ^= s << 5;
         const float pos = numVoices == 1 ? 0.0f
                         : 2.0f * (float) i / (float) (numVoices - 1) - 1.0f;
+        // voice 0 (and any single voice) starts exactly at the zero crossing;
+        // unison voices fan out by a deterministic phase spread
+        const float phaseOffset = numVoices == 1 ? 0.0f
+                                : (float) i / (float) numVoices;
         voices[(size_t) i].start (pos * p.uniDetuneCents,
-                                  pos * p.uniSpread, s);
+                                  pos * p.uniSpread, s, phaseOffset, waves);
     }
 
     lfo1.retrigger();

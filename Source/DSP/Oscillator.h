@@ -47,6 +47,23 @@ public:
     void setPwm  (float duty) noexcept { pwm = clamp (duty, 0.05f, 0.95f); }
     void setFold (float amount) noexcept { fold = clamp (amount, 0.0f, 1.0f); }
 
+    // the phase at which a wave is at (or nearest) a rising zero crossing, so
+    // a freshly triggered note starts at amplitude 0 (no onset "pop"). Square
+    // is discontinuous so it has none — the amp envelope ramps it from 0.
+    static float zeroCrossingPhase (Wave w) noexcept
+    {
+        switch (w)
+        {
+            case Wave::Saw:
+            case Wave::RevSaw:
+            case Wave::SuperSaw: return 0.5f;   // ramp passes through 0 mid-cycle
+            case Wave::Triangle: return 0.75f;  // rising zero crossing
+            case Wave::Sine:
+            case Wave::Tan:      return 0.0f;   // already 0 at phase 0
+            default:             return 0.0f;   // square / breaker: no zero crossing
+        }
+    }
+
     // ---- hard sync ----
     bool wrapped() const noexcept { return didWrap; }   // true after the tick where the phase wrapped
     void hardSync() noexcept

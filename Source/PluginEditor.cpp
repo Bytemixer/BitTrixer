@@ -283,7 +283,8 @@ void RetroForgeEditor::drawSignalTraces (juce::Graphics& g)
         g.setFont (juce::Font (juce::FontOptions (8.5f, juce::Font::bold)));
         g.drawText ("SOURCES", (int) outX + 12, (int) laneY - 12, 70, 11,
                     juce::Justification::centredLeft);
-        stageBadge (g, { outX, gen.getBottom() }, 1, srcCol);     // 1: generators
+        // badge sits in the open lane below the panel, not on its edge
+        stageBadge (g, { outX, gen.getBottom() + 15.0f }, 1, srcCol); // 1: generators
     }
 
     // ---- leg 2: CRUSH -> VCF (left channel, inner lane) ----
@@ -296,7 +297,7 @@ void RetroForgeEditor::drawSignalTraces (juce::Graphics& g)
                      vcfCol, 3.2f);
         solderPad (g, { crushOutX, gapTop }, vcfCol);
         arrowInto (g, { vcf.getX(), vcfInY }, 0, vcfCol);
-        stageBadge (g, { crushInX + (crushOutX - crushInX) * 0.5f, gapTop - 13.0f },
+        stageBadge (g, { crushInX + (crushOutX - crushInX) * 0.5f, gapTop - 11.0f },
                     2, vcfCol);                                   // 2: bitcrush (pre-filter)
         stageBadge (g, { vcf.getX() - 13.0f, vcfInY }, 3, vcfCol); // 3: VCF
     }
@@ -322,7 +323,7 @@ void RetroForgeEditor::drawSignalTraces (juce::Graphics& g)
                      phaseCol, 3.0f);
         solderPad (g, { x, vca.getBottom() }, phaseCol);
         arrowInto (g, { phaserInX, gapTop }, 2, phaseCol);
-        stageBadge (g, { phaserInX, gapTop - 13.0f }, 5, phaseCol); // 5: phaser+flanger FX
+        stageBadge (g, { phaserInX, gapTop - 11.0f }, 5, phaseCol); // 5: phaser+flanger FX
     }
 
     // ---- leg 5: FLANGER -> OUT (scope window monitors the output) ----
@@ -333,10 +334,11 @@ void RetroForgeEditor::drawSignalTraces (juce::Graphics& g)
                      outCol, 3.0f);
         solderPad (g, { flangerOutX, gapTop }, outCol);
         arrowInto (g, { x, scope.getBottom() }, 3, outCol);
-        stageBadge (g, { x - 16.0f, scope.getBottom() }, 6, outCol); // 6: output
+        // badge + label live in the open channel, not on the scope's edge
+        stageBadge (g, { x - 16.0f, gapTop - 11.0f }, 6, outCol);    // 6: output
         g.setColour (outCol);
         g.setFont (juce::Font (juce::FontOptions (9.0f, juce::Font::bold)));
-        g.drawText ("OUT", (int) x + 6, (int) scope.getBottom() - 4, 26, 10,
+        g.drawText ("OUT", (int) x - 2, (int) gapTop - 17, 30, 11,
                     juce::Justification::centredLeft);
     }
 
@@ -359,7 +361,8 @@ void RetroForgeEditor::drawSignalTraces (juce::Graphics& g)
         strokeTrace (g, up, envCol, 1.4f, true);
         arrowInto (g, { cx, vcf.getBottom() }, 3, envCol);
 
-        const float ax = envA.getCentreX();
+        // aim at the VCA, which sits on the LEFT of the VCA/scope row
+        const float ax = vca.getCentreX();
         juce::Path down;
         down.startNewSubPath (ax, envA.getBottom());
         down.lineTo (ax, vca.getY());
@@ -429,7 +432,7 @@ void RetroForgeEditor::resized()
     constexpr int channel = 30;   // horizontal trace channels between columns
 
     fxPanel.setBounds (b.removeFromBottom (104));
-    b.removeFromBottom (16);   // routing channel above the FX strip
+    b.removeFromBottom (22);   // routing channel above the FX strip (badge room)
 
     // ---- left column: all sound generators in one panel, leaving an open
     //      routing lane below it for the source -> filter-chain traces ----
