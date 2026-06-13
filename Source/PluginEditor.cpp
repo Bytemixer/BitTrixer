@@ -335,56 +335,79 @@ void RetroForgeEditor::drawSignalTraces (juce::Graphics& g)
                     juce::Justification::centredLeft);
     }
 
-    // ---- env -> target connectors (dashed, through the panel gaps) ----
+    auto modLabel = [&g] (juce::Colour c, juce::Point<float> at, const char* txt,
+                          juce::Justification just)
+    {
+        g.setColour (c);
+        g.setFont (juce::Font (juce::FontOptions (8.5f, juce::Font::bold)));
+        g.drawText (txt, (int) at.x - 40, (int) at.y - 6, 80, 12, just);
+    };
+
+    // ---- dedicated ADSR connections (the envelopes' hardwired jobs) ----
+    //   ENV F -> VCF cutoff (ENV AMT)   |   ENV A -> VCA level
     {
         juce::Path p;
-        const float fx1 = envF.getX() + 56.0f;          // ENV F drives the VCF
+        const float fx1 = envF.getX() + 56.0f;
         p.startNewSubPath (fx1, envF.getY());
         p.lineTo (fx1, vcf.getBottom());
-        const float ax = vca.getCentreX();              // ENV A drives the VCA
+        const float ax = vca.getCentreX();
         p.startNewSubPath (ax, envA.getBottom());
         p.lineTo (ax, vca.getY());
-        strokeTrace (g, p, envCol, 1.4f, true);
+        strokeTrace (g, p, envCol, 1.5f, true);
         solderPad (g, { fx1, envF.getY() }, envCol);
         solderPad (g, { ax, envA.getBottom() }, envCol);
         arrowInto (g, { fx1, vcf.getBottom() }, 3, envCol);
         arrowInto (g, { ax, vca.getY() }, 2, envCol);
     }
 
-    // ---- modulation web (dashed): envs + matrix -> VCF, LFOs -> matrix ----
+    // ---- mod matrix: LFO1/2 + ENV F/A are SOURCES -> matrix; matrix
+    //      OUTPUT fans back to the audio path (cutoff/res, pitch, ...) ----
     {
-        const float busX = vcf.getRight() + 15.0f;
-        const float vcfInY = vcf.getBottom() - 24.0f;
+        const float inLaneX  = mtx.getX() - 10.0f;       // sources collect here
+        const float outLaneX = vcf.getRight() + 9.0f;    // matrix output rail
+        const float matrixInY  = mtx.getY() + 14.0f;
+        const float matrixOutY = mtx.getBottom() - 14.0f;
+        const float vcfModInY  = vcf.getBottom() - 22.0f;
 
-        // chamfered bus: matrix output up the channel and into the VCF
-        strokeTrace (g, chamfered ({ { mtx.getX(), mtx.getCentreY() },
-                                     { busX, mtx.getCentreY() },
-                                     { busX, vcfInY },
-                                     { vcf.getRight(), vcfInY } }),
-                     modCol, 1.4f, true);
+        // LFO1 / LFO2 drop straight down into the matrix top
+        juce::Path lfo;
+        lfo.startNewSubPath (lfo1b.getCentreX(), lfo1b.getBottom());
+        lfo.lineTo (lfo1b.getCentreX(), mtx.getY());
+        lfo.startNewSubPath (lfo2b.getCentreX(), lfo2b.getBottom());
+        lfo.lineTo (lfo2b.getCentreX(), mtx.getY());
+        strokeTrace (g, lfo, modCol, 1.3f, true);
 
-        // env sources joining the bus + LFOs dropping into the matrix
-        juce::Path p;
-        p.startNewSubPath (envF.getRight(), envF.getCentreY());
-        p.lineTo (busX, envF.getCentreY());
-        p.startNewSubPath (envA.getRight(), envA.getCentreY());
-        p.lineTo (busX, envA.getCentreY());
-        p.startNewSubPath (lfo1b.getCentreX(), lfo1b.getBottom());
-        p.lineTo (lfo1b.getCentreX(), mtx.getY());
-        p.startNewSubPath (lfo2b.getCentreX(), lfo2b.getBottom());
-        p.lineTo (lfo2b.getCentreX(), mtx.getY());
-        strokeTrace (g, p, modCol, 1.4f, true);
+        // ENV F / ENV A also feed the matrix (e.g. ENV F -> pitch sweeps)
+        strokeTrace (g, chamfered ({ { envF.getRight(), envF.getCentreY() },
+                                     { inLaneX, envF.getCentreY() },
+                                     { inLaneX, matrixInY },
+                                     { mtx.getX(), matrixInY } }, 5.0f),
+                     modCol, 1.3f, true);
+        strokeTrace (g, chamfered ({ { envA.getRight(), envA.getCentreY() },
+                                     { inLaneX, envA.getCentreY() },
+                                     { inLaneX, matrixInY } }, 5.0f),
+                     modCol, 1.3f, true);
 
-        solderPad (g, { envF.getRight(), envF.getCentreY() }, modCol);
-        solderPad (g, { envA.getRight(), envA.getCentreY() }, modCol);
-        solderPad (g, { mtx.getX(), mtx.getCentreY() }, modCol);
-        solderPad (g, { lfo1b.getCentreX(), lfo1b.getBottom() }, modCol);
-        solderPad (g, { lfo2b.getCentreX(), lfo2b.getBottom() }, modCol);
-        via (g, { busX, envF.getCentreY() }, modCol);
-        via (g, { busX, envA.getCentreY() }, modCol);
-        arrowInto (g, { vcf.getRight(), vcfInY }, 1, modCol);
+        // matrix OUTPUT -> back across to the VCF (nearest audio destination)
+        strokeTrace (g, chamfered ({ { mtx.getX(), matrixOutY },
+                                     { outLaneX, matrixOutY },
+                                     { outLaneX, vcfModInY },
+                                     { vcf.getRight(), vcfModInY } }, 6.0f),
+                     modCol, 1.7f, true);
+
+        for (auto pad : { juce::Point<float> { lfo1b.getCentreX(), lfo1b.getBottom() },
+                          { lfo2b.getCentreX(), lfo2b.getBottom() },
+                          { envF.getRight(), envF.getCentreY() },
+                          { envA.getRight(), envA.getCentreY() },
+                          { mtx.getX(), matrixOutY } })
+            solderPad (g, pad, modCol);
+        via (g, { inLaneX, matrixInY }, modCol);
         arrowInto (g, { lfo1b.getCentreX(), mtx.getY() }, 2, modCol);
         arrowInto (g, { lfo2b.getCentreX(), mtx.getY() }, 2, modCol);
+        arrowInto (g, { mtx.getX(), matrixInY }, 0, modCol);
+        arrowInto (g, { vcf.getRight(), vcfModInY }, 1, modCol);
+        modLabel (modCol, { outLaneX, (matrixOutY + vcfModInY) * 0.5f },
+                  "MOD", juce::Justification::centredRight);
     }
 }
 
