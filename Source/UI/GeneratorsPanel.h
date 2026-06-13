@@ -134,12 +134,14 @@ private:
             auto top = b.removeFromTop (20);
             tag.setBounds (top.removeFromLeft (48));
             onSwitch.setBounds (top.removeFromLeft (32));
-            glyph.setBounds (top.removeFromRight (44));
-            top.removeFromRight (3);
+            // far right: SYNC switch (or MASTER tag); the wave-shape glyph
+            // sits next to the wave selector, not between selector and sync
             if (syncSwitch != nullptr)
                 syncSwitch->setBounds (top.removeFromRight (66));
             else if (masterLabel.isVisible())
                 masterLabel.setBounds (top.removeFromRight (66));
+            top.removeFromRight (4);
+            glyph.setBounds (top.removeFromRight (40));
             top.removeFromLeft (3);
             wave.setBounds (top);
 
