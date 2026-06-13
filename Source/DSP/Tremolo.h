@@ -14,10 +14,10 @@
 #include "FastMath.h"
 
 // ============================================================================
-//  Tremolo — periodic amplitude modulation. The shape control morphs the LFO
-//  from a smooth sine (gentle wobble) to a hard square (on/off gating), good
-//  for stutter, pulse, helicopter and "powering up" SFX. A chain slot; runs
-//  per trigger-instance, retriggered so the gate starts in phase every shot.
+//  Tremolo — periodic amplitude modulation by a selectable LFO shape. The rate
+//  spans a deliberately wide 0.01 .. 70 Hz: slow swells at the bottom, buzzy
+//  AM/ring-ish tones near the top. A chain slot; runs per trigger-instance,
+//  retriggered so the modulation starts in phase every shot.
 // ============================================================================
 
 class Tremolo
@@ -31,12 +31,14 @@ public:
 
     void retrigger() noexcept { phase = 0.0f; }
 
-    // rateHz 0.1 .. 40   depth01 0 = none .. 1 = full   shape01 0 = sine .. 1 = square
-    void setParams (float rateHz, float depth01, float shape01) noexcept
+    // LFO shape: 0 = sine, 1 = triangle, 2 = square, 3 = saw
+    void setWave (int waveType) noexcept { wave = waveType; }
+
+    // rateHz 0.01 .. 70   depth01 0 = none .. 1 = full
+    void setParams (float rateHz, float depth01) noexcept
     {
         rate  = rateHz < 0.0f ? 0.0f : rateHz;
         depth = clamp01 (depth01);
-        shape = clamp01 (shape01);
     }
 
     void process (float* left, float* right, int n) noexcept
@@ -47,10 +49,7 @@ public:
             phase += inc;
             if (phase >= 1.0f) phase -= 1.0f;
 
-            const float sine = FastMath::sinCycle (phase);     // -1 .. 1
-            const float sq   = sine >= 0.0f ? 1.0f : -1.0f;
-            const float lfo  = sine + shape * (sq - sine);     // morph sine -> square
-
+            const float lfo = FastMath::waveCycle (wave, phase);   // -1 .. 1
             // unipolar gain in [1 - depth, 1]; depth sets how deep it dips
             const float gain = 1.0f - depth * (0.5f - 0.5f * lfo);
             left[s]  *= gain;
@@ -64,6 +63,6 @@ private:
     float fs = 44100.0f;
     float rate = 5.0f;
     float depth = 0.5f;
-    float shape = 0.0f;
     float phase = 0.0f;
+    int   wave = 0;
 };

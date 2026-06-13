@@ -31,6 +31,9 @@ public:
 
     void retrigger() noexcept { phase = 0.0f; }
 
+    // carrier shape: 0 = sine, 1 = triangle, 2 = square, 3 = saw
+    void setWave (int waveType) noexcept { wave = waveType; }
+
     // freqHz: carrier 20 .. ~4 kHz   mix01: 0 = dry .. 1 = fully ring-modulated
     void setParams (float freqHz, float mix01) noexcept
     {
@@ -45,7 +48,7 @@ public:
         {
             phase += inc;
             if (phase >= 1.0f) phase -= 1.0f;
-            const float carrier = FastMath::sinCycle (phase);
+            const float carrier = FastMath::waveCycle (wave, phase);
 
             left[s]  += mix * (left[s]  * carrier - left[s]);
             right[s] += mix * (right[s] * carrier - right[s]);
@@ -59,4 +62,5 @@ private:
     float freq = 200.0f;
     float mix = 1.0f;
     float phase = 0.0f;
+    int   wave = 0;
 };
