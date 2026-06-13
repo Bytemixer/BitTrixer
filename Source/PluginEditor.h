@@ -25,6 +25,7 @@
 #include "UI/EnvelopesPanel.h"
 #include "UI/VcaPanel.h"
 #include "UI/LfoPanel.h"
+#include "UI/StepLfoPanel.h"
 #include "UI/ModMatrixPanel.h"
 #include "UI/TriggerPanel.h"
 #include "UI/RandomizerPanel.h"
@@ -64,7 +65,8 @@ private:
     EnvelopesPanel envelopesPanel;
     VcaPanel vcaPanel;
     PitchPanel pitchPanel;
-    LfoPanel lfo1Panel, lfo2Panel;
+    LfoPanel lfo1Panel;
+    StepLfoPanel stepLfoPanel;
     ModMatrixPanel modMatrixPanel;
     TriggerPanel triggerPanel;
     RandomizerPanel randomizerPanel;

@@ -24,9 +24,10 @@
 namespace Params
 {
     inline constexpr int   kNumOscs     = 3;
-    inline constexpr int   kNumLfos     = 2;
+    inline constexpr int   kNumLfos     = 2;     // LFO 2 is the Step LFO
     inline constexpr int   kNumModSlots = 6;
     inline constexpr int   kMaxUnison   = 16;
+    inline constexpr int   kMaxSteps    = 8;
 
     // ---- enum orderings (must match the choice arrays below) ----
     enum class OscWave  { Sine = 0, Triangle, Square, Saw, RevSaw, SuperSaw, Tan, Breaker };
@@ -63,6 +64,7 @@ namespace Params
     inline juce::String oscId  (int osc1Based, const char* suffix)  { return "osc"  + juce::String (osc1Based) + "_" + suffix; }
     inline juce::String lfoId  (int lfo1Based, const char* suffix)  { return "lfo"  + juce::String (lfo1Based) + "_" + suffix; }
     inline juce::String modId  (int slot1Based, const char* suffix) { return "mod"  + juce::String (slot1Based) + "_" + suffix; }
+    inline juce::String stepValId (int step1Based)                  { return "step_val" + juce::String (step1Based); }
 
     namespace id
     {
@@ -113,6 +115,8 @@ namespace Params
         inline constexpr const char* autoVarOn   = "autovar_on";
         inline constexpr const char* autoVarAmt  = "autovar_amt";
         inline constexpr const char* retrigRate  = "retrig_rate";
+        inline constexpr const char* stepCount   = "step_count";
+        inline constexpr const char* stepSmooth  = "step_smooth";
 
         inline constexpr const char* masterVol   = "master_vol";
         inline constexpr const char* comp        = "comp";
@@ -187,7 +191,10 @@ namespace Params
         float noiseColor = 0.0f;     // Analog: white..pink | LFSR: clock divide | Rasp: grit rate
         float noiseLevel = 0.5f;
 
-        std::array<LfoPatch, kNumLfos>   lfo;
+        std::array<LfoPatch, kNumLfos>   lfo;   // lfo[1] = Step LFO (uses rate/delay)
+        int   stepCount = 4;
+        bool  stepSmooth = false;
+        std::array<float, kMaxSteps> stepVals { -0.6f, -0.2f, 0.2f, 0.6f, 0.0f, 0.0f, 0.0f, 0.0f };
         std::array<ModSlot, kNumModSlots> mod;
 
         float lpfCutoff = 20000.0f;
@@ -279,6 +286,11 @@ namespace Params
                 lfoDelay[j] = get (lfoId (j + 1, "delay"));
             }
 
+            stepCount  = get (id::stepCount);
+            stepSmooth = get (id::stepSmooth);
+            for (int k = 0; k < kMaxSteps; ++k)
+                stepVal[k] = get (stepValId (k + 1));
+
             for (int k = 0; k < kNumModSlots; ++k)
             {
                 modSrc[k]   = get (modId (k + 1, "src"));
@@ -367,6 +379,11 @@ namespace Params
                 l.delaySec = lfoDelay[j]->load();
             }
 
+            p.stepCount  = (int) stepCount->load();
+            p.stepSmooth = stepSmooth->load() > 0.5f;
+            for (int k = 0; k < kMaxSteps; ++k)
+                p.stepVals[(size_t) k] = stepVal[k]->load();
+
             for (int k = 0; k < kNumModSlots; ++k)
             {
                 auto& m = p.mod[(size_t) k];
@@ -448,6 +465,10 @@ namespace Params
         std::atomic<float>* lfoWave[kNumLfos] {};
         std::atomic<float>* lfoRate[kNumLfos] {};
         std::atomic<float>* lfoDelay[kNumLfos] {};
+
+        std::atomic<float>* stepCount {};
+        std::atomic<float>* stepSmooth {};
+        std::atomic<float>* stepVal[kMaxSteps] {};
 
         std::atomic<float>* modSrc[kNumModSlots] {};
         std::atomic<float>* modDest[kNumModSlots] {};
@@ -601,6 +622,15 @@ namespace Params
             layout.add (std::make_unique<AudioParameterFloat> (ParameterID { lfoId (j, "delay"), 1 }, n + "Delay",
                             NormalisableRange<float> (0.0f, 5.0f, 0.001f), 0.0f, secAttr));
         }
+
+        // ---- step LFO (LFO 2) ----
+        layout.add (std::make_unique<AudioParameterInt>   (ParameterID { id::stepCount, 1 }, "Step Count", 2, kMaxSteps, 4));
+        layout.add (std::make_unique<AudioParameterBool>  (ParameterID { id::stepSmooth, 1 }, "Step Glide", false));
+        const float stepDefaults[kMaxSteps] = { -0.6f, -0.2f, 0.2f, 0.6f, 0.0f, 0.0f, 0.0f, 0.0f };
+        for (int k = 1; k <= kMaxSteps; ++k)
+            layout.add (std::make_unique<AudioParameterFloat> (ParameterID { stepValId (k), 1 },
+                            "Step " + String (k),
+                            NormalisableRange<float> (-1.0f, 1.0f, 0.001f), stepDefaults[k - 1], unitAttr));
 
         // ---- mod matrix ----
         for (int k = 1; k <= kNumModSlots; ++k)

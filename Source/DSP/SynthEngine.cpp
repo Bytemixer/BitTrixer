@@ -52,7 +52,7 @@ void SynthEngine::Instance::prepare (double sampleRate)
     envF.prepare (sampleRate);
     envA.prepare (sampleRate);
     lfo1.prepare (sampleRate);
-    lfo2.prepare (sampleRate);
+    stepLfo.prepare (sampleRate);
     phaser.prepare (sampleRate);
     flanger.prepare (sampleRate);
     for (auto& v : voices)
@@ -100,7 +100,7 @@ void SynthEngine::Instance::start (const Params::Patch& p, int noteTag,
     }
 
     lfo1.retrigger();
-    lfo2.retrigger();
+    stepLfo.retrigger();
     phaser.retrigger();
     flanger.retrigger();
     envF.gateOn();   // analog semantics: continues from current level on steal
@@ -124,15 +124,19 @@ void SynthEngine::Instance::renderAdd (float* left, float* right, int n,
                     p.envA.release, p.envA.curve, p.envA.invert);
 
     // matrix sources sampled at sub-block start ("CV" snapshot)
-    const ModValues mv = ModMatrix::compute (p, lfo1.value(), lfo2.value(),
+    const ModValues mv = ModMatrix::compute (p, lfo1.value(), stepLfo.value(),
                                              envF.value(), envA.value());
 
     lfo1.setWave ((LFO::Wave) (int) p.lfo[0].wave);
     lfo1.setRate (p.lfo[0].rateHz * std::exp2 (mv.lfoRateOct[0]));
     lfo1.setDelay (p.lfo[0].delaySec);
-    lfo2.setWave ((LFO::Wave) (int) p.lfo[1].wave);
-    lfo2.setRate (p.lfo[1].rateHz * std::exp2 (mv.lfoRateOct[1]));
-    lfo2.setDelay (p.lfo[1].delaySec);
+
+    stepLfo.setRate (p.lfo[1].rateHz * std::exp2 (mv.lfoRateOct[1]));
+    stepLfo.setDelay (p.lfo[1].delaySec);
+    stepLfo.setSteps (p.stepCount);
+    stepLfo.setSmooth (p.stepSmooth);
+    for (int k = 0; k < Params::kMaxSteps; ++k)
+        stepLfo.setStepValue (k, p.stepVals[(size_t) k]);
 
     // per-sample envelopes + LFOs; build the VCA buffer
     float amp[kSubBlock];
@@ -141,7 +145,7 @@ void SynthEngine::Instance::renderAdd (float* left, float* right, int n,
     for (int s = 0; s < n; ++s)
     {
         lfo1.tick();
-        lfo2.tick();
+        stepLfo.tick();
         envF.tick();
         // squared: linear fader motion maps to perceived loudness
         const float a = envA.tick();
