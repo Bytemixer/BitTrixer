@@ -22,7 +22,7 @@
 #include "UI/GeneratorsPanel.h"
 #include "UI/PitchPanel.h"
 #include "UI/FilterPanel.h"
-#include "UI/EnvPanel.h"
+#include "UI/EnvelopesPanel.h"
 #include "UI/VcaPanel.h"
 #include "UI/LfoPanel.h"
 #include "UI/ModMatrixPanel.h"
@@ -61,7 +61,7 @@ private:
     HeaderBar header;
     GeneratorsPanel generatorsPanel;
     FilterPanel filterPanel;
-    EnvPanel envFPanel, envAPanel;
+    EnvelopesPanel envelopesPanel;
     VcaPanel vcaPanel;
     PitchPanel pitchPanel;
     LfoPanel lfo1Panel, lfo2Panel;

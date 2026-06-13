@@ -17,14 +17,7 @@ RetroForgeEditor::RetroForgeEditor (RetroForgeProcessor& p)
       presetManager (p.apvts),
       generatorsPanel (p.apvts),
       filterPanel (p.apvts),
-      envFPanel (p.apvts, "Filter Envelope",
-                 Params::id::envFAttack, Params::id::envFDecay,
-                 Params::id::envFSustain, Params::id::envFRelease,
-                 Params::id::envFCurve, Params::id::envFInvert),
-      envAPanel (p.apvts, "Amp Envelope",
-                 Params::id::envAAttack, Params::id::envADecay,
-                 Params::id::envASustain, Params::id::envARelease,
-                 Params::id::envACurve, Params::id::envAInvert),
+      envelopesPanel (p.apvts),
       vcaPanel (p.apvts),
       pitchPanel (p.apvts),
       lfo1Panel (p.apvts, 1), lfo2Panel (p.apvts, 2),
@@ -37,7 +30,7 @@ RetroForgeEditor::RetroForgeEditor (RetroForgeProcessor& p)
 
     for (auto* c : std::initializer_list<juce::Component*> {
              &header, &generatorsPanel, &filterPanel,
-             &envFPanel, &envAPanel, &vcaPanel, &pitchPanel,
+             &envelopesPanel, &vcaPanel, &pitchPanel,
              &lfo1Panel, &lfo2Panel, &modMatrixPanel,
              &triggerPanel, &randomizerPanel, &scopePanel, &fxPanel })
         addAndMakeVisible (c);
@@ -239,8 +232,8 @@ void RetroForgeEditor::drawSignalTraces (juce::Graphics& g)
     const auto vca   = vcaPanel.getBounds().toFloat();
     const auto fx    = fxPanel.getBounds().toFloat();
     const auto scope = scopePanel.getBounds().toFloat();
-    const auto envF  = envFPanel.getBounds().toFloat();
-    const auto envA  = envAPanel.getBounds().toFloat();
+    const auto envF  = envelopesPanel.filterBandBounds().toFloat();
+    const auto envA  = envelopesPanel.ampBandBounds().toFloat();
     const auto mtx   = modMatrixPanel.getBounds().toFloat();
     const auto lfo1b = lfo1Panel.getBounds().toFloat();
     const auto lfo2b = lfo2Panel.getBounds().toFloat();
@@ -427,13 +420,11 @@ void RetroForgeEditor::resized()
 
     b.removeFromLeft (channel);
 
-    // ---- middle column: filter, envelopes, vca + scope (compacted) ----
+    // ---- middle column: filter, both envelopes (one panel), vca + scope ----
     auto mid = b.removeFromLeft (400);
     filterPanel.setBounds (mid.removeFromTop (160));
     mid.removeFromTop (midGap);
-    envFPanel.setBounds (mid.removeFromTop (152));
-    mid.removeFromTop (midGap);
-    envAPanel.setBounds (mid.removeFromTop (152));
+    envelopesPanel.setBounds (mid.removeFromTop (332));
     mid.removeFromTop (midGap);
     vcaPanel.setBounds (mid.removeFromLeft (168));
     mid.removeFromLeft (gap);
