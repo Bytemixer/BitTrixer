@@ -16,10 +16,11 @@
 // ============================================================================
 //  LofiStage — the master output "format" stage: reduce a signal to a lower
 //  effective sample rate and/or bit depth.
-//   1) anti-alias / fidelity lowpass (2-pole) at the target Nyquist, so a
-//      lower rate audibly loses its highs (the obvious "fidelity" change)
-//   2) sample & hold decimation at the target rate (the staircase / grit)
-//   3) bit-depth quantization (8-bit crunch)
+//   1) sample & hold (zero-order hold) decimation at the target rate -- holds
+//      each captured sample for several output samples, producing the visible
+//      staircase waveform and the bright, gritty imaging that reads as "retro"
+//      (this is exactly what sfxr / jsfxr do; the aliasing IS the sound)
+//   2) bit-depth quantization (8-bit crunch)
 //  No JUCE dependency, so it can be unit-tested on its own.
 // ============================================================================
 
@@ -36,7 +37,6 @@ public:
     {
         decimCount = 0.0f;
         holdL = holdR = 0.0f;
-        lpL1 = lpL2 = lpR1 = lpR2 = 0.0f;
     }
 
     // targetRate >= host disables rate reduction (we can't upsample)
@@ -46,8 +46,6 @@ public:
         {
             decimStep = fsHost / targetRate;
             doDecim = true;
-            const float fc = targetRate * 0.5f;        // target Nyquist
-            lpCoef = 1.0f - std::exp (-2.0f * 3.14159265f * fc / fsHost);
         }
         else
         {
@@ -67,11 +65,12 @@ public:
     {
         if (doDecim)
         {
-            // 2-pole lowpass removes the content that would otherwise alias,
-            // giving a clean loss of highs as the rate drops
-            lpL1 += lpCoef * (l - lpL1);  lpL2 += lpCoef * (lpL1 - lpL2);  l = lpL2;
-            lpR1 += lpCoef * (r - lpR1);  lpR2 += lpCoef * (lpR1 - lpR2);  r = lpR2;
-
+            // pure zero-order hold (sample & hold), like sfxr / jsfxr: capture a
+            // new sample once every decimStep output samples and hold it in
+            // between. No anti-alias filter on purpose -- the imaging above the
+            // reduced Nyquist is the characteristic crunchy lo-fi grit. The
+            // fractional decimStep (e.g. 5.5125 for 8 kHz against a 44.1 kHz
+            // host) self-averages to the correct rate by alternating hold lengths.
             if (decimCount <= 0.0f)
             {
                 decimCount += decimStep;
@@ -95,8 +94,6 @@ private:
     float decimStep = 1.0f;
     float decimCount = 0.0f;
     float holdL = 0.0f, holdR = 0.0f;
-    float lpCoef = 1.0f;
-    float lpL1 = 0.0f, lpL2 = 0.0f, lpR1 = 0.0f, lpR2 = 0.0f;
     float bitLevels = 32768.0f;
     bool  doDecim = false;
     bool  doBits = false;
