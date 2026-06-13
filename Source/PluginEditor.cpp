@@ -227,14 +227,14 @@ void RetroForgeEditor::drawSignalTraces (juce::Graphics& g)
     auto leg = [pride] (int i) {
         return pride ? RetroColors::kPrideFlag[i].brighter (0.15f) : RetroColors::trace;
     };
-    const auto srcCol  = leg (0);                       // red    : sources -> VCF
-    const auto vcaCol  = leg (1);                       // orange : VCF -> VCA
-    const auto fxCol   = leg (2);                       // yellow : VCA -> FX
-    const auto outCol  = leg (3);                       // green  : FX -> OUT
-    const auto envCol  = pride ? RetroColors::kPrideFlag[4].brighter (0.35f)
-                               : RetroColors::trace.withAlpha (0.55f);  // blue
-    const auto modCol  = pride ? RetroColors::kPrideFlag[5].brighter (0.45f)
-                               : RetroColors::trace.withAlpha (0.55f);  // purple
+    const auto srcCol    = leg (0);                     // red    : sources -> CRUSH
+    const auto vcfCol    = leg (1);                     // orange : CRUSH -> VCF
+    const auto vcaCol    = leg (2);                     // yellow : VCF -> VCA
+    const auto phaseCol  = leg (3);                     // green  : VCA -> PHASER
+    const auto outCol    = leg (4);                     // blue   : FLANGER -> OUT
+    const auto envCol    = pride ? RetroColors::kPrideFlag[5].brighter (0.45f)
+                                 : RetroColors::trace.withAlpha (0.55f); // purple
+    const auto modCol    = envCol;
 
     const auto vcf   = filterPanel.getBounds().toFloat();
     const auto vca   = vcaPanel.getBounds().toFloat();
@@ -246,18 +246,29 @@ void RetroForgeEditor::drawSignalTraces (juce::Graphics& g)
     const auto lfo1b = lfo1Panel.getBounds().toFloat();
     const auto lfo2b = lfo2Panel.getBounds().toFloat();
 
-    // ---- source bus: OSC1/2/3 + NOISE -> VCF (left channel, lane 1) ----
+    // The chain as the engine really runs it:
+    //   sources -> CRUSH (pre-filter!) -> VCF -> VCA -> PHASER -> FLANGER -> OUT
+    // The 16px channel above the FX strip carries the down/up runs.
+
+    const float gapTop = fx.getY();
+    const float yLaneA = gapTop - 12.0f;   // sources -> crush
+    const float yLaneB = gapTop - 7.0f;    // crush -> VCF / flanger -> OUT
+    const float yLaneC = gapTop - 3.0f;    // VCA -> phaser
+
+    const float crushInX   = fx.getX() + 120.0f;
+    const float crushOutX  = fx.getX() + 156.0f;
+    const float phaserInX  = fx.getX() + fx.getWidth() * 0.42f;
+    const float flangerOutX = fx.getX() + fx.getWidth() * 0.88f;
+
+    // ---- leg 1: OSC1/2/3 + NOISE -> CRUSH (left channel, outer lane) ----
     {
-        const float busX = vcf.getX() - 19.0f;
-        const float vcfInY = vcf.getY() + 60.0f;
-
+        const float busX = vcf.getX() - 23.0f;
         juce::Component* sources[4] = { &osc1, &osc2, &osc3, &noisePanel };
-        const float botY = (float) noisePanel.getBounds().getCentreY();
+        const float topY = (float) osc1.getBounds().getCentreY();
 
-        // bus trunk with a 45-degree turn into the VCF
-        strokeTrace (g, chamfered ({ { busX, botY }, { busX, vcfInY },
-                                     { vcf.getX(), vcfInY } }), srcCol, 3.2f);
-        // branch stubs from each source, vias where they meet the trunk
+        strokeTrace (g, chamfered ({ { busX, topY }, { busX, yLaneA },
+                                     { crushInX, yLaneA }, { crushInX, gapTop } }),
+                     srcCol, 3.2f);
         juce::Path stubs;
         for (auto* s : sources)
         {
@@ -270,15 +281,27 @@ void RetroForgeEditor::drawSignalTraces (juce::Graphics& g)
         {
             const float cy = (float) s->getBounds().getCentreY();
             solderPad (g, { (float) s->getRight(), cy }, srcCol);
-            if (cy < botY - 1.0f)
+            if (cy > topY + 1.0f)
                 via (g, { busX, cy }, srcCol);
         }
-        arrowInto (g, { vcf.getX(), vcfInY }, 0, srcCol);
+        arrowInto (g, { crushInX, gapTop }, 2, srcCol);
     }
 
-    // ---- downstream: VCF -> VCA (left channel, lane 2) ----
+    // ---- leg 2: CRUSH -> VCF (left channel, inner lane) ----
     {
-        const float laneX = vcf.getX() - 8.0f;
+        const float busX = vcf.getX() - 13.0f;
+        const float vcfInY = vcf.getY() + 60.0f;
+        strokeTrace (g, chamfered ({ { crushOutX, gapTop }, { crushOutX, yLaneB },
+                                     { busX, yLaneB }, { busX, vcfInY },
+                                     { vcf.getX(), vcfInY } }),
+                     vcfCol, 3.2f);
+        solderPad (g, { crushOutX, gapTop }, vcfCol);
+        arrowInto (g, { vcf.getX(), vcfInY }, 0, vcfCol);
+    }
+
+    // ---- leg 3: VCF -> VCA (left channel, panel-hugging lane) ----
+    {
+        const float laneX = vcf.getX() - 4.0f;
         const float outY = vcf.getBottom() - 18.0f;
         const float inY  = vca.getCentreY();
         strokeTrace (g, chamfered ({ { vcf.getX(), outY }, { laneX, outY },
@@ -288,25 +311,23 @@ void RetroForgeEditor::drawSignalTraces (juce::Graphics& g)
         arrowInto (g, { vca.getX(), inY }, 0, vcaCol);
     }
 
-    // ---- VCA -> FX (vertical gap) ----
+    // ---- leg 4: VCA -> PHASER ----
     {
         const float x = vca.getCentreX();
-        juce::Path p;
-        p.startNewSubPath (x, vca.getBottom());
-        p.lineTo (x, fx.getY());
-        strokeTrace (g, p, fxCol, 3.0f);
-        solderPad (g, { x, vca.getBottom() }, fxCol);
-        arrowInto (g, { x, fx.getY() }, 2, fxCol);
+        strokeTrace (g, chamfered ({ { x, vca.getBottom() }, { x, yLaneC },
+                                     { phaserInX, yLaneC }, { phaserInX, gapTop } }),
+                     phaseCol, 3.0f);
+        solderPad (g, { x, vca.getBottom() }, phaseCol);
+        arrowInto (g, { phaserInX, gapTop }, 2, phaseCol);
     }
 
-    // ---- FX -> OUT (scope window monitors the output) ----
+    // ---- leg 5: FLANGER -> OUT (scope window monitors the output) ----
     {
         const float x = scope.getCentreX();
-        juce::Path p;
-        p.startNewSubPath (x, fx.getY());
-        p.lineTo (x, scope.getBottom());
-        strokeTrace (g, p, outCol, 3.0f);
-        solderPad (g, { x, fx.getY() }, outCol);
+        strokeTrace (g, chamfered ({ { flangerOutX, gapTop }, { flangerOutX, yLaneB },
+                                     { x, yLaneB }, { x, scope.getBottom() } }),
+                     outCol, 3.0f);
+        solderPad (g, { flangerOutX, gapTop }, outCol);
         arrowInto (g, { x, scope.getBottom() }, 3, outCol);
         g.setColour (outCol);
         g.setFont (juce::Font (juce::FontOptions (9.0f, juce::Font::bold)));
@@ -380,7 +401,7 @@ void RetroForgeEditor::resized()
     constexpr int channel = 30;   // horizontal trace channels between columns
 
     fxPanel.setBounds (b.removeFromBottom (104));
-    b.removeFromBottom (gap);
+    b.removeFromBottom (16);   // routing channel above the FX strip
 
     // ---- left column: oscillators + noise (compact, airy gaps) ----
     auto left = b.removeFromLeft (316);
