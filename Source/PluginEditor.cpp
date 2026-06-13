@@ -348,20 +348,22 @@ void RetroForgeEditor::drawSignalTraces (juce::Graphics& g)
         g.drawText (txt, (int) at.x - 40, (int) at.y - 6, 80, 12, just);
     };
 
-    // ---- dedicated ADSR connections (the envelopes' hardwired jobs) ----
-    //   ENV F -> VCF cutoff (ENV AMT)   |   ENV A -> VCA level
+    // ---- the envelopes drive the panels above and below: a single simple
+    //      arrow in each gap (ENV F up to the VCF, ENV A down to the VCA),
+    //      styled like the LFO -> Mod Matrix arrow ----
     {
-        juce::Path p;
-        const float fx1 = envF.getX() + 56.0f;
-        p.startNewSubPath (fx1, envF.getY());
-        p.lineTo (fx1, vcf.getBottom());
-        const float ax = vca.getCentreX();
-        p.startNewSubPath (ax, envA.getBottom());
-        p.lineTo (ax, vca.getY());
-        strokeTrace (g, p, envCol, 1.5f, true);
-        solderPad (g, { fx1, envF.getY() }, envCol);
-        solderPad (g, { ax, envA.getBottom() }, envCol);
-        arrowInto (g, { fx1, vcf.getBottom() }, 3, envCol);
+        const float cx = envF.getCentreX();
+        juce::Path up;
+        up.startNewSubPath (cx, envF.getY());
+        up.lineTo (cx, vcf.getBottom());
+        strokeTrace (g, up, envCol, 1.4f, true);
+        arrowInto (g, { cx, vcf.getBottom() }, 3, envCol);
+
+        const float ax = envA.getCentreX();
+        juce::Path down;
+        down.startNewSubPath (ax, envA.getBottom());
+        down.lineTo (ax, vca.getY());
+        strokeTrace (g, down, envCol, 1.4f, true);
         arrowInto (g, { ax, vca.getY() }, 2, envCol);
     }
 
@@ -374,6 +376,8 @@ void RetroForgeEditor::drawSignalTraces (juce::Graphics& g)
         const float matrixOutY = mtx.getBottom() - 14.0f;
         const float vcfModInY  = vcf.getBottom() - 22.0f;
 
+        juce::ignoreUnused (inLaneX, matrixInY);
+
         // LFO1 / LFO2 drop straight down into the matrix top
         juce::Path lfo;
         lfo.startNewSubPath (lfo1b.getCentreX(), lfo1b.getBottom());
@@ -382,17 +386,6 @@ void RetroForgeEditor::drawSignalTraces (juce::Graphics& g)
         lfo.lineTo (lfo2b.getCentreX(), mtx.getY());
         strokeTrace (g, lfo, modCol, 1.3f, true);
 
-        // ENV F / ENV A also feed the matrix (e.g. ENV F -> pitch sweeps)
-        strokeTrace (g, chamfered ({ { envF.getRight(), envF.getCentreY() },
-                                     { inLaneX, envF.getCentreY() },
-                                     { inLaneX, matrixInY },
-                                     { mtx.getX(), matrixInY } }, 5.0f),
-                     modCol, 1.3f, true);
-        strokeTrace (g, chamfered ({ { envA.getRight(), envA.getCentreY() },
-                                     { inLaneX, envA.getCentreY() },
-                                     { inLaneX, matrixInY } }, 5.0f),
-                     modCol, 1.3f, true);
-
         // matrix OUTPUT -> back across to the VCF (nearest audio destination)
         strokeTrace (g, chamfered ({ { mtx.getX(), matrixOutY },
                                      { outLaneX, matrixOutY },
@@ -400,16 +393,11 @@ void RetroForgeEditor::drawSignalTraces (juce::Graphics& g)
                                      { vcf.getRight(), vcfModInY } }, 6.0f),
                      modCol, 1.7f, true);
 
-        for (auto pad : { juce::Point<float> { lfo1b.getCentreX(), lfo1b.getBottom() },
-                          { lfo2b.getCentreX(), lfo2b.getBottom() },
-                          { envF.getRight(), envF.getCentreY() },
-                          { envA.getRight(), envA.getCentreY() },
-                          { mtx.getX(), matrixOutY } })
-            solderPad (g, pad, modCol);
-        via (g, { inLaneX, matrixInY }, modCol);
+        solderPad (g, { lfo1b.getCentreX(), lfo1b.getBottom() }, modCol);
+        solderPad (g, { lfo2b.getCentreX(), lfo2b.getBottom() }, modCol);
+        solderPad (g, { mtx.getX(), matrixOutY }, modCol);
         arrowInto (g, { lfo1b.getCentreX(), mtx.getY() }, 2, modCol);
         arrowInto (g, { lfo2b.getCentreX(), mtx.getY() }, 2, modCol);
-        arrowInto (g, { mtx.getX(), matrixInY }, 0, modCol);
         arrowInto (g, { vcf.getRight(), vcfModInY }, 1, modCol);
         modLabel (modCol, { outLaneX, (matrixOutY + vcfModInY) * 0.5f },
                   "MOD", juce::Justification::centredRight);
@@ -424,8 +412,7 @@ void RetroForgeEditor::resized()
     header.setBounds (b.removeFromTop (46));
     b.reduce (8, 8);
     constexpr int gap = 6;        // vertical gap within the right column
-    constexpr int midGap = 28;    // generous gaps in the compacted mid column
-    constexpr int leftGap = 26;   // ... and between the oscillator strips
+    constexpr int leftGap = 26;   // between the oscillator strips
     constexpr int channel = 30;   // horizontal trace channels between columns
 
     fxPanel.setBounds (b.removeFromBottom (104));
@@ -442,12 +429,15 @@ void RetroForgeEditor::resized()
 
     b.removeFromLeft (channel);
 
-    // ---- middle column: filter, both envelopes (one panel), vca + scope ----
+    // ---- middle column: filter, both envelopes (one panel), vca + scope.
+    //      tighter gaps now that the inter-panel routing is just a small
+    //      arrow, giving the envelopes more vertical room ----
+    constexpr int midArrowGap = 20;
     auto mid = b.removeFromLeft (400);
-    filterPanel.setBounds (mid.removeFromTop (160));
-    mid.removeFromTop (midGap);
-    envelopesPanel.setBounds (mid.removeFromTop (332));
-    mid.removeFromTop (midGap);
+    filterPanel.setBounds (mid.removeFromTop (152));
+    mid.removeFromTop (midArrowGap);
+    envelopesPanel.setBounds (mid.removeFromTop (360));
+    mid.removeFromTop (midArrowGap);
     vcaPanel.setBounds (mid.removeFromLeft (168));
     mid.removeFromLeft (gap);
     scopePanel.setBounds (mid);
