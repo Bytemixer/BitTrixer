@@ -434,11 +434,32 @@ void RetroForgeEditor::layoutPanels (juce::Rectangle<int> bounds)
     constexpr int leftGap = 26;   // between the oscillator strips
     constexpr int channel = 30;   // horizontal trace channels between columns
 
-    // FX chain: vertical-strip band along the bottom-left. The right portion is
-    // left open for now -- the right column will extend down into it next pass.
+    // ---- right column: FULL height. Pitch + LFOs keep their size; the matrix
+    //      expands (roomier rows + bigger depth knobs); Trigger keeps its size
+    //      but is pushed down; Generate sits at the bottom (its panel bottom
+    //      lines up with the FX bottom) and grows for bigger buttons. The
+    //      matrix stays below the LFOs so the LFO->matrix arrows survive. ----
+    {
+        auto right = b.removeFromRight (388);
+        pitchPanel.setBounds (right.removeFromTop (172));
+        right.removeFromTop (gap);
+        auto lfoRow = right.removeFromTop (132);
+        lfo1Panel.setBounds (lfoRow.removeFromLeft (150));
+        lfoRow.removeFromLeft (gap);
+        stepLfoPanel.setBounds (lfoRow);
+        right.removeFromTop (gap);
+        randomizerPanel.setBounds (right.removeFromBottom (218));   // Generate, bigger
+        right.removeFromBottom (gap);
+        triggerPanel.setBounds (right.removeFromBottom (138));      // Trigger, fixed, pushed down
+        right.removeFromBottom (gap);
+        modMatrixPanel.setBounds (right);                          // Mod Matrix, expanded
+    }
+    b.removeFromRight (channel);
+
+    // ---- FX chain: vertical strips along the bottom-left (below left+middle) ----
     {
         auto fxBand = b.removeFromBottom (250);
-        fxPanel.setBounds (fxBand.removeFromLeft (746));
+        fxPanel.setBounds (fxBand);
     }
     b.removeFromBottom (16);   // routing channel above the FX strip
 
@@ -453,9 +474,7 @@ void RetroForgeEditor::layoutPanels (juce::Rectangle<int> bounds)
 
     b.removeFromLeft (channel);
 
-    // ---- middle column: filter, both envelopes (one panel), vca + scope.
-    //      the inter-panel routing is just a small arrow now, so the gaps
-    //      are LFO->matrix sized and the envelopes take the reclaimed room ----
+    // ---- middle column: filter, both envelopes (one panel), vca + scope ----
     constexpr int midArrowGap = 10;
     auto mid = b.removeFromLeft (400);
     filterPanel.setBounds (mid.removeFromTop (152));
@@ -465,21 +484,4 @@ void RetroForgeEditor::layoutPanels (juce::Rectangle<int> bounds)
     vcaPanel.setBounds (mid.removeFromLeft (200));
     mid.removeFromLeft (gap);
     scopePanel.setBounds (mid);
-
-    b.removeFromLeft (channel);
-
-    // ---- right column: pitch/voices, LFOs, matrix, trigger, generate ----
-    auto right = b;
-    pitchPanel.setBounds (right.removeFromTop (172));
-    right.removeFromTop (gap);
-    auto lfoRow = right.removeFromTop (132);
-    lfo1Panel.setBounds (lfoRow.removeFromLeft (150));
-    lfoRow.removeFromLeft (gap);
-    stepLfoPanel.setBounds (lfoRow);
-    right.removeFromTop (gap);
-    modMatrixPanel.setBounds (right.removeFromTop (138));
-    right.removeFromTop (gap);
-    triggerPanel.setBounds (right.removeFromTop (138));
-    right.removeFromTop (gap);
-    randomizerPanel.setBounds (right);
 }

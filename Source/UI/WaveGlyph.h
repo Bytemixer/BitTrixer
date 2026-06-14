@@ -23,7 +23,7 @@
 class WaveGlyph : public juce::Component, private juce::Timer
 {
 public:
-    enum class Set { Osc, Lfo };
+    enum class Set { Osc, Lfo, Fx };
 
     WaveGlyph (juce::AudioProcessorValueTreeState& s, const juce::String& paramId, Set glyphSet)
         : set (glyphSet), raw (s.getRawParameterValue (paramId))
@@ -180,7 +180,7 @@ private:
                 default: break;
             }
         }
-        else
+        else if (set == Set::Lfo)
         {
             switch ((LW) v)
             {
@@ -191,6 +191,17 @@ private:
                 case LW::Square:      square(); break;
                 case LW::SampleHold:  steps(); break;
                 case LW::SampleGlide: glide(); break;
+                default: break;
+            }
+        }
+        else   // Set::Fx -- fxWaveNames order: Sine, Tri, Square, Saw
+        {
+            switch (v)
+            {
+                case 0: sine(); break;
+                case 1: triangle(); break;
+                case 2: square(); break;
+                case 3: saw (false); break;
                 default: break;
             }
         }

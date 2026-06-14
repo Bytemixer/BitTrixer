@@ -16,6 +16,7 @@
 #include <memory>
 #include <cstring>
 #include "PanelCommon.h"
+#include "WaveGlyph.h"
 #include "../Params.h"
 
 // ============================================================================
@@ -47,6 +48,8 @@ struct EffectStrip : public juce::Component
         {
             combo = std::make_unique<ChoiceCombo> (s, comboId);
             addAndMakeVisible (*combo);
+            glyph = std::make_unique<WaveGlyph> (s, comboId, WaveGlyph::Set::Fx);
+            addAndMakeVisible (*glyph);
         }
     }
 
@@ -69,22 +72,37 @@ struct EffectStrip : public juce::Component
 
     void resized() override
     {
-        // vertical strip: name header (painted) -> on/off switch -> wave
-        // selector (RingMod/Tremolo) -> knobs stacked top-to-bottom. Controls
-        // are inset from the edges.
         auto b = getLocalBounds();
-        b.removeFromTop (kHandleH);
-        enable.setBounds (b.removeFromTop (20).reduced (10, 1));
-        b.removeFromTop (3);
+        b.removeFromTop (kHandleH);                              // name header (painted)
+
+        // on/off switch: centred in the strip
+        enable.setBounds (b.removeFromTop (22).withSizeKeepingCentre (40, 18));
+        b.removeFromTop (2);
+
+        // three fixed-size knob slots so every knob is the same size and the
+        // rows line up across strips. Knobs are bottom-aligned; the freed top
+        // slot holds the wave selector + glyph (RingMod/Tremolo) or stays empty.
+        constexpr int nSlots = 3;
+        const int slotH = b.getHeight() / nSlots;
+        juce::Rectangle<int> slot[nSlots];
+        for (int i = 0; i < nSlots; ++i)
+            slot[i] = b.removeFromTop (i == nSlots - 1 ? b.getHeight() : slotH);
+
         if (combo)
         {
-            combo->setBounds (b.removeFromTop (20).reduced (10, 0));
-            b.removeFromTop (3);
+            auto waveRow = slot[0].withSizeKeepingCentre (slot[0].getWidth() - 10, 22);
+            glyph->setBounds (waveRow.removeFromRight (24));
+            waveRow.removeFromRight (4);
+            combo->setBounds (waveRow);
+            if (knobs.size() > 0) knobs[0]->setBounds (slot[1].reduced (3, 1));
+            if (knobs.size() > 1) knobs[1]->setBounds (slot[2].reduced (3, 1));
         }
-        if (! knobs.empty())
+        else
         {
-            const int kh = b.getHeight() / (int) knobs.size();
-            for (auto& k : knobs) k->setBounds (b.removeFromTop (kh).reduced (3, 1));
+            const int n = (int) knobs.size();
+            const int first = juce::jmax (0, nSlots - n);
+            for (int i = 0; i < n; ++i)
+                knobs[(size_t) i]->setBounds (slot[first + i].reduced (3, 1));
         }
     }
 
@@ -97,6 +115,7 @@ struct EffectStrip : public juce::Component
     SwitchToggle enable;
     std::vector<std::unique_ptr<LabeledKnob>> knobs;
     std::unique_ptr<ChoiceCombo> combo;
+    std::unique_ptr<WaveGlyph> glyph;
     std::function<void (EffectStrip*, const juce::MouseEvent&)> onDragStart, onDrag, onDragEnd;
 };
 
