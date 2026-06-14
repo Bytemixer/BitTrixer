@@ -200,18 +200,18 @@ namespace ThemePresets
         // the accents/traces for contrast against the pale panels
         Theme t;
         t.name = "Pride Light";
-        t.background = juce::Colour (0xffeae8ee);
-        t.panel      = juce::Colour (0xfff6f4f9);
-        t.panelEdge  = juce::Colour (0xffc3bfca);
-        t.panelTitle = juce::Colour (0xff4a3f55);
-        t.text       = juce::Colour (0xff2a2630);
-        t.textDim    = juce::Colour (0xff6f6878);
+        t.background = juce::Colour (0xffcdc9d8);    // soft mid-light lavender, not white
+        t.panel      = juce::Colour (0xffdcd8e6);    // so the bright flag yellows still read
+        t.panelEdge  = juce::Colour (0xffa8a1ba);
+        t.panelTitle = juce::Colour (0xff463b51);
+        t.text       = juce::Colour (0xff282430);
+        t.textDim    = juce::Colour (0xff675f70);
         t.accent     = juce::Colour (0xffe85d00);   // flag orange (deepened)
         t.accentDark = juce::Colour (0xffc20303);   // flag red (deepened)
-        t.knobFace   = juce::Colour (0xffe2dee8);
-        t.knobRim    = juce::Colour (0xffa49bb0);
-        t.track      = juce::Colour (0xffd8d3e0);
-        t.switchOff  = juce::Colour (0xffcfc9d8);
+        t.knobFace   = juce::Colour (0xffcdc8da);
+        t.knobRim    = juce::Colour (0xff938ba6);
+        t.track      = juce::Colour (0xffc3bed2);
+        t.switchOff  = juce::Colour (0xffbcb6cc);
         t.ledOn      = juce::Colour (0xff008026);   // flag green
         t.trace      = juce::Colour (0xff1f7a3c);   // green, readable on light
         t.traceCtrl  = juce::Colour (0xff732982);   // flag purple (control)
