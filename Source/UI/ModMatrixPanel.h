@@ -40,8 +40,9 @@ public:
         const int rowH = b.getHeight() / Params::kNumModSlots;
         for (auto& row : rows)
         {
-            auto r = b.removeFromTop (rowH).reduced (0, 2);
-            row->depth.setBounds (r.removeFromRight (54));
+            auto r = b.removeFromTop (rowH).reduced (0, 1);
+            row->depth.setBounds (r.removeFromRight (r.getHeight() + 6));   // square-ish rotary
+            r.removeFromRight (2);
             const int cw = r.getWidth() / 2;
             row->src.setBounds (r.removeFromLeft (cw).reduced (1, 0));
             row->dest.setBounds (r.reduced (1, 0));
@@ -53,11 +54,20 @@ private:
     {
         Row (juce::AudioProcessorValueTreeState& s, int k)
             : src (s, Params::modId (k, "src")),
-              dest (s, Params::modId (k, "dest")),
-              depth (s, Params::modId (k, "depth"), "", false) {}
+              dest (s, Params::modId (k, "dest"))
+        {
+            // a bare rotary (no LabeledKnob wrapper -- its label area would
+            // collapse the knob to nothing in these short rows).
+            depth.setSliderStyle (juce::Slider::RotaryHorizontalVerticalDrag);
+            depth.setTextBoxStyle (juce::Slider::NoTextBox, false, 0, 0);
+            depth.setTooltip ("Depth");
+            depthAtt = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (
+                s, Params::modId (k, "depth"), depth);
+        }
 
         ChoiceCombo src, dest;
-        LabeledKnob depth;
+        juce::Slider depth;
+        std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> depthAtt;
     };
 
     std::vector<std::unique_ptr<Row>> rows;
