@@ -72,9 +72,18 @@ public:
         mutateButton.setBounds (top.removeFromLeft (cw).reduced (2, 0));
         for (int i = 0; i < 3; ++i)
             categoryButtons[i]->setBounds (top.removeFromLeft (cw).reduced (2, 0));
-        const int cw2 = bottom.getWidth() / 6;
+        // bottom row: variable widths so "Power-Up" fits (Hit narrower, the rest
+        // trimmed a touch). Order: powerup, hit, jump, blip, 1-up, lose.
+        const float wts[6] = { 1.42f, 0.80f, 0.95f, 0.90f, 0.95f, 0.98f };
+        float wsum = 0.0f; for (float wgt : wts) wsum += wgt;
+        const int bw = bottom.getWidth();
         for (int i = 3; i < Randomizer::kNumCategories; ++i)
-            categoryButtons[i]->setBounds (bottom.removeFromLeft (cw2).reduced (2, 0));
+        {
+            const int colW = (i == Randomizer::kNumCategories - 1)
+                               ? bottom.getWidth()
+                               : (int) ((float) bw * wts[i - 3] / wsum);
+            categoryButtons[i]->setBounds (bottom.removeFromLeft (colW).reduced (2, 0));
+        }
     }
 
     std::function<void()> onRandom, onMutate;

@@ -279,8 +279,10 @@ namespace Params
         float delayFb = 0.4f;
         float delayMix = 0.4f;
 
-        // FX chain processing order (position -> FxChain::Effect index)
-        std::array<int, kFxChainLen> fxOrder { 0, 1, 2, 3, 4, 5, 6 };
+        // FX chain processing order (position -> FxChain::Effect index). Mono
+        // pre-capable effects first, Flanger(2)/Delay(6) last (right) so they
+        // sit where they land when the pre-filter split engages.
+        std::array<int, kFxChainLen> fxOrder { 0, 1, 3, 4, 5, 2, 6 };
         bool fxSplit = false;   // true => mono subgroup runs per-voice pre-filter
 
         // reorderable FX chain: per-slot type index (FxChain::Type) + 3 generic params A/B/C
@@ -872,10 +874,12 @@ namespace Params
         layout.add (std::make_unique<AudioParameterFloat> (ParameterID { id::delayMix, 1 },   "Delay Wet/Dry",
                         NormalisableRange<float> (0.0f, 1.0f, 0.001f), 0.4f, unitAttr));
 
-        // FX chain order: one int per chain position (default identity)
+        // FX chain order: one int per chain position. Default = mono effects
+        // first, Flanger/Delay last (right), matching the pre-filter split.
+        const int defOrder[kFxChainLen] = { 0, 1, 3, 4, 5, 2, 6 };
         for (int k = 0; k < kFxChainLen; ++k)
             layout.add (std::make_unique<AudioParameterInt> (ParameterID { fxOrderId (k), 1 },
-                            "FX Order " + String (k + 1), 0, kFxChainLen - 1, k));
+                            "FX Order " + String (k + 1), 0, kFxChainLen - 1, defOrder[k]));
         layout.add (std::make_unique<AudioParameterBool> (ParameterID { id::fxSplit, 1 }, "FX Pre-filter Split", false));
 
         // ---- reorderable FX chain slots (type + 3 generic A/B/C params each) ----

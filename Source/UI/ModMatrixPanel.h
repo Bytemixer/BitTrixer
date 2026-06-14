@@ -40,9 +40,9 @@ public:
         const int rowH = b.getHeight() / Params::kNumModSlots;
         for (auto& row : rows)
         {
-            auto r = b.removeFromTop (rowH).reduced (0, 1);
-            row->depth.setBounds (r.removeFromRight (r.getHeight() + 6));   // square-ish rotary
-            r.removeFromRight (2);
+            auto r = b.removeFromTop (rowH).reduced (0, 4);                 // shorter rows -> space between them
+            row->depth.setBounds (r.removeFromRight (r.getHeight() + 6));   // depth knob (grows with row height)
+            r.removeFromRight (8);                                          // space to the left of the depth knob
             const int cw = r.getWidth() / 2;
             row->src.setBounds (r.removeFromLeft (cw).reduced (1, 0));
             row->dest.setBounds (r.reduced (1, 0));
