@@ -443,12 +443,12 @@ void RetroForgeEditor::layoutPanels (juce::Rectangle<int> bounds)
         auto right = b.removeFromRight (388);
         pitchPanel.setBounds (right.removeFromTop (172));
         right.removeFromTop (gap);
-        auto lfoRow = right.removeFromTop (132);
+        auto lfoRow = right.removeFromTop (150);                    // a touch taller (room for an LFO depth knob later)
         lfo1Panel.setBounds (lfoRow.removeFromLeft (150));
         lfoRow.removeFromLeft (gap);
         stepLfoPanel.setBounds (lfoRow);
         right.removeFromTop (gap);
-        randomizerPanel.setBounds (right.removeFromBottom (218));   // Generate, bigger
+        randomizerPanel.setBounds (right.removeFromBottom (200));   // Generate, a touch shorter
         right.removeFromBottom (gap);
         triggerPanel.setBounds (right.removeFromBottom (138));      // Trigger, fixed, pushed down
         right.removeFromBottom (gap);
