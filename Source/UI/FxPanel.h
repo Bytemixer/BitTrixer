@@ -100,8 +100,10 @@ class FxPanel : public SectionPanel, private juce::Timer
 {
 public:
     explicit FxPanel (juce::AudioProcessorValueTreeState& s)
-        : SectionPanel ("FX chain  (drag a panel by its grip to reorder)")
+        : SectionPanel ("FX chain  (drag a panel by its grip to reorder)"),
+          splitToggle (s, Params::id::fxSplit, "PRE-FILTER SPLIT")
     {
+        addAndMakeVisible (splitToggle);
         using K = EffectStrip::KnobDef;
         namespace id = Params::id;
         strips[0] = std::make_unique<EffectStrip> (s, 0, "CRUSH",   id::crushOn,  "CRUSH",
@@ -154,7 +156,11 @@ public:
         }
     }
 
-    void resized() override { layoutStrips(); }
+    void resized() override
+    {
+        splitToggle.setBounds (getLocalBounds().removeFromTop (18).removeFromRight (158).reduced (4, 1));
+        layoutStrips();
+    }
 
 private:
     void readOrder (int* out) const
@@ -257,6 +263,7 @@ private:
             layoutStrips();
     }
 
+    SwitchToggle splitToggle;
     std::array<std::unique_ptr<EffectStrip>, Params::kFxChainLen> strips;
     juce::AudioParameterInt* orderP[Params::kFxChainLen] {};
 
