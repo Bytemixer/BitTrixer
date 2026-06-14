@@ -301,7 +301,6 @@ void RetroForgeEditor::drawSignalTraces (juce::Graphics& g)
     const float crushInX    = fx.getX() + fx.getWidth() * 0.07f;   // sources -> pre group (left)
     const float crushOutX   = fx.getX() + fx.getWidth() * 0.34f;   // pre group -> filter
     const float phaserInX   = fx.getX() + fx.getWidth() * 0.80f;   // VCA -> post group (right, over Flanger)
-    const float flangerOutX = fx.getRight() - 30.0f;               // post group -> scope (right edge)
 
     // ---- leg 0 (DIRECT): SOUND GENERATORS -> VCF. This is the straight path
     //      the engine actually runs whenever the FX is NOT split pre-filter
@@ -371,18 +370,22 @@ void RetroForgeEditor::drawSignalTraces (juce::Graphics& g)
         arrowInto (g, { phaserInX, gapTop }, 2, phaseCol);
     }
 
-    // ---- leg 5: post-FX (right edge) -> OUT, into the right of the scope ----
+    // ---- leg 5: post-FX -> OUT. Out the RIGHT side of the FX group, up the
+    //      vertical channel between the middle and right columns, then into the
+    //      RIGHT side of the scope (which monitors the output). ----
     {
-        const float x = scope.getRight() - 26.0f;
-        strokeTrace (g, chamfered ({ { flangerOutX, gapTop }, { flangerOutX, yLaneB },
-                                     { x, yLaneB }, { x, scope.getBottom() } }),
+        const float exitY  = fx.getCentreY();          // off the FX group's right edge
+        const float chanX  = fx.getRight() + 16.0f;    // ride up the vertical channel
+        const float enterY = scope.getCentreY();       // into the scope's right side
+        strokeTrace (g, chamfered ({ { fx.getRight(), exitY }, { chanX, exitY },
+                                     { chanX, enterY }, { scope.getRight(), enterY } }),
                      outCol, 3.0f);
-        solderPad (g, { flangerOutX, gapTop }, outCol);
-        arrowInto (g, { x, scope.getBottom() }, 3, outCol);
+        solderPad (g, { fx.getRight(), exitY }, outCol);
+        arrowInto (g, { scope.getRight(), enterY }, 1, outCol);
         g.setColour (outCol);
-        g.setFont (juce::Font (juce::FontOptions (9.0f, juce::Font::bold)));
-        g.drawText ("OUT", (int) x - 32, (int) scope.getBottom() - 4, 26, 10,
-                    juce::Justification::centredRight);
+        g.setFont (juce::Font (juce::FontOptions (8.5f, juce::Font::bold)));
+        g.drawText ("OUT", (int) scope.getRight() - 2, (int) enterY - 15,
+                    (int) (chanX - scope.getRight()) + 2, 10, juce::Justification::centredRight);
     }
 
     auto modLabel = [&g] (juce::Colour c, juce::Point<float> at, const char* txt,
