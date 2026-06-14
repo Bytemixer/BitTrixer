@@ -256,8 +256,15 @@ void RetroForgeEditor::drawSignalTraces (juce::Graphics& g)
     auto leg = [pride, lightBg] (int i) -> juce::Colour
     {
         if (pride)
-            return lightBg ? RetroColors::kPrideFlag[i].darker (0.18f)
-                           : RetroColors::kPrideFlag[i].brighter (0.15f);
+        {
+            if (! lightBg)
+                return RetroColors::kPrideFlag[i].brighter (0.15f);
+            // light canvas: deepen the stripes for contrast, but keep the
+            // yellow cable (VCF -> VCA) bright and saturated -- a darkened
+            // yellow just turns muddy against the pale panels
+            return i == 2 ? juce::Colour (0xfff5cc00)
+                          : RetroColors::kPrideFlag[i].darker (0.18f);
+        }
         static const float step[5] = { -0.18f, -0.09f, 0.0f, 0.09f, 0.18f };
         return RetroColors::trace.withRotatedHue (step[i]);
     };
