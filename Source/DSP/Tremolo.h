@@ -57,6 +57,19 @@ public:
         }
     }
 
+    // single-channel variant for the per-voice pre-filter path
+    void processMono (float* buf, int n) noexcept
+    {
+        const float inc = rate / fs;
+        for (int s = 0; s < n; ++s)
+        {
+            phase += inc;
+            if (phase >= 1.0f) phase -= 1.0f;
+            const float lfo = FastMath::waveCycle (wave, phase);
+            buf[s] *= 1.0f - depth * (0.5f - 0.5f * lfo);
+        }
+    }
+
 private:
     static float clamp01 (float x) noexcept { return x < 0.0f ? 0.0f : (x > 1.0f ? 1.0f : x); }
 

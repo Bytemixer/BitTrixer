@@ -72,6 +72,13 @@ public:
         }
     }
 
+    // single-channel variant for the per-voice pre-filter path
+    void processMono (float* buf, int n) noexcept
+    {
+        for (int s = 0; s < n; ++s)
+            buf[s] = sample (buf[s], lpL, bpL);
+    }
+
 private:
     static constexpr int kVowels = 5;   // ee eh ah oh oo -- ordered along the
                                         // vowel path so F2 falls monotonically
