@@ -527,7 +527,7 @@ void RetroForgeEditor::layoutPanels (juce::Rectangle<int> bounds)
     juce::ignoreUnused (leftGap);
     {
         auto leftCol = b.removeFromLeft (316);
-        leftCol.removeFromBottom (72);           // routing lane (background)
+        leftCol.removeFromBottom (56);           // routing lane (background)
         generatorsPanel.setBounds (leftCol);
     }
 

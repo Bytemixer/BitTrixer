@@ -61,8 +61,8 @@ public:
         // lay the boxes out: row by level (carriers on the bottom row), spread
         // evenly across each row
         auto inner = r.reduced (4.0f);
-        const float boxW = juce::jmin (12.0f, inner.getWidth() / 4.2f);
-        const float boxH = juce::jmin (10.0f, inner.getHeight() / (float) (maxLevel + 1) - 2.0f);
+        const float boxW = juce::jmin (14.0f, inner.getWidth() / 4.2f);
+        const float boxH = juce::jmin (13.0f, inner.getHeight() / (float) (maxLevel + 1) - 2.0f);
         juce::Point<float> centre[4];
 
         for (int lv = 0; lv <= maxLevel; ++lv)
