@@ -38,7 +38,8 @@
 //  live inside the panels (Source/UI/*), never directly in here.
 // ============================================================================
 
-class RetroForgeEditor : public juce::AudioProcessorEditor
+class RetroForgeEditor : public juce::AudioProcessorEditor,
+                         private juce::Timer
 {
 public:
     explicit RetroForgeEditor (RetroForgeProcessor&);
@@ -52,8 +53,11 @@ private:
     void paintContent (juce::Graphics&);
     void drawSignalTraces (juce::Graphics&);
     void layoutPanels (juce::Rectangle<int> bounds);
+    void timerCallback() override;   // repaint the traces when the FX split toggles
 
     RetroForgeProcessor& proc;
+    std::atomic<float>* fxSplitParam = nullptr;
+    bool lastSplit = false;
 
     RetroLookAndFeel lookAndFeel;
     ThemeManager themeManager;
