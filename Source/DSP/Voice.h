@@ -14,6 +14,7 @@
 #include <cmath>
 #include <cstdint>
 #include "Oscillator.h"
+#include "FmVoice.h"
 #include "NoiseGen.h"
 #include "LadderFilter.h"
 #include "Drive.h"
@@ -51,6 +52,15 @@ public:
         Params::NoiseType noiseType = Params::NoiseType::Analog;
         float noiseLevel = 0.0f;
 
+        // 4-operator FM voice (the 3rd generator slot)
+        bool  fmOn = false;
+        int   fmAlgo = 0;
+        float fmRatio[4] {};
+        float fmLevel[4] {};
+        float fmFeedback = 0.0f;
+        float fmBaseFreqHz = 440.0f;
+        float fmOut = 0.0f;
+
         float cutoffHz = 20000.0f;
         float res01 = 0.0f;
         bool  fourPole = true;
@@ -66,6 +76,7 @@ public:
     {
         fs = (float) sampleRate;
         for (auto& o : oscs) o.prepare (sampleRate);
+        fm.prepare (sampleRate);
         noise.prepare (sampleRate);
         filter.prepare (sampleRate);
         preFx.prepare (sampleRate);
@@ -92,6 +103,7 @@ public:
             p -= std::floor (p);
             oscs[(size_t) i].reset (p);
         }
+        fm.reset (0.0f);                 // sine ops start at 0 -> click-free
         noise.seed (nextRandU32());
         // keep filter state (anti-click on voice steal), drift keeps walking
     }
@@ -109,6 +121,7 @@ public:
     {
         for (auto& o : oscs)
             o.reset (0.0f);
+        fm.reset (0.0f);
         preFx.retrigger();
     }
 
@@ -138,6 +151,13 @@ public:
         noise.setColor (noiseColor);
         drive.setAmount (ctx.driveAmt);
 
+        // FM (3rd generator) — rides the same unison detune + analog drift
+        fm.setAlgo (ctx.fmAlgo);
+        fm.setFeedback (ctx.fmFeedback);
+        for (int i = 0; i < 4; ++i)
+            fm.setOp (i, ctx.fmRatio[i], ctx.fmLevel[i]);
+        const float fmFreq = ctx.fmBaseFreqHz * detuneRatio * driftRatio;
+
         // The sync master is the first ENABLED oscillator (normally OSC 1, but
         // if it is off the role falls through to OSC 2, then OSC 3). Any other
         // enabled oscillator with its sync switch on hard-syncs to the master.
@@ -166,6 +186,9 @@ public:
 
             if (ctx.noiseOn)
                 mix += noise.tick() * ctx.noiseLevel;
+
+            if (ctx.fmOn)
+                mix += fm.tick (fmFreq) * ctx.fmOut;
 
             mixBuf[s] = FastMath::tanh (mix);         // mixer bus warmth
         }
@@ -202,6 +225,7 @@ private:
 
     float fs = 44100.0f;
     Oscillator   oscs[Params::kNumOscs];
+    FmUnit       fm;
     NoiseGen     noise;
     LadderFilter filter;
     Drive        drive;
