@@ -146,8 +146,9 @@ private:
                 syncSwitch->setBounds (top.removeFromRight (66));
             else if (masterLabel.isVisible())
                 masterLabel.setBounds (top.removeFromRight (66));
-            top.removeFromRight (4);
+            top.removeFromRight (1);            // nudge the glyph a touch right
             glyph.setBounds (top.removeFromRight (40));
+            top.removeFromRight (3);            // spacing between selector and glyph
             top.removeFromLeft (3);
             wave.setBounds (top);
 
@@ -253,15 +254,17 @@ private:
         {
             auto full = getLocalBounds().reduced (3, 2);
 
-            // header: tag + enable + (shorter) algorithm selector + glyph square
-            auto head = full.removeFromTop (40);
-            tag.setBounds (head.removeFromLeft (40));
-            onSwitch.setBounds (head.removeFromLeft (34).withSizeKeepingCentre (32, 18));
-            head.removeFromLeft (4);
-            auto glyphBox = head.removeFromRight (40);
-            glyph.setBounds (glyphBox.withSizeKeepingCentre (38, 38));
-            head.removeFromRight (5);
-            algo.setBounds (head.withSizeKeepingCentre (head.getWidth(), 22));
+            // taller header: a bigger algorithm-glyph square on the right, with
+            // tag + enable + an OSC-length selector vertically centred to its left
+            auto head = full.removeFromTop (56);
+            auto glyphBox = head.removeFromRight (54);
+            glyph.setBounds (glyphBox.withSizeKeepingCentre (52, 52));
+            head.removeFromRight (4);
+            auto ctrl = head.withSizeKeepingCentre (head.getWidth(), 22);
+            tag.setBounds (ctrl.removeFromLeft (48));
+            onSwitch.setBounds (ctrl.removeFromLeft (34).withSizeKeepingCentre (32, 18));
+            ctrl.removeFromLeft (4);
+            algo.setBounds (ctrl.removeFromLeft (juce::jmin (ctrl.getWidth(), 110)));
 
             full.removeFromTop (2);
 
