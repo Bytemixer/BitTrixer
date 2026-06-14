@@ -197,9 +197,9 @@ void SynthEngine::Instance::renderAdd (float* left, float* right, int n,
                           + var.pitchSemis + jumpSemis;
         ctx.oscFreqHz[i] = clampf (base * std::exp2 (semis / 12.0f),
                                    0.05f, fsf * 0.45f);
-        ctx.oscPwm[i]   = clampf (o.pwm + mv.pwm + var.pwm, 0.05f, 0.95f);
-        ctx.oscFold[i]  = clampf (o.fold + mv.fold, 0.0f, 1.0f);
-        ctx.oscLevel[i] = o.level;
+        ctx.oscPwm[i]   = clampf (o.pwm + mv.pwm + mv.oscPwm[i] + var.pwm, 0.05f, 0.95f);
+        ctx.oscFold[i]  = clampf (o.fold + mv.fold + mv.oscFold[i], 0.0f, 1.0f);
+        ctx.oscLevel[i] = clampf (o.level + mv.oscLevel[i], 0.0f, 1.0f);
     }
 
     for (int i = 0; i < Params::kNumOscs; ++i)
@@ -228,15 +228,31 @@ void SynthEngine::Instance::renderAdd (float* left, float* right, int n,
     const float formVowelM = clampf (p.formVowel + mv.formVowel,                0.0f,  1.0f);
     const float delayTimeM = clampf (p.delayTime * std::exp2 (mv.delayTimeOct), 0.001f, 0.4f);
 
+    // ...and every other FX knob, so any source can reach any FX parameter
+    const float crushBitsM  = clampf (p.crushBits  + mv.crushBits,                2.0f,  16.0f);
+    const float crushDownM  = clampf (p.crushDown  * std::exp2 (mv.crushDivOct),  1.0f,  40.0f);
+    const float phaseRateM  = clampf (p.phaseRate  * std::exp2 (mv.phaseRateOct), 0.05f, 8.0f);
+    const float phaseDepthM = clampf (p.phaseDepth + mv.phaseDepth,               0.0f,  1.0f);
+    const float phaseFbM    = clampf (p.phaseFb    + mv.phaseFb,                  0.0f,  0.9f);
+    const float flangeRateM = clampf (p.flangeRate * std::exp2 (mv.flangeRateOct),0.05f, 5.0f);
+    const float flangeDepthM= clampf (p.flangeDepth+ mv.flangeDepth,              0.0f,  1.0f);
+    const float flangeFbM   = clampf (p.flangeFb   + mv.flangeFb,                 0.0f,  0.95f);
+    const float ringMixM    = clampf (p.ringMix    + mv.ringMix,                  0.0f,  1.0f);
+    const float tremRateM   = clampf (p.tremRate   * std::exp2 (mv.tremRateOct),  0.01f, 70.0f);
+    const float formResoM   = clampf (p.formReso   + mv.formReso,                 0.0f,  1.0f);
+    const float formMixM    = clampf (p.formMix    + mv.formMix,                  0.0f,  1.0f);
+    const float delayFbM    = clampf (p.delayFb    + mv.delayFb,                  0.0f,  1.0f);
+    const float delayMixM   = clampf (p.delayMix   + mv.delayMix,                 0.0f,  1.0f);
+
     // when split, the mono subgroup runs per-voice before the filter. Build its
     // config (params already modulated) and the pre sub-order from fxOrder.
     PreFx::Config pre;
     pre.on      = p.fxSplit;
-    pre.crushOn = p.crushOn; pre.crushBits  = p.crushBits;  pre.crushDown = p.crushDown;
-    pre.ringOn  = p.ringOn;  pre.ringFreq   = ringFreqM;     pre.ringMix   = p.ringMix;   pre.ringWave = p.ringWave;
-    pre.tremOn  = p.tremOn;  pre.tremRate   = p.tremRate;    pre.tremDepth = tremDepthM;  pre.tremWave = p.tremWave;
-    pre.phaseOn = p.phaseOn; pre.phaseRate  = p.phaseRate;   pre.phaseDepth = p.phaseDepth; pre.phaseFb = p.phaseFb;
-    pre.formOn  = p.formOn;  pre.formVowel  = formVowelM;    pre.formReso  = p.formReso;  pre.formMix  = p.formMix;
+    pre.crushOn = p.crushOn; pre.crushBits  = crushBitsM;    pre.crushDown = crushDownM;
+    pre.ringOn  = p.ringOn;  pre.ringFreq   = ringFreqM;     pre.ringMix   = ringMixM;    pre.ringWave = p.ringWave;
+    pre.tremOn  = p.tremOn;  pre.tremRate   = tremRateM;     pre.tremDepth = tremDepthM;  pre.tremWave = p.tremWave;
+    pre.phaseOn = p.phaseOn; pre.phaseRate  = phaseRateM;    pre.phaseDepth = phaseDepthM; pre.phaseFb = phaseFbM;
+    pre.formOn  = p.formOn;  pre.formVowel  = formVowelM;    pre.formReso  = formResoM;   pre.formMix  = formMixM;
     {
         int w = 0;
         for (int i = 0; i < Params::kFxChainLen; ++i)
@@ -268,13 +284,13 @@ void SynthEngine::Instance::renderAdd (float* left, float* right, int n,
     // mono effects above were already applied per-voice, so setSplit() makes
     // these calls run only Flanger/Delay here.
     fxChain.setOrder   (p.fxOrder.data());
-    fxChain.setCrush   (p.crushOn,  p.crushBits,  p.crushDown);
-    fxChain.setPhaser  (p.phaseOn,  p.phaseRate,  p.phaseDepth,  p.phaseFb);
-    fxChain.setFlanger (p.flangeOn, p.flangeRate, p.flangeDepth, p.flangeFb);
-    fxChain.setRing    (p.ringOn,   ringFreqM,    p.ringMix,     p.ringWave);
-    fxChain.setTrem    (p.tremOn,   p.tremRate,   tremDepthM,    p.tremWave);
-    fxChain.setFormant (p.formOn,   formVowelM,   p.formReso,    p.formMix);
-    fxChain.setDelay   (p.delayOn,  delayTimeM * 1000.0f, p.delayFb, p.delayMix);
+    fxChain.setCrush   (p.crushOn,  crushBitsM,   crushDownM);
+    fxChain.setPhaser  (p.phaseOn,  phaseRateM,   phaseDepthM,   phaseFbM);
+    fxChain.setFlanger (p.flangeOn, flangeRateM,  flangeDepthM,  flangeFbM);
+    fxChain.setRing    (p.ringOn,   ringFreqM,    ringMixM,      p.ringWave);
+    fxChain.setTrem    (p.tremOn,   tremRateM,    tremDepthM,    p.tremWave);
+    fxChain.setFormant (p.formOn,   formVowelM,   formResoM,     formMixM);
+    fxChain.setDelay   (p.delayOn,  delayTimeM * 1000.0f, delayFbM, delayMixM);
     fxChain.process (scratchL, scratchR, n);
 
     for (int s = 0; s < n; ++s)
