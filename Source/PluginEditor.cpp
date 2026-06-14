@@ -112,12 +112,12 @@ RetroForgeEditor::RetroForgeEditor (RetroForgeProcessor& p)
 
     header.setPresetName (presetManager.getCurrentName());
 
-    // resizable, aspect-locked: the design is 1180x906, everything scales
+    // resizable, aspect-locked: the design is 1180x996, everything scales
     setResizable (true, true);
-    setResizeLimits (1004, 771, 2360, 1812);   // ~0.85x .. 2x
+    setResizeLimits (1004, 847, 2360, 1992);   // ~0.85x .. 2x
     if (auto* c = getConstrainer())
-        c->setFixedAspectRatio (1180.0 / 906.0);
-    setSize (1475, 1133);                       // 1.25x default (bigger knobs)
+        c->setFixedAspectRatio (1180.0 / 996.0);
+    setSize (1475, 1245);                       // 1.25x default (bigger knobs)
 }
 
 RetroForgeEditor::~RetroForgeEditor()
@@ -418,7 +418,7 @@ void RetroForgeEditor::resized()
 
     // the layout is authored at a fixed design size; scale the content holder
     // to the actual window (aspect ratio is locked, so the scale is uniform)
-    constexpr int baseW = 1180, baseH = 906;
+    constexpr int baseW = 1180, baseH = 996;
     const float scale = (float) getWidth() / (float) baseW;
     content.setTransform (juce::AffineTransform::scale (scale));
     content.setBounds (0, 0, baseW, baseH);
@@ -434,7 +434,12 @@ void RetroForgeEditor::layoutPanels (juce::Rectangle<int> bounds)
     constexpr int leftGap = 26;   // between the oscillator strips
     constexpr int channel = 30;   // horizontal trace channels between columns
 
-    fxPanel.setBounds (b.removeFromBottom (160));
+    // FX chain: vertical-strip band along the bottom-left. The right portion is
+    // left open for now -- the right column will extend down into it next pass.
+    {
+        auto fxBand = b.removeFromBottom (250);
+        fxPanel.setBounds (fxBand.removeFromLeft (746));
+    }
     b.removeFromBottom (16);   // routing channel above the FX strip
 
     // ---- left column: all sound generators in one panel, leaving an open
