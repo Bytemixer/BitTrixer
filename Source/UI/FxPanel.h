@@ -157,6 +157,7 @@ public:
         for (int i = 0; i < Params::kFxChainLen; ++i)
             orderP[i] = dynamic_cast<juce::AudioParameterInt*> (s.getParameter (Params::fxOrderId (i)));
 
+        splitParam = s.getRawParameterValue (Params::id::fxSplit);
         startTimerHz (8);
     }
 
@@ -166,16 +167,33 @@ public:
     {
         SectionPanel::paint (g);
         auto b = content();
-        const int colW = b.getWidth() / Params::kFxChainLen;
 
+        // column separators within each zone (the pre/post channel takes the
+        // place of the separator that would sit between the two zones)
         g.setColour (RetroColors::panelEdge);
         for (int i = 1; i < Params::kFxChainLen; ++i)
-            g.drawLine ((float) (b.getX() + i * colW), (float) b.getY() + 2.0f,
-                        (float) (b.getX() + i * colW), (float) b.getBottom() - 2.0f, 1.0f);
+        {
+            if (splitActive && i == kPreCount) continue;       // channel sits here
+            const float x = (float) colX (i);
+            g.drawLine (x, (float) b.getY() + 2.0f, x, (float) b.getBottom() - 2.0f, 1.0f);
+        }
+
+        // the pre/post split channel: a slim recessed gap with accent rails,
+        // marking where the mono pre-filter group breaks from the buffer group
+        if (splitActive && gapStartX >= 0)
+        {
+            juce::Rectangle<float> ch ((float) gapStartX, (float) b.getY(),
+                                       (float) kGapPx, (float) b.getHeight());
+            g.setColour (RetroColors::background.withAlpha (0.55f));
+            g.fillRect (ch);
+            g.setColour (RetroColors::accent.withAlpha (0.55f));
+            g.fillRect (ch.getX(), ch.getY(), 1.5f, ch.getHeight());
+            g.fillRect (ch.getRight() - 1.5f, ch.getY(), 1.5f, ch.getHeight());
+        }
 
         if (dragged != nullptr && dragTargetCol >= 0)
         {
-            const float x = (float) (b.getX() + dragTargetCol * colW);
+            const float x = (float) colX (dragTargetCol);
             g.setColour (RetroColors::accent);
             g.fillRect (x - 1.5f, (float) b.getY(), 3.0f, (float) b.getHeight());
         }
@@ -197,34 +215,92 @@ private:
         }
     }
 
-    int colOf (int effectId) const
+    // the only two effects with a multi-sample delay buffer -> they must stay
+    // post-VCA, so they form the buffer (post) zone when the chain is split
+    static bool isBuffer (int effectId) { return effectId == 2 || effectId == 6; }
+    bool splitNow() const { return splitParam != nullptr && splitParam->load() > 0.5f; }
+
+    // x of visual column `col`, including the channel offset for the post zone
+    int colX (int col) const
+    {
+        return contentX + col * colWidth + (splitActive && col >= kPreCount ? kGapPx : 0);
+    }
+
+    // the on-screen column an effect currently occupies (zone-aware when split)
+    int visualColOf (int effectId) const
     {
         int ord[Params::kFxChainLen];
         readOrder (ord);
+        if (! splitActive)
+        {
+            for (int i = 0; i < Params::kFxChainLen; ++i)
+                if (ord[i] == effectId) return i;
+            return 0;
+        }
+        const bool buf = isBuffer (effectId);
+        int slot = 0;
         for (int i = 0; i < Params::kFxChainLen; ++i)
-            if (ord[i] == effectId) return i;
+        {
+            if (ord[i] == effectId) return buf ? kPreCount + slot : slot;
+            if (isBuffer (ord[i]) == buf) ++slot;
+        }
         return 0;
     }
 
     void layoutStrips()
     {
         auto b = content();
-        colWidth = b.getWidth() / Params::kFxChainLen;
+        contentX = b.getX();
         stripY = b.getY();
         stripH = b.getHeight();
-        contentX = b.getX();
+        splitActive = splitNow();
+        lastSplit = splitActive;
 
         int ord[Params::kFxChainLen];
         readOrder (ord);
         std::memcpy (lastOrder, ord, sizeof (ord));
 
+        if (! splitActive)
+        {
+            colWidth = b.getWidth() / Params::kFxChainLen;
+            gapStartX = -1;
+            for (int i = 0; i < Params::kFxChainLen; ++i)
+            {
+                int eff = ord[i];
+                if (eff < 0 || eff >= Params::kFxChainLen) eff = i;
+                if (strips[(size_t) eff] && strips[(size_t) eff].get() != dragged)
+                    strips[(size_t) eff]->setBounds (b.getX() + i * colWidth, b.getY(),
+                                                     colWidth, b.getHeight());
+            }
+            repaint();
+            return;
+        }
+
+        // split: 5 mono (pre-filter) strips | channel | 2 buffer (post) strips.
+        // Strips narrow so the channel fits and the right edge still lines up
+        // with the central column (last strip absorbs any rounding remainder).
+        colWidth  = (b.getWidth() - kGapPx) / Params::kFxChainLen;
+        gapStartX = b.getX() + kPreCount * colWidth;
+
+        int pre[Params::kFxChainLen], post[Params::kFxChainLen], np = 0, npost = 0;
         for (int i = 0; i < Params::kFxChainLen; ++i)
         {
             int eff = ord[i];
             if (eff < 0 || eff >= Params::kFxChainLen) eff = i;
-            if (strips[(size_t) eff] && strips[(size_t) eff].get() != dragged)
-                strips[(size_t) eff]->setBounds (b.getX() + i * colWidth, b.getY(), colWidth, b.getHeight());
+            (isBuffer (eff) ? post[npost++] : pre[np++]) = eff;
         }
+        for (int j = 0; j < np; ++j)
+            if (strips[(size_t) pre[j]] && strips[(size_t) pre[j]].get() != dragged)
+                strips[(size_t) pre[j]]->setBounds (b.getX() + j * colWidth, b.getY(),
+                                                    colWidth, b.getHeight());
+        for (int k = 0; k < npost; ++k)
+        {
+            const int x  = b.getX() + kPreCount * colWidth + kGapPx + k * colWidth;
+            const int wd = (k == npost - 1) ? (b.getRight() - x) : colWidth;
+            if (strips[(size_t) post[k]] && strips[(size_t) post[k]].get() != dragged)
+                strips[(size_t) post[k]]->setBounds (x, b.getY(), wd, b.getHeight());
+        }
+        repaint();
     }
 
     void writeOrder (const int* ord)
@@ -238,7 +314,7 @@ private:
     {
         dragged = st;
         grabDX = e.x;
-        dragTargetCol = colOf (st->effectId);
+        dragTargetCol = visualColOf (st->effectId);
         st->toFront (false);
         repaint();
     }
@@ -247,8 +323,24 @@ private:
     {
         auto pe = e.getEventRelativeTo (this);
         st->setBounds (pe.x - grabDX, stripY, colWidth, stripH);
+
         const int rel = pe.x - contentX;
-        dragTargetCol = juce::jlimit (0, Params::kFxChainLen - 1, colWidth > 0 ? rel / colWidth : 0);
+        int col;
+        if (! splitActive)
+        {
+            col = colWidth > 0 ? rel / colWidth : 0;
+        }
+        else
+        {
+            const int preW = kPreCount * colWidth;
+            if (rel < preW)               col = colWidth > 0 ? rel / colWidth : 0;
+            else if (rel < preW + kGapPx) col = isBuffer (st->effectId) ? kPreCount : kPreCount - 1;
+            else                          col = kPreCount + (colWidth > 0 ? (rel - preW - kGapPx) / colWidth : 0);
+            // a strip can only move within its own zone
+            col = isBuffer (st->effectId) ? juce::jlimit (kPreCount, Params::kFxChainLen - 1, col)
+                                          : juce::jlimit (0, kPreCount - 1, col);
+        }
+        dragTargetCol = juce::jlimit (0, Params::kFxChainLen - 1, col);
         repaint();
     }
 
@@ -256,21 +348,13 @@ private:
     {
         if (dragged == st && dragTargetCol >= 0)
         {
-            int ord[Params::kFxChainLen];
-            readOrder (ord);
-
-            // remove this effect, re-insert at the target column
-            int rebuilt[Params::kFxChainLen];
-            int w = 0;
-            for (int i = 0; i < Params::kFxChainLen; ++i)
-                if (ord[i] != st->effectId) rebuilt[w++] = ord[i];   // w ends at kFxChainLen-1
-
-            const int to = juce::jlimit (0, w, dragTargetCol);
-            int finalOrd[Params::kFxChainLen];
-            for (int i = 0, r = 0; i < Params::kFxChainLen; ++i)
-                finalOrd[i] = (i == to) ? st->effectId : rebuilt[r++];
-
-            writeOrder (finalOrd);
+            if (! splitActive)
+                reorderFlat (st->effectId, dragTargetCol);
+            else
+            {
+                const bool buf = isBuffer (st->effectId);
+                reorderWithinZone (st->effectId, buf, buf ? dragTargetCol - kPreCount : dragTargetCol);
+            }
         }
 
         dragged = nullptr;
@@ -279,22 +363,70 @@ private:
         repaint();
     }
 
+    // flat reorder (chain not split): drop the effect, re-insert at the column
+    void reorderFlat (int effectId, int targetCol)
+    {
+        int ord[Params::kFxChainLen];
+        readOrder (ord);
+        int rebuilt[Params::kFxChainLen], w = 0;
+        for (int i = 0; i < Params::kFxChainLen; ++i)
+            if (ord[i] != effectId) rebuilt[w++] = ord[i];
+        const int to = juce::jlimit (0, w, targetCol);
+        int finalOrd[Params::kFxChainLen];
+        for (int i = 0, r = 0; i < Params::kFxChainLen; ++i)
+            finalOrd[i] = (i == to) ? effectId : rebuilt[r++];
+        writeOrder (finalOrd);
+    }
+
+    // split reorder: move the effect to `targetSlot` within its own zone while
+    // leaving the other zone's effects exactly where they are in the order
+    void reorderWithinZone (int effectId, bool buf, int targetSlot)
+    {
+        int ord[Params::kFxChainLen];
+        readOrder (ord);
+
+        int group[Params::kFxChainLen], gn = 0;                 // this zone, in order
+        for (int i = 0; i < Params::kFxChainLen; ++i)
+            if (isBuffer (ord[i]) == buf) group[gn++] = ord[i];
+
+        int rebuilt[Params::kFxChainLen], rn = 0;               // minus the dragged one
+        for (int i = 0; i < gn; ++i)
+            if (group[i] != effectId) rebuilt[rn++] = group[i];
+
+        const int to = juce::jlimit (0, rn, targetSlot);
+        int newGroup[Params::kFxChainLen];
+        for (int i = 0, r = 0; i < gn; ++i)
+            newGroup[i] = (i == to) ? effectId : rebuilt[r++];
+
+        int out[Params::kFxChainLen], gi = 0;                   // re-thread, other zone fixed
+        for (int i = 0; i < Params::kFxChainLen; ++i)
+            out[i] = (isBuffer (ord[i]) == buf) ? newGroup[gi++] : ord[i];
+        writeOrder (out);
+    }
+
     void timerCallback() override
     {
         if (dragged != nullptr) return;
         int ord[Params::kFxChainLen];
         readOrder (ord);
-        if (std::memcmp (ord, lastOrder, sizeof (ord)) != 0)
+        if (splitNow() != lastSplit || std::memcmp (ord, lastOrder, sizeof (ord)) != 0)
             layoutStrips();
     }
+
+    static constexpr int kBufferCount = 2;
+    static constexpr int kPreCount    = Params::kFxChainLen - kBufferCount;   // mono zone width
+    static constexpr int kGapPx       = 12;                                   // pre/post channel
 
     SwitchToggle splitToggle;
     std::array<std::unique_ptr<EffectStrip>, Params::kFxChainLen> strips;
     juce::AudioParameterInt* orderP[Params::kFxChainLen] {};
+    std::atomic<float>* splitParam = nullptr;
 
     EffectStrip* dragged = nullptr;
     int dragTargetCol = -1;
     int grabDX = 0;
     int colWidth = 0, stripY = 0, stripH = 0, contentX = 0;
+    bool splitActive = false, lastSplit = false;
+    int gapStartX = -1;
     int lastOrder[Params::kFxChainLen] { 0, 1, 2, 3, 4, 5, 6 };
 };
