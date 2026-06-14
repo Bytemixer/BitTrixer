@@ -58,7 +58,7 @@ public:
         // OSC 1/2 and Noise are compact (one control block each); the taller FM
         // band sits between OSC 2 and Noise and takes whatever height is left.
         const int compactH = 96;
-        const int divGap = 6;
+        const int divGap = 8;        // a touch more breathing room below each band
         const int fmH = juce::jmax (150, b.getHeight() - compactH * 3 - divGap * 3);
 
         auto place = [&] (juce::Component* c, int h)

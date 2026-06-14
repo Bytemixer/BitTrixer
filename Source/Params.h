@@ -79,7 +79,8 @@ namespace Params
     inline const juce::StringArray fxTypeNames   { "Off", "Crush", "Phaser", "Flanger", "Ring Mod", "Tremolo", "Formant", "Delay" };  // mirror FxChain::Type
     inline const juce::StringArray fxWaveNames   { "Sine", "Tri", "Square", "Saw" };   // RingMod carrier / Tremolo LFO shape
     inline const juce::StringArray fmAlgoNames   { "1 Serial", "2 Stack", "3 Dual Mod A", "4 Dual Mod B",
-                                                   "5 Twin Pair", "6 Branch", "7 Pair+2", "8 Additive" };  // YM2612 algorithms
+                                                   "5 Twin Pair", "6 Branch", "7 Pair+2", "8 Additive",   // YM2612 algorithms
+                                                   "9 Triple", "10 Stack+1", "11 Dual+1", "12 Fan+1" };   // extra topologies
 
     inline float rateChoiceToHz (int choice) noexcept
     {
