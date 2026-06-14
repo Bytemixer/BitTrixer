@@ -27,7 +27,9 @@ public:
     explicit GeneratorsPanel (juce::AudioProcessorValueTreeState& s)
         : SectionPanel ("Sound Generators")
     {
-        for (int i = 1; i <= Params::kNumOscs; ++i)
+        // OSC 3's slot is now the 4-operator FM voice (see FmPanel), so only
+        // OSC 1 and OSC 2 appear here alongside the noise generator.
+        for (int i = 1; i <= Params::kNumOscs - 1; ++i)
         {
             auto* o = oscs.add (new OscBand (s, i));
             addAndMakeVisible (o);
@@ -55,8 +57,8 @@ public:
         // oscillator knobs exactly (the knob region is fixed, see LabeledKnob).
         const int noiseH = 100;
         const int divGap = 6;
-        const int oscH = (b.getHeight() - noiseH - divGap * Params::kNumOscs)
-                       / Params::kNumOscs;
+        const int nOsc = juce::jmax (1, oscs.size());
+        const int oscH = (b.getHeight() - noiseH - divGap * nOsc) / nOsc;
 
         for (int i = 0; i < oscs.size(); ++i)
         {

@@ -54,6 +54,7 @@ namespace Params
                           FlangerRate, FlangerDepth, FlangerFb,
                           RingMix, TremRate, FormReso, FormMix,
                           DelayFb, DelayMix,
+                          FmOp1Level, FmOp2Level, FmOp3Level, FmOp4Level, FmFeedback,
                           Count };
 
     inline const juce::StringArray oscWaveNames  { "Sine", "Triangle", "Square", "Saw", "Rev Saw", "SuperSaw", "Tan", "Breaker" };
@@ -71,11 +72,14 @@ namespace Params
                                                    "Phaser Rate", "Phaser Depth", "Phaser Fdbk",
                                                    "Flanger Rate", "Flanger Depth", "Flanger Fdbk",
                                                    "Ring Wet", "Trem Speed", "Form Reso", "Form Wet",
-                                                   "Delay Fdbk", "Delay Wet" };
+                                                   "Delay Fdbk", "Delay Wet",
+                                                   "FM Op1 Lvl", "FM Op2 Lvl", "FM Op3 Lvl", "FM Op4 Lvl", "FM Feedback" };
     inline const juce::StringArray polesNames    { "2-Pole", "4-Pole" };
     inline const juce::StringArray rateNames     { "48 kHz", "44.1 kHz", "22 kHz", "11 kHz", "8 kHz" };
     inline const juce::StringArray fxTypeNames   { "Off", "Crush", "Phaser", "Flanger", "Ring Mod", "Tremolo", "Formant", "Delay" };  // mirror FxChain::Type
     inline const juce::StringArray fxWaveNames   { "Sine", "Tri", "Square", "Saw" };   // RingMod carrier / Tremolo LFO shape
+    inline const juce::StringArray fmAlgoNames   { "1 Serial", "2 Stack", "3 Dual Mod A", "4 Dual Mod B",
+                                                   "5 Twin Pair", "6 Branch", "7 Pair+2", "8 Additive" };  // YM2612 algorithms
 
     inline float rateChoiceToHz (int choice) noexcept
     {
@@ -93,6 +97,7 @@ namespace Params
     inline juce::String stepValId (int step1Based)                  { return "step_val" + juce::String (step1Based); }
     inline juce::String fxId   (int slot1Based, const char* suffix) { return "fxslot" + juce::String (slot1Based) + "_" + suffix; }
     inline juce::String fxOrderId (int pos)                         { return "fxorder" + juce::String (pos); }
+    inline juce::String fmOpId (int op1Based, const char* suffix)   { return "fmop"  + juce::String (op1Based) + "_" + suffix; }
 
     namespace id
     {
@@ -180,6 +185,12 @@ namespace Params
         inline constexpr const char* delayFb     = "fxdelay_fb";
         inline constexpr const char* delayMix    = "fxdelay_mix";
         inline constexpr const char* fxSplit     = "fx_split";   // mono subgroup pre-filter
+
+        // 4-operator FM (3rd generator slot). Its on/pitch/fine/level reuse the
+        // OSC 3 params (osc3_*); only the FM-specific params live here.
+        inline constexpr const char* fmAlgo      = "fm_algo";
+        inline constexpr const char* fmFeedback  = "fm_feedback";
+        // per-op ratio/level via fmOpId(n, "ratio"|"level")
     }
 
     // ------------------------------------------------------------------
@@ -299,6 +310,13 @@ namespace Params
         float delayTime = 0.12f;      // seconds (1 ms .. 400 ms)
         float delayFb = 0.4f;
         float delayMix = 0.4f;
+
+        // 4-operator FM voice (occupies the 3rd generator slot; its enable,
+        // transpose and output level come from osc[2] on/pitch/fine/level).
+        int   fmAlgo = 0;
+        float fmFeedback = 0.0f;
+        std::array<float, 4> fmRatio { 1.0f, 1.0f, 1.0f, 1.0f };
+        std::array<float, 4> fmLevel { 0.6f, 0.5f, 0.4f, 0.8f };
 
         // FX chain processing order (position -> FxChain::Effect index). Mono
         // pre-capable effects first, Flanger(2)/Delay(6) last (right) so they
@@ -425,6 +443,14 @@ namespace Params
                 fxOrder[k] = get (fxOrderId (k));
             fxSplit = get (id::fxSplit);
 
+            fmAlgo     = get (id::fmAlgo);
+            fmFeedback = get (id::fmFeedback);
+            for (int i = 0; i < 4; ++i)
+            {
+                fmRatio[i] = get (fmOpId (i + 1, "ratio"));
+                fmLevel[i] = get (fmOpId (i + 1, "level"));
+            }
+
             for (int k = 0; k < kFxSlots; ++k)
             {
                 fxSlotType[k] = get (fxId (k + 1, "type"));
@@ -538,6 +564,14 @@ namespace Params
                 p.fxOrder[(size_t) k] = (int) fxOrder[k]->load();
             p.fxSplit = fxSplit->load() > 0.5f;
 
+            p.fmAlgo     = (int) fmAlgo->load();
+            p.fmFeedback = fmFeedback->load();
+            for (int i = 0; i < 4; ++i)
+            {
+                p.fmRatio[(size_t) i] = fmRatio[i]->load();
+                p.fmLevel[(size_t) i] = fmLevel[i]->load();
+            }
+
             for (int k = 0; k < kFxSlots; ++k)
             {
                 p.fxSlotType[(size_t) k] = (int) fxSlotType[k]->load();
@@ -626,6 +660,11 @@ namespace Params
         std::atomic<float>* delayOn {}; std::atomic<float>* delayTime {}; std::atomic<float>* delayFb {};   std::atomic<float>* delayMix {};
         std::atomic<float>* fxOrder[kFxChainLen] {};
         std::atomic<float>* fxSplit {};
+
+        std::atomic<float>* fmAlgo {};
+        std::atomic<float>* fmFeedback {};
+        std::atomic<float>* fmRatio[4] {};
+        std::atomic<float>* fmLevel[4] {};
 
         std::atomic<float>* fxSlotType[kFxSlots] {};
         std::atomic<float>* fxSlotA[kFxSlots] {};
@@ -894,6 +933,25 @@ namespace Params
                         NormalisableRange<float> (0.0f, 1.0f, 0.001f), 0.4f, unitAttr));
         layout.add (std::make_unique<AudioParameterFloat> (ParameterID { id::delayMix, 1 },   "Delay Wet/Dry",
                         NormalisableRange<float> (0.0f, 1.0f, 0.001f), 0.4f, unitAttr));
+
+        // ---- 4-operator FM (3rd generator slot; on/pitch/fine/level reuse OSC 3) ----
+        const auto ratioAttr = FAttr().withStringFromValueFunction ([] (float v, int)
+        {
+            return String (v, v == std::floor (v) ? 0 : 1) + "x";
+        });
+        layout.add (std::make_unique<AudioParameterChoice>(ParameterID { id::fmAlgo, 1 }, "FM Algorithm", fmAlgoNames, 0));
+        layout.add (std::make_unique<AudioParameterFloat> (ParameterID { id::fmFeedback, 1 }, "FM Feedback",
+                        NormalisableRange<float> (0.0f, 1.0f, 0.001f), 0.0f, unitAttr));
+        const float fmLvlDef[4] = { 0.6f, 0.5f, 0.4f, 0.8f };
+        for (int i = 1; i <= 4; ++i)
+        {
+            layout.add (std::make_unique<AudioParameterFloat> (ParameterID { fmOpId (i, "ratio"), 1 },
+                            "FM Op" + String (i) + " Ratio",
+                            NormalisableRange<float> (0.5f, 16.0f, 0.5f), 1.0f, ratioAttr));
+            layout.add (std::make_unique<AudioParameterFloat> (ParameterID { fmOpId (i, "level"), 1 },
+                            "FM Op" + String (i) + " Level",
+                            NormalisableRange<float> (0.0f, 1.0f, 0.001f), fmLvlDef[i - 1], unitAttr));
+        }
 
         // FX chain order: one int per chain position. Default = mono effects
         // first, Flanger/Delay last (right), matching the pre-filter split.

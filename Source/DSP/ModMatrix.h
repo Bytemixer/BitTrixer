@@ -57,6 +57,8 @@ struct ModValues
     float formMix    = 0.0f;
     float delayFb    = 0.0f;
     float delayMix   = 0.0f;
+    float fmOpLevel[4] { 0.0f, 0.0f, 0.0f, 0.0f };   // FM operator level offsets
+    float fmFeedback = 0.0f;
 };
 
 class ModMatrix
@@ -138,6 +140,11 @@ public:
                 case Params::ModDest::FormMix:      mv.formMix       += v; break;
                 case Params::ModDest::DelayFb:      mv.delayFb       += v; break;
                 case Params::ModDest::DelayMix:     mv.delayMix      += v; break;
+                case Params::ModDest::FmOp1Level:   mv.fmOpLevel[0]  += v; break;
+                case Params::ModDest::FmOp2Level:   mv.fmOpLevel[1]  += v; break;
+                case Params::ModDest::FmOp3Level:   mv.fmOpLevel[2]  += v; break;
+                case Params::ModDest::FmOp4Level:   mv.fmOpLevel[3]  += v; break;
+                case Params::ModDest::FmFeedback:   mv.fmFeedback    += v; break;
                 default: break;
             }
         }

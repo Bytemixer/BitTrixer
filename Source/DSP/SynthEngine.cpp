@@ -204,6 +204,27 @@ void SynthEngine::Instance::renderAdd (float* left, float* right, int n,
 
     for (int i = 0; i < Params::kNumOscs; ++i)
         ctx.oscSync[i] = p.osc[(size_t) i].sync;
+
+    // ---- FM (3rd generator slot): osc[2] no longer sounds as an oscillator;
+    //      its on/pitch/fine/level drive the 4-operator FM unit instead ----
+    ctx.oscOn[2] = false;
+    {
+        const auto& o3 = p.osc[2];
+        const float fmSemis = o3.pitchSemis + o3.fineCents * 0.01f
+                            + mv.allPitchSemis + mv.oscPitchSemis[2]
+                            + var.pitchSemis + jumpSemis;
+        ctx.fmOn         = o3.on;
+        ctx.fmAlgo       = p.fmAlgo;
+        ctx.fmFeedback   = clampf (p.fmFeedback + mv.fmFeedback, 0.0f, 1.0f);
+        ctx.fmBaseFreqHz = clampf (base * std::exp2 (fmSemis / 12.0f), 0.05f, fsf * 0.45f);
+        ctx.fmOut        = clampf (o3.level + mv.oscLevel[2], 0.0f, 1.0f);
+        for (int i = 0; i < 4; ++i)
+        {
+            ctx.fmRatio[i] = p.fmRatio[(size_t) i];
+            ctx.fmLevel[i] = clampf (p.fmLevel[(size_t) i] + mv.fmOpLevel[i], 0.0f, 1.0f);
+        }
+    }
+
     ctx.noiseOn    = p.noiseOn;
     ctx.noiseType  = p.noiseType;
     ctx.noiseLevel = clampf (p.noiseLevel + mv.noiseLevel, 0.0f, 1.0f);
