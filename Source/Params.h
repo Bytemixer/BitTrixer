@@ -38,19 +38,40 @@ namespace Params
     // Osc sync: OSC 1 is always the master; each other oscillator has its own
     // sync switch that hard-syncs it to OSC 1 (per-osc bool, see OscPatch).
     enum class ModSrc   { Off = 0, Lfo1, Lfo2, FilterEnv, AmpEnv };
+    // NOTE: only ever APPEND to this list. The dest is a choice parameter whose
+    // stored value normalises by the choice count, so inserting/reordering would
+    // remap every saved routing. Osc per-knob and per-FX-knob groups are kept
+    // contiguous so the engine can index them as base + osc/effect offset.
     enum class ModDest  { Off = 0, AllPitch, Osc1Pitch, Osc2Pitch, Osc3Pitch,
                           Pwm, Fold, NoiseLevel, Cutoff, Resonance,
                           Lfo1Rate, Lfo2Rate, VcaLevel,
-                          FormVowel, RingFreq, TremDepth, DelayTime };
+                          FormVowel, RingFreq, TremDepth, DelayTime,
+                          Osc1Pwm, Osc2Pwm, Osc3Pwm,
+                          Osc1Fold, Osc2Fold, Osc3Fold,
+                          Osc1Level, Osc2Level, Osc3Level,
+                          CrushBits, CrushDiv,
+                          PhaserRate, PhaserDepth, PhaserFb,
+                          FlangerRate, FlangerDepth, FlangerFb,
+                          RingMix, TremRate, FormReso, FormMix,
+                          DelayFb, DelayMix,
+                          Count };
 
     inline const juce::StringArray oscWaveNames  { "Sine", "Triangle", "Square", "Saw", "Rev Saw", "SuperSaw", "Tan", "Breaker" };
     inline const juce::StringArray noiseTypeNames { "Analog W>P", "LFSR Hiss", "LFSR Buzz", "Rasp" };
     inline const juce::StringArray lfoWaveNames  { "Sine", "Triangle", "Saw", "Rev Saw", "Square", "S&H", "S&G" };
     inline const juce::StringArray modSrcNames   { "Off", "LFO 1", "LFO 2", "Filt Env", "Amp Env" };
     inline const juce::StringArray modDestNames  { "Off", "All Pitch", "Osc1 Pitch", "Osc2 Pitch", "Osc3 Pitch",
-                                                   "PWM", "Fold", "Noise Lvl", "Cutoff", "Resonance",
+                                                   "All PWM", "All Fold", "Noise Lvl", "Cutoff", "Resonance",
                                                    "LFO1 Rate", "LFO2 Rate", "VCA Level",
-                                                   "Form Vowel", "Ring Freq", "Trem Depth", "Delay Time" };
+                                                   "Form Vowel", "Ring Freq", "Trem Depth", "Delay Time",
+                                                   "Osc1 PWM", "Osc2 PWM", "Osc3 PWM",
+                                                   "Osc1 Fold", "Osc2 Fold", "Osc3 Fold",
+                                                   "Osc1 Level", "Osc2 Level", "Osc3 Level",
+                                                   "Crush Bits", "Crush Div",
+                                                   "Phaser Rate", "Phaser Depth", "Phaser Fdbk",
+                                                   "Flanger Rate", "Flanger Depth", "Flanger Fdbk",
+                                                   "Ring Wet", "Trem Speed", "Form Reso", "Form Wet",
+                                                   "Delay Fdbk", "Delay Wet" };
     inline const juce::StringArray polesNames    { "2-Pole", "4-Pole" };
     inline const juce::StringArray rateNames     { "48 kHz", "44.1 kHz", "22 kHz", "11 kHz", "8 kHz" };
     inline const juce::StringArray fxTypeNames   { "Off", "Crush", "Phaser", "Flanger", "Ring Mod", "Tremolo", "Formant", "Delay" };  // mirror FxChain::Type

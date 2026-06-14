@@ -38,6 +38,25 @@ struct ModValues
     float ringFreqOct = 0.0f;   // octaves
     float tremDepth = 0.0f;     // 0..1 offset
     float delayTimeOct = 0.0f;  // octaves
+
+    // granular per-oscillator + per-FX-knob offsets
+    float oscPwm[Params::kNumOscs]   { 0.0f, 0.0f, 0.0f };
+    float oscFold[Params::kNumOscs]  { 0.0f, 0.0f, 0.0f };
+    float oscLevel[Params::kNumOscs] { 0.0f, 0.0f, 0.0f };
+    float crushBits   = 0.0f;   // +/- bits
+    float crushDivOct = 0.0f;   // octaves on the sample-hold divisor
+    float phaseRateOct = 0.0f;  // octaves
+    float phaseDepth   = 0.0f;
+    float phaseFb      = 0.0f;
+    float flangeRateOct = 0.0f; // octaves
+    float flangeDepth   = 0.0f;
+    float flangeFb      = 0.0f;
+    float ringMix    = 0.0f;
+    float tremRateOct = 0.0f;   // octaves
+    float formReso   = 0.0f;
+    float formMix    = 0.0f;
+    float delayFb    = 0.0f;
+    float delayMix   = 0.0f;
 };
 
 class ModMatrix
@@ -48,6 +67,9 @@ public:
     static constexpr float kLfoRateRangeOct = 4.0f;
     static constexpr float kRingFreqRangeOct  = 4.0f;
     static constexpr float kDelayTimeRangeOct = 2.0f;
+    static constexpr float kFxRateRangeOct    = 4.0f;   // phaser/flanger/trem speed
+    static constexpr float kCrushBitsRange    = 8.0f;   // +/- bits
+    static constexpr float kCrushDivRangeOct  = 4.0f;   // sample-hold divisor
 
     // srcLfo1/2 are bipolar, srcEnvF/A unipolar (already inverted if set so)
     static ModValues compute (const Params::Patch& p,
@@ -92,6 +114,30 @@ public:
                 case Params::ModDest::RingFreq:   mv.ringFreqOct        += v * kRingFreqRangeOct; break;
                 case Params::ModDest::TremDepth:  mv.tremDepth          += v; break;
                 case Params::ModDest::DelayTime:  mv.delayTimeOct       += v * kDelayTimeRangeOct; break;
+
+                case Params::ModDest::Osc1Pwm:    mv.oscPwm[0]   += v * 0.45f; break;
+                case Params::ModDest::Osc2Pwm:    mv.oscPwm[1]   += v * 0.45f; break;
+                case Params::ModDest::Osc3Pwm:    mv.oscPwm[2]   += v * 0.45f; break;
+                case Params::ModDest::Osc1Fold:   mv.oscFold[0]  += v; break;
+                case Params::ModDest::Osc2Fold:   mv.oscFold[1]  += v; break;
+                case Params::ModDest::Osc3Fold:   mv.oscFold[2]  += v; break;
+                case Params::ModDest::Osc1Level:  mv.oscLevel[0] += v; break;
+                case Params::ModDest::Osc2Level:  mv.oscLevel[1] += v; break;
+                case Params::ModDest::Osc3Level:  mv.oscLevel[2] += v; break;
+                case Params::ModDest::CrushBits:    mv.crushBits     += v * kCrushBitsRange; break;
+                case Params::ModDest::CrushDiv:     mv.crushDivOct   += v * kCrushDivRangeOct; break;
+                case Params::ModDest::PhaserRate:   mv.phaseRateOct  += v * kFxRateRangeOct; break;
+                case Params::ModDest::PhaserDepth:  mv.phaseDepth    += v; break;
+                case Params::ModDest::PhaserFb:     mv.phaseFb       += v; break;
+                case Params::ModDest::FlangerRate:  mv.flangeRateOct += v * kFxRateRangeOct; break;
+                case Params::ModDest::FlangerDepth: mv.flangeDepth   += v; break;
+                case Params::ModDest::FlangerFb:    mv.flangeFb      += v; break;
+                case Params::ModDest::RingMix:      mv.ringMix       += v; break;
+                case Params::ModDest::TremRate:     mv.tremRateOct   += v * kFxRateRangeOct; break;
+                case Params::ModDest::FormReso:     mv.formReso      += v; break;
+                case Params::ModDest::FormMix:      mv.formMix       += v; break;
+                case Params::ModDest::DelayFb:      mv.delayFb       += v; break;
+                case Params::ModDest::DelayMix:     mv.delayMix      += v; break;
                 default: break;
             }
         }
