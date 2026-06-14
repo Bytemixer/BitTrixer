@@ -17,7 +17,6 @@ RetroForgeEditor::RetroForgeEditor (RetroForgeProcessor& p)
       presetManager (p.apvts),
       header (p.apvts),
       generatorsPanel (p.apvts),
-      fmPanel (p.apvts),
       filterPanel (p.apvts),
       envelopesPanel (p.apvts),
       vcaPanel (p.apvts),
@@ -32,7 +31,7 @@ RetroForgeEditor::RetroForgeEditor (RetroForgeProcessor& p)
 
     addAndMakeVisible (content);
     for (auto* c : std::initializer_list<juce::Component*> {
-             &header, &generatorsPanel, &fmPanel, &filterPanel,
+             &header, &generatorsPanel, &filterPanel,
              &envelopesPanel, &vcaPanel, &pitchPanel,
              &lfo1Panel, &stepLfoPanel, &modMatrixPanel,
              &triggerPanel, &randomizerPanel, &scopePanel, &fxPanel })
@@ -326,16 +325,14 @@ void RetroForgeEditor::drawSignalTraces (juce::Graphics& g)
         arrowInto (g, { vcf.getX(), inY }, 0, srcCol.withMultipliedAlpha (directA));
     }
 
-    // ---- leg 1: SOURCES -> CRUSH (out the bottom of the source stack) ----
+    // ---- leg 1: SOURCES -> CRUSH (down the open routing lane) ----
     {
-        // the FM voice sits at the bottom of the source stack, so the summed
-        // sources flow out from there into the pre-filter subgroup
-        const auto src = fmPanel.getBounds().toFloat();
-        const float outX = src.getCentreX();
-        const float laneY = (src.getBottom() + gapTop) * 0.5f;   // slim lane above the FX
+        const auto gen = generatorsPanel.getBounds().toFloat();
+        const float outX = gen.getCentreX();
+        const float laneY = (gen.getBottom() + gapTop) * 0.5f;   // mid routing lane
 
-        strokeTrace (g, chamfered ({ { outX, src.getBottom() }, { outX, laneY },
-                                     { crushInX, laneY }, { crushInX, gapTop } }, 8.0f),
+        strokeTrace (g, chamfered ({ { outX, gen.getBottom() }, { outX, laneY },
+                                     { crushInX, laneY }, { crushInX, gapTop } }, 12.0f),
                      srcCol.withMultipliedAlpha (preA), 3.4f);
         arrowInto (g, { crushInX, gapTop }, 2, srcCol.withMultipliedAlpha (preA));
         g.setColour (srcCol.withMultipliedAlpha (preA));
@@ -525,14 +522,12 @@ void RetroForgeEditor::layoutPanels (juce::Rectangle<int> bounds)
     }
     b.removeFromBottom (16);   // routing channel above the FX strip
 
-    // ---- left column: OSC 1/2 + Noise on top, then the 4-operator FM voice
-    //      filling the space beneath them (its slot replaces OSC 3). A slim
-    //      lane between them carries the source -> filter-chain traces. ----
+    // ---- left column: all sound sources in one panel (OSC 1/2 + FM + Noise),
+    //      leaving an open routing lane below it for the source-chain traces ----
     juce::ignoreUnused (leftGap);
     {
         auto leftCol = b.removeFromLeft (316);
-        fmPanel.setBounds (leftCol.removeFromBottom (232));
-        leftCol.removeFromBottom (10);           // routing lane / gap
+        leftCol.removeFromBottom (90);           // routing lane (background)
         generatorsPanel.setBounds (leftCol);
     }
 

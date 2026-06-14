@@ -13,6 +13,7 @@
 
 #include "PanelCommon.h"
 #include "WaveGlyph.h"
+#include "FmAlgoGlyph.h"
 #include "../Params.h"
 
 // ============================================================================
@@ -27,13 +28,15 @@ public:
     explicit GeneratorsPanel (juce::AudioProcessorValueTreeState& s)
         : SectionPanel ("Sound Generators")
     {
-        // OSC 3's slot is now the 4-operator FM voice (see FmPanel), so only
-        // OSC 1 and OSC 2 appear here alongside the noise generator.
+        // OSC 3's slot is the 4-operator FM voice, shown as its own (taller)
+        // band before Noise; only OSC 1 and OSC 2 are plain oscillators now.
         for (int i = 1; i <= Params::kNumOscs - 1; ++i)
         {
             auto* o = oscs.add (new OscBand (s, i));
             addAndMakeVisible (o);
         }
+        fm = std::make_unique<FmBand> (s);
+        addAndMakeVisible (fm.get());
         noise = std::make_unique<NoiseBand> (s);
         addAndMakeVisible (noise.get());
     }
@@ -52,21 +55,22 @@ public:
         auto b = content();
         dividers.clear();
 
-        // noise is the shorter band; the three oscillators share the rest.
-        // noiseH must still fit a full control block so its knobs match the
-        // oscillator knobs exactly (the knob region is fixed, see LabeledKnob).
-        const int noiseH = 100;
+        // OSC 1/2 and Noise are compact (one control block each); the taller FM
+        // band sits between OSC 2 and Noise and takes whatever height is left.
+        const int compactH = 96;
         const int divGap = 6;
-        const int nOsc = juce::jmax (1, oscs.size());
-        const int oscH = (b.getHeight() - noiseH - divGap * nOsc) / nOsc;
+        const int fmH = juce::jmax (150, b.getHeight() - compactH * 3 - divGap * 3);
 
-        for (int i = 0; i < oscs.size(); ++i)
+        auto place = [&] (juce::Component* c, int h)
         {
-            oscs[i]->setBounds (b.removeFromTop (oscH));
+            c->setBounds (b.removeFromTop (h));
             b.removeFromTop (divGap);
             dividers.push_back ((float) b.getY() - divGap * 0.5f);
-        }
-        noise->setBounds (b.removeFromTop (noiseH));
+        };
+        if (oscs.size() > 0) place (oscs[0], compactH);
+        if (oscs.size() > 1) place (oscs[1], compactH);
+        place (fm.get(), fmH);
+        noise->setBounds (b.removeFromTop (compactH));   // last band, no trailing divider
     }
 
 private:
@@ -213,7 +217,83 @@ private:
         LabeledKnob  color, level;
     };
 
+    // ---- the 4-operator FM voice band: header (tag + enable + algorithm
+    //      selector + algorithm glyph), then a 4x3 knob grid (transpose/output/
+    //      feedback row, then the operator ratio and level rows) ----
+    struct FmBand : juce::Component
+    {
+        explicit FmBand (juce::AudioProcessorValueTreeState& s)
+            : tag ("FM", RetroColors::accent),
+              onSwitch (s, Params::oscId (3, "on"), ""),
+              algo  (s, Params::id::fmAlgo),
+              glyph (s),
+              pitch (s, Params::oscId (3, "pitch"), "PITCH"),
+              fine  (s, Params::oscId (3, "fine"),  "FINE"),
+              outLevel (s, Params::oscId (3, "level"), "LEVEL"),
+              feedback (s, Params::id::fmFeedback,      "FDBK")
+        {
+            addAndMakeVisible (tag);
+            addAndMakeVisible (onSwitch);
+            addAndMakeVisible (algo);
+            addAndMakeVisible (glyph);
+            for (auto* k : { &pitch, &fine, &outLevel, &feedback })
+                addAndMakeVisible (k);
+
+            static const char* opNames[4] = { "OP1", "OP2", "OP3", "OP4" };
+            for (int i = 0; i < 4; ++i)
+            {
+                ops[i].ratio = std::make_unique<LabeledKnob> (s, Params::fmOpId (i + 1, "ratio"), opNames[i]);
+                ops[i].level = std::make_unique<LabeledKnob> (s, Params::fmOpId (i + 1, "level"), "LVL");
+                addAndMakeVisible (*ops[i].ratio);
+                addAndMakeVisible (*ops[i].level);
+            }
+        }
+
+        void resized() override
+        {
+            auto full = getLocalBounds().reduced (3, 2);
+
+            // header: tag + enable + (shorter) algorithm selector + glyph square
+            auto head = full.removeFromTop (40);
+            tag.setBounds (head.removeFromLeft (40));
+            onSwitch.setBounds (head.removeFromLeft (34).withSizeKeepingCentre (32, 18));
+            head.removeFromLeft (4);
+            auto glyphBox = head.removeFromRight (40);
+            glyph.setBounds (glyphBox.withSizeKeepingCentre (38, 38));
+            head.removeFromRight (5);
+            algo.setBounds (head.withSizeKeepingCentre (head.getWidth(), 22));
+
+            full.removeFromTop (2);
+
+            // 4-column x 3-row knob grid
+            const int rowH = full.getHeight() / 3;
+            auto row1 = full.removeFromTop (rowH);   // PITCH FINE LEVEL FDBK
+            auto row2 = full.removeFromTop (rowH);   // OP1..OP4 ratio
+            auto row3 = full;                        // OP1..OP4 level
+
+            auto place4 = [] (juce::Rectangle<int> r, std::initializer_list<juce::Component*> cs)
+            {
+                const int cw = r.getWidth() / 4;
+                int i = 0;
+                for (auto* c : cs) { c->setBounds (r.removeFromLeft (i == 3 ? r.getWidth() : cw)); ++i; }
+            };
+            place4 (row1, { &pitch, &fine, &outLevel, &feedback });
+            place4 (row2, { ops[0].ratio.get(), ops[1].ratio.get(), ops[2].ratio.get(), ops[3].ratio.get() });
+            place4 (row3, { ops[0].level.get(), ops[1].level.get(), ops[2].level.get(), ops[3].level.get() });
+        }
+
+        struct OpStrip { std::unique_ptr<LabeledKnob> ratio, level; };
+
+        BandTag tag;
+        SwitchToggle onSwitch;
+        ChoiceCombo  algo;
+        FmAlgoGlyph  glyph;
+        LabeledKnob  pitch, fine, outLevel, feedback;
+        OpStrip      ops[4];
+    };
+
     juce::OwnedArray<OscBand> oscs;
+    std::unique_ptr<FmBand> fm;
     std::unique_ptr<NoiseBand> noise;
     std::vector<float> dividers;
 };
