@@ -33,7 +33,7 @@ class FmUnit
 {
 public:
     static constexpr int kOps = 4;
-    static constexpr int kNumAlgos = 8;
+    static constexpr int kNumAlgos = 12;
 
     // mod[i]: bitmask of operators (bit j) that modulate operator i.
     // carriers: bitmask of operators summed to the output. Feedback is fixed
@@ -58,6 +58,15 @@ public:
         { { 0u, 0b0001u, 0u,      0u      }, 0b1110u },
         // 7  four parallel sine     (none)                carriers 0,1,2,3
         { { 0u, 0u,      0u,      0u      }, 0b1111u },
+        // ---- additional distinct topologies (feedback still on op0) ----
+        // 8  triple modulation      (0,1,2)->3            carrier 3
+        { { 0u, 0u,      0u,      0b0111u }, 0b1000u },
+        // 9  3-stack + sine         0->1->2 ; 3           carriers 2,3
+        { { 0u, 0b0001u, 0b0010u, 0u      }, 0b1100u },
+        // 10 dual mod + sine        (0,1)->2 ; 3          carriers 2,3
+        { { 0u, 0u,      0b0011u, 0u      }, 0b1100u },
+        // 11 fan-2 + sine           0->1 ; 0->2 ; 3       carriers 1,2,3
+        { { 0u, 0b0001u, 0b0001u, 0u      }, 0b1110u },
     };
 
     void prepare (double sampleRate) noexcept { fs = (float) sampleRate; reset(); }
