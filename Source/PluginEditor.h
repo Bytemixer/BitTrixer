@@ -20,7 +20,6 @@
 #include "UI/ThemeEditor.h"
 #include "UI/HeaderBar.h"
 #include "UI/GeneratorsPanel.h"
-#include "UI/FmPanel.h"
 #include "UI/PitchPanel.h"
 #include "UI/FilterPanel.h"
 #include "UI/EnvelopesPanel.h"
@@ -78,7 +77,6 @@ private:
 
     HeaderBar header;
     GeneratorsPanel generatorsPanel;
-    FmPanel fmPanel;
     FilterPanel filterPanel;
     EnvelopesPanel envelopesPanel;
     VcaPanel vcaPanel;
