@@ -118,10 +118,26 @@ RetroForgeEditor::RetroForgeEditor (RetroForgeProcessor& p)
     if (auto* c = getConstrainer())
         c->setFixedAspectRatio (1180.0 / 996.0);
     setSize (1475, 1245);                       // 1.25x default (bigger knobs)
+
+    // poll the FX pre-filter split so the signal traces redraw when it toggles
+    fxSplitParam = proc.apvts.getRawParameterValue (Params::id::fxSplit);
+    lastSplit = fxSplitParam != nullptr && fxSplitParam->load() > 0.5f;
+    startTimerHz (10);
+}
+
+void RetroForgeEditor::timerCallback()
+{
+    const bool now = fxSplitParam != nullptr && fxSplitParam->load() > 0.5f;
+    if (now != lastSplit)
+    {
+        lastSplit = now;
+        content.repaint();
+    }
 }
 
 RetroForgeEditor::~RetroForgeEditor()
 {
+    stopTimer();
     setLookAndFeel (nullptr);
 }
 
@@ -260,13 +276,20 @@ void RetroForgeEditor::drawSignalTraces (juce::Graphics& g)
     // The 16px channel above the FX strip carries the down/up runs.
 
     const float gapTop = fx.getY();
-    const float yLaneB = gapTop - 7.0f;    // crush -> VCF / flanger -> OUT
-    const float yLaneC = gapTop - 3.0f;    // VCA -> phaser
+    const float yLaneB = gapTop - 7.0f;    // pre-FX -> VCF / post-FX -> OUT
+    const float yLaneC = gapTop - 3.0f;    // VCA -> post-FX
 
-    const float crushInX   = fx.getX() + 120.0f;
-    const float crushOutX  = fx.getX() + 156.0f;
-    const float phaserInX  = fx.getX() + fx.getWidth() * 0.42f;
-    const float flangerOutX = fx.getX() + fx.getWidth() * 0.88f;
+    // The mono pre-FX group lives on the LEFT of the FX block, the buffer
+    // (post-VCA) group -- Flanger/Delay -- on the RIGHT. The pre-filter legs
+    // (sources -> pre-FX -> filter) are dimmed until the split switch is
+    // engaged; the post legs (VCA -> post-FX -> scope) are always live.
+    const bool  fxSplit = fxSplitParam != nullptr && fxSplitParam->load() > 0.5f;
+    const float preA    = fxSplit ? 1.0f : 0.26f;
+
+    const float crushInX    = fx.getX() + fx.getWidth() * 0.07f;   // sources -> pre group (left)
+    const float crushOutX   = fx.getX() + fx.getWidth() * 0.34f;   // pre group -> filter
+    const float phaserInX   = fx.getX() + fx.getWidth() * 0.80f;   // VCA -> post group (right, over Flanger)
+    const float flangerOutX = fx.getRight() - 30.0f;               // post group -> scope (right edge)
 
     // ---- leg 1: SOUND GENERATORS -> CRUSH (down the open routing lane) ----
     {
@@ -278,9 +301,9 @@ void RetroForgeEditor::drawSignalTraces (juce::Graphics& g)
         // dive into the bitcrusher (which sits BEFORE the filter)
         strokeTrace (g, chamfered ({ { outX, gen.getBottom() }, { outX, laneY },
                                      { crushInX, laneY }, { crushInX, gapTop } }, 12.0f),
-                     srcCol, 3.4f);
-        arrowInto (g, { crushInX, gapTop }, 2, srcCol);
-        g.setColour (srcCol);
+                     srcCol.withMultipliedAlpha (preA), 3.4f);
+        arrowInto (g, { crushInX, gapTop }, 2, srcCol.withMultipliedAlpha (preA));
+        g.setColour (srcCol.withMultipliedAlpha (preA));
         g.setFont (juce::Font (juce::FontOptions (8.5f, juce::Font::bold)));
         g.drawText ("SOURCES", (int) outX + 12, (int) laneY - 12, 70, 11,
                     juce::Justification::centredLeft);
@@ -293,9 +316,9 @@ void RetroForgeEditor::drawSignalTraces (juce::Graphics& g)
         strokeTrace (g, chamfered ({ { crushOutX, gapTop }, { crushOutX, yLaneB },
                                      { busX, yLaneB }, { busX, vcfInY },
                                      { vcf.getX(), vcfInY } }),
-                     vcfCol, 3.2f);
-        solderPad (g, { crushOutX, gapTop }, vcfCol);
-        arrowInto (g, { vcf.getX(), vcfInY }, 0, vcfCol);
+                     vcfCol.withMultipliedAlpha (preA), 3.2f);
+        solderPad (g, { crushOutX, gapTop }, vcfCol.withMultipliedAlpha (preA));
+        arrowInto (g, { vcf.getX(), vcfInY }, 0, vcfCol.withMultipliedAlpha (preA));
     }
 
     // ---- leg 3: VCF -> VCA (left channel, panel-hugging lane) ----
@@ -320,9 +343,9 @@ void RetroForgeEditor::drawSignalTraces (juce::Graphics& g)
         arrowInto (g, { phaserInX, gapTop }, 2, phaseCol);
     }
 
-    // ---- leg 5: FLANGER -> OUT (scope window monitors the output) ----
+    // ---- leg 5: post-FX (right edge) -> OUT, into the right of the scope ----
     {
-        const float x = scope.getCentreX();
+        const float x = scope.getRight() - 26.0f;
         strokeTrace (g, chamfered ({ { flangerOutX, gapTop }, { flangerOutX, yLaneB },
                                      { x, yLaneB }, { x, scope.getBottom() } }),
                      outCol, 3.0f);
@@ -330,8 +353,8 @@ void RetroForgeEditor::drawSignalTraces (juce::Graphics& g)
         arrowInto (g, { x, scope.getBottom() }, 3, outCol);
         g.setColour (outCol);
         g.setFont (juce::Font (juce::FontOptions (9.0f, juce::Font::bold)));
-        g.drawText ("OUT", (int) x + 6, (int) scope.getBottom() - 4, 26, 10,
-                    juce::Justification::centredLeft);
+        g.drawText ("OUT", (int) x - 32, (int) scope.getBottom() - 4, 26, 10,
+                    juce::Justification::centredRight);
     }
 
     auto modLabel = [&g] (juce::Colour c, juce::Point<float> at, const char* txt,
