@@ -246,18 +246,30 @@ void RetroForgeEditor::drawSignalTraces (juce::Graphics& g)
 {
     // pride theme: the signal path becomes a rainbow ribbon — each leg of
     // the audio chain takes the next flag stripe, input to output
-    const bool pride = RetroColors::prideMode;
-    auto leg = [pride] (int i) {
-        return pride ? RetroColors::kPrideFlag[i].brighter (0.15f) : RetroColors::trace;
+    const bool pride   = RetroColors::prideMode;
+    const bool lightBg = RetroColors::background.getPerceivedBrightness() > 0.5f;
+    // colour-code the route so each leg reads on its own. Pride mode walks the
+    // six flag stripes (lightened on a dark canvas, deepened on a light one);
+    // every other theme derives a five-step hue gradient from its own audio
+    // trace colour -- kept within the audio half of the wheel, clear of the
+    // contrasting control hue -- so the path stays firmly on-theme.
+    auto leg = [pride, lightBg] (int i) -> juce::Colour
+    {
+        if (pride)
+            return lightBg ? RetroColors::kPrideFlag[i].darker (0.18f)
+                           : RetroColors::kPrideFlag[i].brighter (0.15f);
+        static const float step[5] = { -0.18f, -0.09f, 0.0f, 0.09f, 0.18f };
+        return RetroColors::trace.withRotatedHue (step[i]);
     };
-    // audio path: one colour (or the pride ribbon); control path: a
-    // contrasting colour, like the blue-audio / red-control synth diagrams
-    const auto srcCol    = leg (0);
-    const auto vcfCol    = leg (1);
-    const auto vcaCol    = leg (2);
-    const auto phaseCol  = leg (3);
-    const auto outCol    = leg (4);
-    const auto envCol    = pride ? RetroColors::kPrideFlag[5].brighter (0.45f)
+    // audio path: the five-step route gradient; control path: the contrasting
+    // modulation colour (blue-audio / amber-control synth-diagram convention)
+    const auto srcCol    = leg (0);   // sources
+    const auto vcfCol    = leg (1);   // -> filter
+    const auto vcaCol    = leg (2);   // filter -> VCA
+    const auto phaseCol  = leg (3);   // VCA -> post-FX
+    const auto outCol    = leg (4);   // post-FX -> out
+    const auto envCol    = pride ? (lightBg ? RetroColors::kPrideFlag[5].darker (0.10f)
+                                            : RetroColors::kPrideFlag[5].brighter (0.45f))
                                  : RetroColors::traceCtrl;
     const auto modCol    = envCol;
 

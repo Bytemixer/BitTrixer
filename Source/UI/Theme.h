@@ -192,6 +192,32 @@ namespace ThemePresets
         t.prideMode  = true;
         return t;
     }
+
+    inline Theme prideLight()
+    {
+        // the light sibling of Pride: a soft off-white canvas so the six flag
+        // colours read as a bright rainbow ribbon, with deepened flag tones in
+        // the accents/traces for contrast against the pale panels
+        Theme t;
+        t.name = "Pride Light";
+        t.background = juce::Colour (0xffeae8ee);
+        t.panel      = juce::Colour (0xfff6f4f9);
+        t.panelEdge  = juce::Colour (0xffc3bfca);
+        t.panelTitle = juce::Colour (0xff4a3f55);
+        t.text       = juce::Colour (0xff2a2630);
+        t.textDim    = juce::Colour (0xff6f6878);
+        t.accent     = juce::Colour (0xffe85d00);   // flag orange (deepened)
+        t.accentDark = juce::Colour (0xffc20303);   // flag red (deepened)
+        t.knobFace   = juce::Colour (0xffe2dee8);
+        t.knobRim    = juce::Colour (0xffa49bb0);
+        t.track      = juce::Colour (0xffd8d3e0);
+        t.switchOff  = juce::Colour (0xffcfc9d8);
+        t.ledOn      = juce::Colour (0xff008026);   // flag green
+        t.trace      = juce::Colour (0xff1f7a3c);   // green, readable on light
+        t.traceCtrl  = juce::Colour (0xff732982);   // flag purple (control)
+        t.prideMode  = true;
+        return t;
+    }
 }
 
 // ----------------------------------------------------------------------------
@@ -199,7 +225,7 @@ namespace ThemePresets
 class ThemeManager
 {
 public:
-    static constexpr int kCustomIndex = 5;
+    static constexpr int kCustomIndex = 6;
 
     ThemeManager()
     {
@@ -212,7 +238,7 @@ public:
 
         presets = { ThemePresets::slate(), ThemePresets::light(),
                     ThemePresets::cute(), ThemePresets::cuteDark(),
-                    ThemePresets::pride() };
+                    ThemePresets::pride(), ThemePresets::prideLight() };
         loadCustom();
         applyIndex (props->getIntValue ("themeIndex", 0));
     }
