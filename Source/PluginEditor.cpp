@@ -291,6 +291,22 @@ void RetroForgeEditor::drawSignalTraces (juce::Graphics& g)
     const float phaserInX   = fx.getX() + fx.getWidth() * 0.80f;   // VCA -> post group (right, over Flanger)
     const float flangerOutX = fx.getRight() - 30.0f;               // post group -> scope (right edge)
 
+    // ---- leg 0 (DIRECT): SOUND GENERATORS -> VCF. This is the straight path
+    //      the engine actually runs whenever the FX is NOT split pre-filter
+    //      (all effects post-VCA). It stays highlighted until the split engages,
+    //      then dims as the signal detours through the pre-FX legs above. The
+    //      filter sits level with the generators, so it's a short hop across
+    //      the channel, entering the VCF just above the pre-FX entry point. ----
+    {
+        const auto  gen     = generatorsPanel.getBounds().toFloat();
+        const float directA = fxSplit ? 0.26f : 1.0f;          // mirror of preA
+        const float inY     = vcf.getY() + 40.0f;              // above pre-FX entry (+60)
+        strokeTrace (g, chamfered ({ { gen.getRight(), inY }, { vcf.getX(), inY } }),
+                     srcCol.withMultipliedAlpha (directA), 3.4f);
+        solderPad (g, { gen.getRight(), inY }, srcCol.withMultipliedAlpha (directA));
+        arrowInto (g, { vcf.getX(), inY }, 0, srcCol.withMultipliedAlpha (directA));
+    }
+
     // ---- leg 1: SOUND GENERATORS -> CRUSH (down the open routing lane) ----
     {
         const auto gen = generatorsPanel.getBounds().toFloat();
