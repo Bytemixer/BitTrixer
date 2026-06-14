@@ -69,16 +69,22 @@ struct EffectStrip : public juce::Component
 
     void resized() override
     {
+        // vertical strip: name header (painted) -> on/off switch -> wave
+        // selector (RingMod/Tremolo) -> knobs stacked top-to-bottom. Controls
+        // are inset from the edges.
         auto b = getLocalBounds();
-        b.removeFromTop (kHandleH);                 // drag handle
-        auto top = b.removeFromTop (22);
-        if (combo) combo->setBounds (top.removeFromRight (60));
-        enable.setBounds (top);
+        b.removeFromTop (kHandleH);
+        enable.setBounds (b.removeFromTop (20).reduced (10, 1));
         b.removeFromTop (3);
+        if (combo)
+        {
+            combo->setBounds (b.removeFromTop (20).reduced (10, 0));
+            b.removeFromTop (3);
+        }
         if (! knobs.empty())
         {
-            const int kw = b.getWidth() / (int) knobs.size();
-            for (auto& k : knobs) k->setBounds (b.removeFromLeft (kw));
+            const int kh = b.getHeight() / (int) knobs.size();
+            for (auto& k : knobs) k->setBounds (b.removeFromTop (kh).reduced (3, 1));
         }
     }
 
@@ -106,19 +112,19 @@ public:
         addAndMakeVisible (splitToggle);
         using K = EffectStrip::KnobDef;
         namespace id = Params::id;
-        strips[0] = std::make_unique<EffectStrip> (s, 0, "CRUSH",   id::crushOn,  "CRUSH",
+        strips[0] = std::make_unique<EffectStrip> (s, 0, "CRUSH",   id::crushOn,  "",
                         std::initializer_list<K> { { id::crushBits, "BITS" }, { id::crushDown, "DIV" } });
-        strips[1] = std::make_unique<EffectStrip> (s, 1, "PHASER",  id::phaseOn,  "PHASER",
+        strips[1] = std::make_unique<EffectStrip> (s, 1, "PHASER",  id::phaseOn,  "",
                         std::initializer_list<K> { { id::phaseRate, "RATE" }, { id::phaseDepth, "DEPTH" }, { id::phaseFb, "FDBK" } });
-        strips[2] = std::make_unique<EffectStrip> (s, 2, "FLANGER", id::flangeOn, "FLANGER",
+        strips[2] = std::make_unique<EffectStrip> (s, 2, "FLANGER", id::flangeOn, "",
                         std::initializer_list<K> { { id::flangeRate, "RATE" }, { id::flangeDepth, "DEPTH" }, { id::flangeFb, "FDBK" } });
-        strips[3] = std::make_unique<EffectStrip> (s, 3, "RING MOD", id::ringOn,  "RING",
+        strips[3] = std::make_unique<EffectStrip> (s, 3, "RING MOD", id::ringOn,  "",
                         std::initializer_list<K> { { id::ringFreq, "FREQ" }, { id::ringMix, "WET" } }, id::ringWave);
-        strips[4] = std::make_unique<EffectStrip> (s, 4, "TREMOLO", id::tremOn,   "TREM",
+        strips[4] = std::make_unique<EffectStrip> (s, 4, "TREMOLO", id::tremOn,   "",
                         std::initializer_list<K> { { id::tremRate, "SPEED" }, { id::tremDepth, "DEPTH" } }, id::tremWave);
-        strips[5] = std::make_unique<EffectStrip> (s, 5, "FORMANT", id::formOn,   "FORMANT",
+        strips[5] = std::make_unique<EffectStrip> (s, 5, "FORMANT", id::formOn,   "",
                         std::initializer_list<K> { { id::formVowel, "VOWEL" }, { id::formReso, "RESO" }, { id::formMix, "WET" } });
-        strips[6] = std::make_unique<EffectStrip> (s, 6, "DELAY",   id::delayOn,  "DELAY",
+        strips[6] = std::make_unique<EffectStrip> (s, 6, "DELAY",   id::delayOn,  "",
                         std::initializer_list<K> { { id::delayTime, "TIME" }, { id::delayFb, "FDBK" }, { id::delayMix, "WET" } });
 
         for (auto& st : strips)
