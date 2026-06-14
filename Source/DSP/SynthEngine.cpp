@@ -221,6 +221,38 @@ void SynthEngine::Instance::renderAdd (float* left, float* right, int n,
     ctx.driveAmt = p.vcaDrive;
     ctx.amp      = amp;
 
+    // FX params modulated by the matrix (Form Vowel / Ring Freq / Trem Depth /
+    // Delay Time) -- e.g. Step LFO -> Form Vowel makes the sound "talk".
+    const float ringFreqM  = clampf (p.ringFreq  * std::exp2 (mv.ringFreqOct),  20.0f, 4000.0f);
+    const float tremDepthM = clampf (p.tremDepth + mv.tremDepth,                0.0f,  1.0f);
+    const float formVowelM = clampf (p.formVowel + mv.formVowel,                0.0f,  1.0f);
+    const float delayTimeM = clampf (p.delayTime * std::exp2 (mv.delayTimeOct), 0.001f, 0.4f);
+
+    // when split, the mono subgroup runs per-voice before the filter. Build its
+    // config (params already modulated) and the pre sub-order from fxOrder.
+    PreFx::Config pre;
+    pre.on      = p.fxSplit;
+    pre.crushOn = p.crushOn; pre.crushBits  = p.crushBits;  pre.crushDown = p.crushDown;
+    pre.ringOn  = p.ringOn;  pre.ringFreq   = ringFreqM;     pre.ringMix   = p.ringMix;   pre.ringWave = p.ringWave;
+    pre.tremOn  = p.tremOn;  pre.tremRate   = p.tremRate;    pre.tremDepth = tremDepthM;  pre.tremWave = p.tremWave;
+    pre.phaseOn = p.phaseOn; pre.phaseRate  = p.phaseRate;   pre.phaseDepth = p.phaseDepth; pre.phaseFb = p.phaseFb;
+    pre.formOn  = p.formOn;  pre.formVowel  = formVowelM;    pre.formReso  = p.formReso;  pre.formMix  = p.formMix;
+    {
+        int w = 0;
+        for (int i = 0; i < Params::kFxChainLen; ++i)
+            switch (p.fxOrder[(size_t) i])     // FxChain::Effect -> PreFx::Effect
+            {
+                case 0: pre.order[w++] = 0; break;   // Crush
+                case 3: pre.order[w++] = 1; break;   // RingMod
+                case 4: pre.order[w++] = 2; break;   // Tremolo
+                case 1: pre.order[w++] = 3; break;   // Phaser
+                case 5: pre.order[w++] = 4; break;   // Formant
+                default: break;                      // Flanger(2)/Delay(6): post-only
+            }
+    }
+    ctx.preFx = &pre;
+    fxChain.setSplit (p.fxSplit);
+
     // voices render into a local scratch so the per-instance FX get applied
     // to this sound only (not to other overlapping triggers)
     float scratchL[kSubBlock] {};
@@ -232,14 +264,9 @@ void SynthEngine::Instance::renderAdd (float* left, float* right, int n,
         voices[(size_t) i].renderAdd (scratchL, scratchR, n, ctx);
     }
 
-    // per-instance effect chain (post-VCA), processed in the user's order.
-    // FX params modulated by the matrix (Form Vowel / Ring Freq / Trem Depth /
-    // Delay Time) -- e.g. Step LFO -> Form Vowel makes the sound "talk".
-    const float ringFreqM  = clampf (p.ringFreq  * std::exp2 (mv.ringFreqOct),  20.0f, 4000.0f);
-    const float tremDepthM = clampf (p.tremDepth + mv.tremDepth,                0.0f,  1.0f);
-    const float formVowelM = clampf (p.formVowel + mv.formVowel,                0.0f,  1.0f);
-    const float delayTimeM = clampf (p.delayTime * std::exp2 (mv.delayTimeOct), 0.001f, 0.4f);
-
+    // post-VCA effect chain, processed in the user's order. When split, the
+    // mono effects above were already applied per-voice, so setSplit() makes
+    // these calls run only Flanger/Delay here.
     fxChain.setOrder   (p.fxOrder.data());
     fxChain.setCrush   (p.crushOn,  p.crushBits,  p.crushDown);
     fxChain.setPhaser  (p.phaseOn,  p.phaseRate,  p.phaseDepth,  p.phaseFb);

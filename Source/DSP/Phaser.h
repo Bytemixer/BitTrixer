@@ -63,6 +63,22 @@ public:
         }
     }
 
+    // single-channel variant for the per-voice pre-filter path
+    void processMono (float* buf, int n) noexcept
+    {
+        const float inc = rate / fs;
+        for (int s = 0; s < n; ++s)
+        {
+            phase += inc;
+            if (phase >= 1.0f) phase -= 1.0f;
+            const float lfo = 0.5f + 0.5f * FastMath::sinCycle (phase);
+            const float sweepHz = 200.0f + lfo * (800.0f + 6200.0f * depth);
+            const float t = FastMath::tanPos (kPi * (sweepHz < 0.45f * fs ? sweepHz : 0.45f * fs) / fs);
+            const float a = (t - 1.0f) / (t + 1.0f);
+            buf[s] = channel (stagesL, lastL, buf[s], a);
+        }
+    }
+
 private:
     static constexpr float kPi = 3.14159265358979323846f;
     static constexpr float kTwoPi = 2.0f * kPi;

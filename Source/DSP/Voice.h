@@ -17,6 +17,7 @@
 #include "NoiseGen.h"
 #include "LadderFilter.h"
 #include "Drive.h"
+#include "PreFx.h"
 #include "FastMath.h"
 #include "../Params.h"
 
@@ -31,6 +32,8 @@
 class Voice
 {
 public:
+    static constexpr int kMaxSub = 64;   // upper bound on a render sub-block (>= SynthEngine::kSubBlock)
+
     // Everything the voice needs for one sub-block, precomputed by the
     // instance (mod matrix + envelopes already applied).
     struct SubBlockCtx
@@ -56,6 +59,7 @@ public:
 
         float driveAmt = 0.0f;
         const float* amp = nullptr;             // per-sample VCA gain
+        const PreFx::Config* preFx = nullptr;   // non-null + on => run pre-filter subgroup
     };
 
     void prepare (double sampleRate) noexcept
@@ -64,6 +68,7 @@ public:
         for (auto& o : oscs) o.prepare (sampleRate);
         noise.prepare (sampleRate);
         filter.prepare (sampleRate);
+        preFx.prepare (sampleRate);
     }
 
     // Called at trigger time. detuneCents/pan position this voice within the
@@ -104,6 +109,7 @@ public:
     {
         for (auto& o : oscs)
             o.reset (0.0f);
+        preFx.retrigger();
     }
 
     void renderAdd (float* left, float* right, int n, const SubBlockCtx& ctx) noexcept
@@ -139,7 +145,10 @@ public:
         for (int i = 0; i < Params::kNumOscs; ++i)
             if (ctx.oscOn[i]) { master = i; break; }
 
-        for (int s = 0; s < n; ++s)
+        // ---- pass 1: build the mono mix buffer (osc + noise + bus warmth) ----
+        float mixBuf[kMaxSub];
+        const int nn = n < kMaxSub ? n : kMaxSub;
+        for (int s = 0; s < nn; ++s)
         {
             float mix = 0.0f;
             bool wMaster = false;
@@ -158,9 +167,20 @@ public:
             if (ctx.noiseOn)
                 mix += noise.tick() * ctx.noiseLevel;
 
-            mix = FastMath::tanh (mix);               // mixer bus warmth
+            mixBuf[s] = FastMath::tanh (mix);         // mixer bus warmth
+        }
 
-            float y = filter.tick (mix);
+        // ---- pre-filter FX subgroup (per voice, mono), when the chain is split ----
+        if (ctx.preFx != nullptr && ctx.preFx->on)
+        {
+            preFx.configure (*ctx.preFx);
+            preFx.processMono (mixBuf, nn);
+        }
+
+        // ---- pass 2: filter -> VCA -> drive -> pan ----
+        for (int s = 0; s < nn; ++s)
+        {
+            float y = filter.tick (mixBuf[s]);
             y *= ctx.amp[s];                          // VCA
             y = drive.tick (y);                       // amp "preamp push"
 
@@ -185,6 +205,7 @@ private:
     NoiseGen     noise;
     LadderFilter filter;
     Drive        drive;
+    PreFx        preFx;
 
     float detuneRatio = 1.0f;
     float panL = 0.7071f, panR = 0.7071f;

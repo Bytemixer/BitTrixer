@@ -46,6 +46,10 @@ public:
         trem.retrigger();   formant.retrigger(); delay.retrigger();
     }
 
+    // when split, the mono subgroup runs per-voice pre-filter (in PreFx), so we
+    // skip them here and run only the buffer effects (Flanger, Delay) post-VCA.
+    void setSplit (bool s) noexcept { split = s; }
+
     // order is a permutation of 0..kCount-1 (chain position -> Effect)
     void setOrder (const int* order) noexcept
     {
@@ -73,6 +77,11 @@ public:
 private:
     void runEffect (int e, float* l, float* r, int n) noexcept
     {
+        // when split, the mono effects are handled per-voice (pre-filter); only
+        // the buffer effects stay here.
+        if (split && (Effect) e != Effect::Flanger && (Effect) e != Effect::Delay)
+            return;
+
         switch ((Effect) e)
         {
             case Effect::Crush:
@@ -99,6 +108,7 @@ private:
 
     bool crushOn = false, phaseOn = false, flangeOn = false, ringOn = false,
          tremOn = false, formOn = false, delayOn = false;
+    bool split = false;
 
     int ord[kCount] { 0, 1, 2, 3, 4, 5, 6 };
 };
