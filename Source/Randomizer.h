@@ -113,6 +113,7 @@ private:
     void shuffleFxOrder();                // random valid permutation
 
     void maybeFold (float prob);          // bias the OSC 1/2 wavefolder
+    void maybeNoise (float prob);         // occasional light noise mix-in
     void addModSpice (int slot);          // a tasteful extra mod-matrix route
 
     float rnd (float lo, float hi)      { return juce::jmap (random.nextFloat(), lo, hi); }

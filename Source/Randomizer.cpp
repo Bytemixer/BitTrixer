@@ -158,6 +158,20 @@ void Randomizer::maybeFold (float prob)
         set (oscId (2, "fold"), rnd (0.05f, 0.5f));
 }
 
+void Randomizer::maybeNoise (float prob)
+{
+    // any category may occasionally mix in a little noise for a harsher tone --
+    // but don't disturb a category that already built its own (Explosion/Hit/...)
+    if (apvts.getRawParameterValue (id::noiseOn)->load() > 0.5f)
+        return;
+    if (! chance (prob))
+        return;
+    setBool (id::noiseOn, true);
+    setChoice (id::noiseType, rndInt (0, 3));
+    set (id::noiseColor, rnd (0.0f, 1.0f));
+    set (id::noiseLevel, rnd (0.1f, 0.4f));   // light: blends under the main tone
+}
+
 void Randomizer::addModSpice (int slot)
 {
     // one tasteful extra modulation: a varied source into an expressive
@@ -1054,6 +1068,7 @@ void Randomizer::applyCategory (Category c)
     // routes (source/destination variety), an occasional chain reorder and an
     // occasional pre-filter route
     maybeFold (0.35f);
+    maybeNoise (0.22f);
     if (chance (0.4f)) addModSpice (5);
     if (chance (0.2f)) addModSpice (6);
     if (chance (0.18f)) shuffleFxOrder();
