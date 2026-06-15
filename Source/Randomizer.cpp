@@ -424,10 +424,16 @@ void Randomizer::fullRandom()
         }
     }
 
-    // signal-path topology: occasionally split the mono FX pre-filter, and/or
-    // reorder the effects chain
-    if (chance (0.2f))
-        setBool (id::fxSplit, true);
+    // signal-path topology: occasionally push some mono effects pre-filter,
+    // and/or reorder the effects chain
+    if (chance (0.25f))
+    {
+        setBool (id::crushPre, chance (0.5f));
+        setBool (id::ringPre,  chance (0.4f));
+        setBool (id::phasePre, chance (0.3f));
+        setBool (id::tremPre,  chance (0.3f));
+        setBool (id::formPre,  chance (0.3f));
+    }
     if (chance (0.25f))
         shuffleFxOrder();
 
@@ -588,7 +594,7 @@ void Randomizer::applyCategory (Category c)
                 set (id::ringFreq, rndLog (200.0f, 1600.0f));
                 set (id::ringMix, rnd (0.3f, 0.7f));
                 if (chance (0.5f))                                 // ring pre-filter: filtered sidebands
-                    setBool (id::fxSplit, true);
+                    setBool (id::ringPre, true);
             }
             set (id::gateTime, 0.2f);
             break;
@@ -627,7 +633,7 @@ void Randomizer::applyCategory (Category c)
                 set (id::crushBits, rnd (4.0f, 8.0f));
                 set (id::crushDown, rnd (4.0f, 16.0f));
                 if (chance (0.55f))                                // crush pre-filter: the sweep shapes the grit
-                    setBool (id::fxSplit, true);
+                    setBool (id::crushPre, true);
                 else if (chance (0.4f))                            // or bitcrush the whole FX tail
                 {
                     static const int crushLast[kFxChainLen] = { 1, 3, 4, 5, 2, 6, 0 };
@@ -775,7 +781,7 @@ void Randomizer::applyCategory (Category c)
                 set (id::crushBits, rnd (4.0f, 9.0f));
                 set (id::crushDown, rnd (2.0f, 10.0f));
                 if (chance (0.5f))                                 // crush pre-filter: filtered grit
-                    setBool (id::fxSplit, true);
+                    setBool (id::crushPre, true);
             }
             if (chance (0.4f))                                     // metallic FM clang
                 fmClang();

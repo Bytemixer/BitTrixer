@@ -36,8 +36,9 @@ public:
     // matrix-modulated); order[] maps chain position -> Effect.
     struct Config
     {
-        bool  on = false;
+        bool  on = false;   // any pre-flagged effect is enabled -> run this subgroup
         bool  crushOn = false, ringOn = false, tremOn = false, phaseOn = false, formOn = false;
+        bool  crushPre = false, ringPre = false, tremPre = false, phasePre = false, formPre = false;
         float crushBits = 8.0f, crushDown = 1.0f;
         float ringFreq = 200.0f, ringMix = 1.0f;   int ringWave = 0;
         float tremRate = 5.0f, tremDepth = 0.5f;    int tremWave = 0;
@@ -65,6 +66,8 @@ public:
         tremOn  = c.tremOn;  trem.setWave (c.tremWave); trem.setParams (c.tremRate, c.tremDepth);
         phaseOn = c.phaseOn; phaser.setParams (c.phaseRate, c.phaseDepth, c.phaseFb);
         formOn  = c.formOn;  formant.setParams (c.formVowel, c.formReso, c.formMix);
+        crushPre = c.crushPre; ringPre = c.ringPre; tremPre = c.tremPre;
+        phasePre = c.phasePre; formPre = c.formPre;
         for (int i = 0; i < kCount; ++i)
             ord[i] = (c.order[i] >= 0 && c.order[i] < kCount) ? c.order[i] : i;
     }
@@ -78,15 +81,16 @@ public:
 private:
     void runOne (int e, float* buf, int n) noexcept
     {
+        // run an effect here only if it is enabled AND flagged pre-filter
         switch ((Effect) e)
         {
             case Effect::Crush:
-                if (crushOn) for (int s = 0; s < n; ++s) buf[s] = crush.tick (buf[s]);
+                if (crushOn && crushPre) for (int s = 0; s < n; ++s) buf[s] = crush.tick (buf[s]);
                 break;
-            case Effect::RingMod: if (ringOn)  ring.processMono    (buf, n); break;
-            case Effect::Tremolo: if (tremOn)  trem.processMono    (buf, n); break;
-            case Effect::Phaser:  if (phaseOn) phaser.processMono  (buf, n); break;
-            case Effect::Formant: if (formOn)  formant.processMono (buf, n); break;
+            case Effect::RingMod: if (ringOn  && ringPre)  ring.processMono    (buf, n); break;
+            case Effect::Tremolo: if (tremOn  && tremPre)  trem.processMono    (buf, n); break;
+            case Effect::Phaser:  if (phaseOn && phasePre) phaser.processMono  (buf, n); break;
+            case Effect::Formant: if (formOn  && formPre)  formant.processMono (buf, n); break;
         }
     }
 
@@ -97,5 +101,6 @@ private:
     Formant    formant;
 
     bool crushOn = false, ringOn = false, tremOn = false, phaseOn = false, formOn = false;
+    bool crushPre = false, ringPre = false, tremPre = false, phasePre = false, formPre = false;
     int  ord[kCount] { 0, 1, 2, 3, 4 };
 };

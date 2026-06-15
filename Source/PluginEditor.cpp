@@ -119,15 +119,26 @@ RetroForgeEditor::RetroForgeEditor (RetroForgeProcessor& p)
         c->setFixedAspectRatio (1180.0 / 996.0);
     setSize (1475, 1245);                       // 1.25x default (bigger knobs)
 
-    // poll the FX pre-filter split so the signal traces redraw when it toggles
-    fxSplitParam = proc.apvts.getRawParameterValue (Params::id::fxSplit);
-    lastSplit = fxSplitParam != nullptr && fxSplitParam->load() > 0.5f;
+    // poll the per-effect pre-filter flags so the signal traces redraw when any
+    // mono effect is routed before/after the filter
+    const char* preIds[5] = { Params::id::crushPre, Params::id::phasePre,
+                              Params::id::ringPre,  Params::id::tremPre, Params::id::formPre };
+    for (int i = 0; i < 5; ++i)
+        prePresent[i] = proc.apvts.getRawParameterValue (preIds[i]);
+    lastSplit = anyPreFilter();
     startTimerHz (10);
+}
+
+bool RetroForgeEditor::anyPreFilter() const
+{
+    for (auto* p : prePresent)
+        if (p != nullptr && p->load() > 0.5f) return true;
+    return false;
 }
 
 void RetroForgeEditor::timerCallback()
 {
-    const bool now = fxSplitParam != nullptr && fxSplitParam->load() > 0.5f;
+    const bool now = anyPreFilter();
     if (now != lastSplit)
     {
         lastSplit = now;
@@ -302,7 +313,7 @@ void RetroForgeEditor::drawSignalTraces (juce::Graphics& g)
     // (post-VCA) group -- Flanger/Delay -- on the RIGHT. The pre-filter legs
     // (sources -> pre-FX -> filter) are dimmed until the split switch is
     // engaged; the post legs (VCA -> post-FX -> scope) are always live.
-    const bool  fxSplit = fxSplitParam != nullptr && fxSplitParam->load() > 0.5f;
+    const bool  fxSplit = anyPreFilter();
     const float preA    = fxSplit ? 1.0f : 0.26f;
 
     const float crushInX    = fx.getX() + fx.getWidth() * 0.07f;   // sources -> pre group (left)
