@@ -46,8 +46,10 @@ public:
         const float A = v (0), D = v (1), S = v (2), R = v (3), curve = v (4);
         const bool inv = v (5) > 0.5f;
 
-        // segment widths: log-ish time scale, fixed sustain plateau
-        auto seg = [] (float t) { return 0.06f + 0.27f * std::pow (t / 8.0f, 0.3f); };
+        // segment widths: log-ish time scale, fixed sustain plateau. The small
+        // floor keeps a 0-time segment a steep-but-not-vertical edge (so an
+        // instant attack reads as near-vertical, matching the DSP).
+        auto seg = [] (float t) { return 0.015f + 0.27f * std::pow (t / 8.0f, 0.3f); };
         const float wA = seg (A), wD = seg (D), wR = seg (R);
         const float wS = 1.0f - juce::jmin (0.82f, wA + wD + wR);
         const float total = wA + wD + wS + wR;
