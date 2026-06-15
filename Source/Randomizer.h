@@ -112,6 +112,9 @@ private:
     void setFxOrder (const int* order);   // set the 7 chain-position params
     void shuffleFxOrder();                // random valid permutation
 
+    void maybeFold (float prob);          // bias the OSC 1/2 wavefolder
+    void addModSpice (int slot);          // a tasteful extra mod-matrix route
+
     float rnd (float lo, float hi)      { return juce::jmap (random.nextFloat(), lo, hi); }
     float rndLog (float lo, float hi)   { return lo * std::pow (hi / lo, random.nextFloat()); }
     bool  chance (float probability01)  { return random.nextFloat() < probability01; }
