@@ -150,6 +150,30 @@ void Randomizer::shuffleFxOrder()
     setFxOrder (order);
 }
 
+void Randomizer::maybeFold (float prob)
+{
+    // a touch of wavefolder adds harmonic grit; OSC 2 only if it's enabled
+    if (chance (prob)) set (oscId (1, "fold"), rnd (0.05f, 0.5f));
+    if (apvts.getRawParameterValue (oscId (2, "on"))->load() > 0.5f && chance (prob))
+        set (oscId (2, "fold"), rnd (0.05f, 0.5f));
+}
+
+void Randomizer::addModSpice (int slot)
+{
+    // one tasteful extra modulation: a varied source into an expressive
+    // destination (timbre/filter/FX rather than just pitch)
+    static const int srcs[]  = { (int) ModSrc::Lfo1, (int) ModSrc::Lfo2,
+                                 (int) ModSrc::FilterEnv, (int) ModSrc::AmpEnv };
+    static const int dests[] = { (int) ModDest::Cutoff,    (int) ModDest::Resonance,
+                                 (int) ModDest::Pwm,       (int) ModDest::Fold,
+                                 (int) ModDest::Osc1Pwm,   (int) ModDest::Osc2Pitch,
+                                 (int) ModDest::FmOp2Level, (int) ModDest::RingFreq,
+                                 (int) ModDest::TremDepth, (int) ModDest::FormVowel };
+    setChoice (modId (slot, "src"),  srcs [rndInt (0, (int) (sizeof (srcs)  / sizeof (srcs[0]))  - 1)]);
+    setChoice (modId (slot, "dest"), dests[rndInt (0, (int) (sizeof (dests) / sizeof (dests[0])) - 1)]);
+    set (modId (slot, "depth"), rnd (-0.5f, 0.5f));
+}
+
 // ----------------------------------------------------------------------------
 //  variate — perturb the current patch (editable, undo-able variation)
 // ----------------------------------------------------------------------------
@@ -802,6 +826,35 @@ void Randomizer::applyCategory (Category c)
             set (id::envFDecay, 0.25f);
             set (id::envADecay, rnd (0.2f, 0.45f));
             set (id::lpfCutoff, rndLog (2500.0f, 9000.0f));
+            if (chance (0.4f))                                     // octave / sub body (OSC 2)
+            {
+                setBool (oscId (2, "on"), true);
+                setChoice (oscId (2, "wave"), chance (0.5f) ? (int) OscWave::Triangle
+                                                            : (int) OscWave::Sine);
+                set (oscId (2, "pitch"), chance (0.5f) ? -12.0f : 12.0f);
+                set (oscId (2, "level"), rnd (0.3f, 0.55f));
+            }
+            if (chance (0.3f))                                     // launch "thwip" of noise
+            {
+                setBool (id::noiseOn, true);
+                set (id::noiseColor, rnd (0.0f, 0.4f));
+                set (id::noiseLevel, rnd (0.1f, 0.3f));
+            }
+            if (chance (0.3f))                                     // metallic FM boop
+                fmClang();
+            if (chance (0.35f))                                    // 8-bit voice
+            {
+                setBool (id::crushOn, true);
+                set (id::crushBits, rnd (6.0f, 11.0f));
+                set (id::crushDown, rnd (1.0f, 6.0f));
+            }
+            else if (chance (0.25f))                               // springy swirl
+            {
+                setBool (id::phaseOn, true);
+                set (id::phaseRate, rndLog (1.0f, 4.0f));
+                set (id::phaseDepth, rnd (0.3f, 0.7f));
+                set (id::phaseFb, rnd (0.2f, 0.6f));
+            }
             if (chance (0.3f))
             {
                 setBool (id::hpfOn, true);
@@ -895,4 +948,10 @@ void Randomizer::applyCategory (Category c)
             break;
         }
     }
+
+    // shared spice for every category: a little wavefolder grit, plus occasional
+    // extra mod-matrix routes for source/destination variety
+    maybeFold (0.35f);
+    if (chance (0.4f)) addModSpice (5);
+    if (chance (0.2f)) addModSpice (6);
 }
