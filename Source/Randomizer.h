@@ -109,6 +109,9 @@ private:
     void fmClang();               // metallic / inharmonic clang
     void fmNoise();               // op-1 feedback driven into noise
 
+    void setFxOrder (const int* order);   // set the 7 chain-position params
+    void shuffleFxOrder();                // random valid permutation
+
     float rnd (float lo, float hi)      { return juce::jmap (random.nextFloat(), lo, hi); }
     float rndLog (float lo, float hi)   { return lo * std::pow (hi / lo, random.nextFloat()); }
     bool  chance (float probability01)  { return random.nextFloat() < probability01; }

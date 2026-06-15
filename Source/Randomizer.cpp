@@ -132,6 +132,24 @@ void Randomizer::fmNoise()
     setFmVoice (0, rnd (0.85f, 1.0f), ratios, levels, rnd (0.4f, 0.7f));
 }
 
+void Randomizer::setFxOrder (const int* order)
+{
+    for (int k = 0; k < kFxChainLen; ++k)
+        set (fxOrderId (k), (float) order[k]);
+}
+
+void Randomizer::shuffleFxOrder()
+{
+    int order[kFxChainLen];
+    for (int k = 0; k < kFxChainLen; ++k) order[k] = k;
+    for (int k = kFxChainLen - 1; k > 0; --k)        // Fisher-Yates
+    {
+        const int j = rndInt (0, k);
+        const int tmp = order[k]; order[k] = order[j]; order[j] = tmp;
+    }
+    setFxOrder (order);
+}
+
 // ----------------------------------------------------------------------------
 //  variate — perturb the current patch (editable, undo-able variation)
 // ----------------------------------------------------------------------------
@@ -406,6 +424,13 @@ void Randomizer::fullRandom()
         }
     }
 
+    // signal-path topology: occasionally split the mono FX pre-filter, and/or
+    // reorder the effects chain
+    if (chance (0.2f))
+        setBool (id::fxSplit, true);
+    if (chance (0.25f))
+        shuffleFxOrder();
+
     // unison
     static const int voiceChoices[] = { 1, 1, 1, 2, 3, 4, 6, 8 };
     set (id::uniVoices, (float) voiceChoices[rndInt (0, 7)]);
@@ -562,6 +587,8 @@ void Randomizer::applyCategory (Category c)
                 setBool (id::ringOn, true);
                 set (id::ringFreq, rndLog (200.0f, 1600.0f));
                 set (id::ringMix, rnd (0.3f, 0.7f));
+                if (chance (0.5f))                                 // ring pre-filter: filtered sidebands
+                    setBool (id::fxSplit, true);
             }
             set (id::gateTime, 0.2f);
             break;
@@ -599,6 +626,13 @@ void Randomizer::applyCategory (Category c)
                 setBool (id::crushOn, true);
                 set (id::crushBits, rnd (4.0f, 8.0f));
                 set (id::crushDown, rnd (4.0f, 16.0f));
+                if (chance (0.55f))                                // crush pre-filter: the sweep shapes the grit
+                    setBool (id::fxSplit, true);
+                else if (chance (0.4f))                            // or bitcrush the whole FX tail
+                {
+                    static const int crushLast[kFxChainLen] = { 1, 3, 4, 5, 2, 6, 0 };
+                    setFxOrder (crushLast);
+                }
             }
             if (chance (0.35f))                                    // sfxr-style whoosh
             {
@@ -663,6 +697,17 @@ void Randomizer::applyCategory (Category c)
             set (id::envARelease, rnd (0.2f, 0.4f));
             set (id::lpfCutoff, rndLog (3000.0f, 9000.0f));
             set (id::lpfRes, rnd (0.15f, 0.4f));
+            if (chance (0.3f))                                     // stepped arpeggio rise (Step LFO -> pitch)
+            {
+                setChoice (modId (4, "src"),  (int) ModSrc::Lfo2);
+                setChoice (modId (4, "dest"), (int) ModDest::AllPitch);
+                set (modId (4, "depth"), rnd (0.06f, 0.14f));
+                set (lfoId (2, "rate"), rnd (8.0f, 16.0f));
+                set (id::stepCount, (float) rndInt (3, 6));
+                set (id::stepGlide, chance (0.4f) ? rnd (0.2f, 0.6f) : 0.0f);
+                for (int k = 1; k <= kMaxSteps; ++k)
+                    set (stepValId (k), juce::jmin (1.0f, (float) (k - 1) * 0.3f));   // ascending
+            }
             if (chance (0.5f))
             {
                 set (id::uniVoices, (float) rndInt (2, 3));
@@ -729,6 +774,8 @@ void Randomizer::applyCategory (Category c)
                 setBool (id::crushOn, true);
                 set (id::crushBits, rnd (4.0f, 9.0f));
                 set (id::crushDown, rnd (2.0f, 10.0f));
+                if (chance (0.5f))                                 // crush pre-filter: filtered grit
+                    setBool (id::fxSplit, true);
             }
             if (chance (0.4f))                                     // metallic FM clang
                 fmClang();
