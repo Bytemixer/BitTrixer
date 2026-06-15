@@ -55,6 +55,8 @@ void RetroForgeProcessor::processBlock (juce::AudioBuffer<float>& buffer,
             engine.noteOn (msg.getNoteNumber());
         else if (msg.isNoteOff())
             engine.noteOff (msg.getNoteNumber());
+        else if (msg.isController())
+            midiLearn.handleCc (msg.getControllerNumber(), msg.getControllerValue());
         else if (msg.isAllNotesOff() || msg.isAllSoundOff())
         {
             for (int n = 0; n < 128; ++n)
@@ -83,14 +85,32 @@ juce::AudioProcessorEditor* RetroForgeProcessor::createEditor()
 
 void RetroForgeProcessor::getStateInformation (juce::MemoryBlock& destData)
 {
-    if (auto xml = apvts.copyState().createXml())
+    // wrap the parameter tree and the MIDI map under one root
+    juce::ValueTree root ("RETROFORGE");
+    root.appendChild (apvts.copyState(), nullptr);
+    midiLearn.saveTo (root);
+    if (auto xml = root.createXml())
         copyXmlToBinary (*xml, destData);
 }
 
 void RetroForgeProcessor::setStateInformation (const void* data, int sizeInBytes)
 {
-    if (auto xml = getXmlFromBinary (data, sizeInBytes))
-        apvts.replaceState (juce::ValueTree::fromXml (*xml));
+    auto xml = getXmlFromBinary (data, sizeInBytes);
+    if (xml == nullptr)
+        return;
+
+    auto tree = juce::ValueTree::fromXml (*xml);
+    if (tree.hasType ("RETROFORGE"))
+    {
+        auto params = tree.getChildWithName (apvts.state.getType());
+        if (params.isValid())
+            apvts.replaceState (params);
+        midiLearn.loadFrom (tree);
+    }
+    else
+    {
+        apvts.replaceState (tree);   // legacy: bare parameter tree
+    }
 }
 
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()

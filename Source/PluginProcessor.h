@@ -16,6 +16,7 @@
 #include <juce_dsp/juce_dsp.h>
 
 #include "Params.h"
+#include "MidiLearn.h"
 #include "DSP/SynthEngine.h"
 
 // ============================================================================
@@ -69,9 +70,12 @@ public:
     // Snapshot of the current panel for offline rendering (WAV export, scope).
     Params::Patch snapshotPatch() const  { return paramCache.read(); }
 
+    MidiLearn& getMidiLearn() noexcept   { return midiLearn; }
+
 private:
     Params::Cache paramCache;
     SynthEngine engine;
+    MidiLearn midiLearn { apvts };
 
     std::atomic<int> uiGateOnRequests { 0 };
     std::atomic<int> uiGateOffRequests { 0 };

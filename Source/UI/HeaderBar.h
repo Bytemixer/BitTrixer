@@ -22,6 +22,17 @@
 class HeaderBar : public juce::Component
 {
 public:
+    // a text button that also reports right-clicks (used to clear MIDI maps)
+    struct ClickButton : juce::TextButton
+    {
+        std::function<void()> onRightClick;
+        void mouseDown (const juce::MouseEvent& e) override
+        {
+            if (e.mods.isPopupMenu()) { if (onRightClick) onRightClick(); }
+            else juce::TextButton::mouseDown (e);
+        }
+    };
+
     explicit HeaderBar (juce::AudioProcessorValueTreeState& s)
     {
         // global output sample rate lives in the top bar (it is a global
@@ -55,6 +66,13 @@ public:
         initButton (aboutButton,  "ABOUT",      onAbout);
         exportButton.setColour (juce::TextButton::buttonColourId, RetroColors::accentDark);
 
+        midiButton.setButtonText ("MIDI");
+        midiButton.setTooltip ("MIDI Learn: arm, touch a control, then move a hardware knob."
+                               "  Right-click to clear all mappings.");
+        midiButton.onClick      = [this] { if (onMidiLearn) onMidiLearn(); };
+        midiButton.onRightClick = [this] { if (onMidiClear) onMidiClear(); };
+        addAndMakeVisible (midiButton);
+
         themeBox.onChange = [this]
         {
             if (onThemeSelected && themeBox.getSelectedId() > 0)
@@ -73,6 +91,21 @@ public:
     void setPresetName (const juce::String& name)
     {
         presetLabel.setText (name, juce::dontSendNotification);
+    }
+
+    void setMidiArmed (bool armed)
+    {
+        midiButton.setButtonText (armed ? "LEARN..." : "MIDI");
+        if (armed)
+        {
+            midiButton.setColour (juce::TextButton::buttonColourId, RetroColors::accent);
+            midiButton.setColour (juce::TextButton::textColourOffId, juce::Colour (0xff10151c));
+        }
+        else
+        {
+            midiButton.removeColour (juce::TextButton::buttonColourId);
+            midiButton.removeColour (juce::TextButton::textColourOffId);
+        }
     }
 
     void paint (juce::Graphics& g) override
@@ -119,6 +152,8 @@ public:
         loadButton.setBounds (b.removeFromRight (64));
         b.removeFromRight (6);
         saveButton.setBounds (b.removeFromRight (64));
+        b.removeFromRight (8);
+        midiButton.setBounds (b.removeFromRight (58));
         b.removeFromRight (10);
         rateBox.setBounds (b.removeFromRight (78));
         rateLabel.setBounds (b.removeFromRight (38));
@@ -127,7 +162,7 @@ public:
         presetLabel.setBounds (b.withTrimmedLeft (240));
     }
 
-    std::function<void()> onSave, onLoad, onExport, onAbout;
+    std::function<void()> onSave, onLoad, onExport, onAbout, onMidiLearn, onMidiClear;
     std::function<void (int)> onThemeSelected;
 
 private:
@@ -136,5 +171,6 @@ private:
     juce::ComboBox rateBox;
     std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> rateAtt;
     juce::TextButton saveButton, loadButton, exportButton, aboutButton;
+    ClickButton midiButton;
     juce::ComboBox themeBox;
 };
