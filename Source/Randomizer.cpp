@@ -183,9 +183,77 @@ void Randomizer::addModSpice (int slot)
                                  (int) ModDest::Osc1Pwm,   (int) ModDest::Osc2Pitch,
                                  (int) ModDest::FmOp2Level, (int) ModDest::RingFreq,
                                  (int) ModDest::TremDepth, (int) ModDest::FormVowel };
-    setChoice (modId (slot, "src"),  srcs [rndInt (0, (int) (sizeof (srcs)  / sizeof (srcs[0]))  - 1)]);
-    setChoice (modId (slot, "dest"), dests[rndInt (0, (int) (sizeof (dests) / sizeof (dests[0])) - 1)]);
+    setChoice (modId (slot, "src"), srcs [rndInt (0, (int) (sizeof (srcs) / sizeof (srcs[0])) - 1)]);
+    // mostly an expressive destination, but occasionally ANY destination so the
+    // matrix can reach everything
+    const int dest = chance (0.75f) ? dests[rndInt (0, (int) (sizeof (dests) / sizeof (dests[0])) - 1)]
+                                    : rndInt (1, (int) ModDest::Count - 1);
+    setChoice (modId (slot, "dest"), dest);
     set (modId (slot, "depth"), rnd (-0.5f, 0.5f));
+}
+
+void Randomizer::wildcardSprinkle()
+{
+    // every category may, rarely, reach for something off-recipe. Each roll is
+    // low-probability, so the category's own (much higher) odds keep it on-theme;
+    // this just removes the hard "never" from anything. Only adds, never clobbers
+    // an effect the category already enabled.
+    auto isOn = [this] (const juce::String& pid)
+    { return apvts.getRawParameterValue (pid)->load() > 0.5f; };
+
+    if (! isOn (id::crushOn) && chance (0.07f))
+    {
+        setBool (id::crushOn, true);
+        set (id::crushBits, rnd (4.0f, 12.0f)); set (id::crushDown, rndLog (1.0f, 16.0f));
+    }
+    if (! isOn (id::phaseOn) && chance (0.06f))
+    {
+        setBool (id::phaseOn, true);
+        set (id::phaseRate, rndLog (0.2f, 5.0f)); set (id::phaseDepth, rnd (0.3f, 0.9f)); set (id::phaseFb, rnd (0.1f, 0.7f));
+    }
+    if (! isOn (id::flangeOn) && chance (0.06f))
+    {
+        setBool (id::flangeOn, true);
+        set (id::flangeRate, rndLog (0.1f, 2.0f)); set (id::flangeDepth, rnd (0.3f, 0.9f)); set (id::flangeFb, rnd (0.2f, 0.8f));
+    }
+    if (! isOn (id::ringOn) && chance (0.06f))
+    {
+        setBool (id::ringOn, true);
+        set (id::ringFreq, rndLog (40.0f, 2000.0f)); set (id::ringMix, rnd (0.3f, 0.8f)); setChoice (id::ringWave, rndInt (0, 3));
+    }
+    if (! isOn (id::tremOn) && chance (0.06f))
+    {
+        setBool (id::tremOn, true);
+        set (id::tremRate, rndLog (3.0f, 30.0f)); set (id::tremDepth, rnd (0.3f, 0.8f)); setChoice (id::tremWave, rndInt (0, 3));
+    }
+    if (! isOn (id::formOn) && chance (0.05f))
+    {
+        setBool (id::formOn, true);
+        set (id::formVowel, rnd (0.0f, 1.0f)); set (id::formReso, rnd (0.3f, 0.7f)); set (id::formMix, rnd (0.5f, 1.0f));
+    }
+    if (! isOn (id::delayOn) && chance (0.06f))
+    {
+        setBool (id::delayOn, true);
+        set (id::delayTime, rndLog (0.03f, 0.35f)); set (id::delayFb, rnd (0.2f, 0.6f)); set (id::delayMix, rnd (0.2f, 0.5f));
+    }
+    if (! isOn (oscId (2, "on")) && chance (0.08f))                 // a stray OSC 2 layer
+    {
+        setBool (oscId (2, "on"), true);
+        setChoice (oscId (2, "wave"), rndInt (0, 7));
+        set (oscId (2, "pitch"), (float) rndInt (-12, 12));
+        set (oscId (2, "level"), rnd (0.3f, 0.6f));
+    }
+    if (! isOn (oscId (3, "on")) && chance (0.08f))                 // a stray FM voice
+    {
+        setBool (oscId (3, "on"), true);
+        setChoice (id::fmAlgo, rndInt (0, 11));
+        set (id::fmFeedback, rnd (0.0f, 0.6f));
+        for (int i = 1; i <= 4; ++i)
+        {
+            set (fmOpId (i, "ratio"), chance (0.6f) ? (float) rndInt (1, 8) : (float) rndInt (2, 14) * 0.5f);
+            set (fmOpId (i, "level"), rnd (0.3f, 0.9f));
+        }
+    }
 }
 
 // ----------------------------------------------------------------------------
@@ -1069,6 +1137,7 @@ void Randomizer::applyCategory (Category c)
     // occasional pre-filter route
     maybeFold (0.35f);
     maybeNoise (0.22f);
+    wildcardSprinkle();
     if (chance (0.4f)) addModSpice (5);
     if (chance (0.2f)) addModSpice (6);
     if (chance (0.18f)) shuffleFxOrder();
