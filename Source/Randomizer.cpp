@@ -74,6 +74,65 @@ void Randomizer::resetToNeutral()
 }
 
 // ----------------------------------------------------------------------------
+//  FM voice presets — the 4-op engine in OSC 3's slot. FM excels at bells,
+//  chimes and metallic/inharmonic timbres, so the recipes layer it in for those
+//  flavours. Movement comes from the mod matrix (no per-operator envelopes).
+// ----------------------------------------------------------------------------
+
+void Randomizer::setFmVoice (int algo, float feedback, const float* ratios,
+                             const float* levels, float outLevel)
+{
+    setBool (oscId (3, "on"), true);        // enable the FM voice (3rd slot)
+    set (oscId (3, "pitch"), 0.0f);
+    set (oscId (3, "level"), outLevel);     // FM output into the mix
+    setChoice (id::fmAlgo, algo);
+    set (id::fmFeedback, feedback);
+    for (int i = 0; i < 4; ++i)
+    {
+        set (fmOpId (i + 1, "ratio"), ratios[i]);
+        set (fmOpId (i + 1, "level"), levels[i]);
+    }
+}
+
+void Randomizer::fmChime (int modSlot)
+{
+    // bell / coin / chime: serial or stacked cascade with a high partial; the
+    // amp env lifts the top operator so it is bright on attack and purifies as
+    // it rings out -- the classic FM bell decay
+    static const float bell[4][4] = {
+        { 3.5f, 1.0f, 2.0f, 1.0f }, { 7.0f, 1.0f, 3.5f, 1.0f },
+        { 2.0f, 3.0f, 1.0f, 1.0f }, { 1.5f, 3.0f, 1.0f, 1.0f } };
+    const float* r = bell[rndInt (0, 3)];
+    const float levels[4] = { 0.25f, rnd (0.3f, 0.5f), rnd (0.35f, 0.55f), rnd (0.65f, 0.85f) };
+    setFmVoice (chance (0.5f) ? 0 : 1, rnd (0.0f, 0.15f), r, levels, rnd (0.5f, 0.8f));
+    setChoice (modId (modSlot, "src"),  (int) ModSrc::AmpEnv);
+    setChoice (modId (modSlot, "dest"), (int) ModDest::FmOp1Level);
+    set (modId (modSlot, "depth"), rnd (0.4f, 0.7f));     // bright attack -> pure ring
+}
+
+void Randomizer::fmClang()
+{
+    // metallic / inharmonic clang: branched or dual modulators at fractional
+    // ratios with operator-1 feedback for bite
+    static const float clang[4][4] = {
+        { 1.5f, 3.5f, 5.5f, 1.0f }, { 2.5f, 1.5f, 1.0f, 1.0f },
+        { 7.0f, 5.0f, 3.0f, 1.0f }, { 1.5f, 1.0f, 2.5f, 1.0f } };
+    const float* r = clang[rndInt (0, 3)];
+    const float levels[4] = { rnd (0.5f, 0.8f), rnd (0.4f, 0.7f), rnd (0.4f, 0.7f), rnd (0.7f, 0.9f) };
+    static const int algos[4] = { 2, 3, 5, 8 };          // Dual Mod A/B, Branch, Triple
+    setFmVoice (algos[rndInt (0, 3)], rnd (0.25f, 0.6f), r, levels, rnd (0.5f, 0.8f));
+}
+
+void Randomizer::fmNoise()
+{
+    // crank operator-1 feedback on a serial stack: the sine collapses into a
+    // digital noise source, ideal for explosions through the VCF
+    const float ratios[4] = { 1.0f, 1.5f, 1.0f, 1.0f };
+    const float levels[4] = { 0.8f, 0.6f, 0.5f, 0.85f };
+    setFmVoice (0, rnd (0.85f, 1.0f), ratios, levels, rnd (0.4f, 0.7f));
+}
+
+// ----------------------------------------------------------------------------
 //  variate — perturb the current patch (editable, undo-able variation)
 // ----------------------------------------------------------------------------
 
@@ -98,6 +157,14 @@ std::vector<Randomizer::Nudge> Randomizer::perturbTargets (bool includeLoudnessA
     t.push_back ({ id::envFDecay, 0.5f });
     t.push_back ({ id::envADecay, 0.5f });
     t.push_back ({ id::uniDetune, 0.8f });
+
+    // FM voice (3rd generator slot): operator ratios/levels + feedback
+    for (int i = 1; i <= 4; ++i)
+    {
+        t.push_back ({ fmOpId (i, "ratio"), 0.5f });
+        t.push_back ({ fmOpId (i, "level"), 0.6f });
+    }
+    t.push_back ({ id::fmFeedback, 0.6f });
 
     if (includeLoudnessAndLength)
     {
@@ -180,10 +247,10 @@ void Randomizer::fullRandom()
     snapshotForUndo();
     resetToNeutral();
 
-    // oscillators
+    // oscillators (OSC 3's slot is the FM voice, handled separately below)
     bool anySource = false;
-    const float oscProb[kNumOscs] = { 0.85f, 0.45f, 0.25f };
-    for (int i = 1; i <= kNumOscs; ++i)
+    const float oscProb[2] = { 0.85f, 0.45f };
+    for (int i = 1; i <= kNumOscs - 1; ++i)
     {
         const bool on = chance (oscProb[i - 1]);
         anySource |= on;
@@ -228,7 +295,7 @@ void Randomizer::fullRandom()
     for (int k = 2; k <= 2 + extraRoutes && k <= kNumModSlots; ++k)
     {
         setChoice (modId (k, "src"), rndInt (1, 4));
-        setChoice (modId (k, "dest"), rndInt (1, 12));
+        setChoice (modId (k, "dest"), rndInt (1, (int) ModDest::Count - 1));
         set (modId (k, "depth"), rnd (-0.5f, 0.5f));
     }
 
@@ -262,7 +329,6 @@ void Randomizer::fullRandom()
 
     set (id::gateTime, rndLog (0.1f, 0.8f));
     setBool (oscId (2, "sync"), chance (0.18f));
-    setBool (oscId (3, "sync"), chance (0.12f));
 
     if (chance (0.3f))                                     // arpeggio-style jumps
     {
@@ -295,6 +361,49 @@ void Randomizer::fullRandom()
         set (id::flangeRate, rndLog (0.1f, 2.0f));
         set (id::flangeDepth, rnd (0.3f, 0.9f));
         set (id::flangeFb, rnd (0.2f, 0.8f));
+    }
+    if (chance (0.12f))                                   // ring mod (metallic/robotic)
+    {
+        setBool (id::ringOn, true);
+        set (id::ringFreq, rndLog (40.0f, 1200.0f));
+        set (id::ringMix, rnd (0.4f, 1.0f));
+        setChoice (id::ringWave, rndInt (0, 3));
+    }
+    if (chance (0.12f))                                   // tremolo
+    {
+        setBool (id::tremOn, true);
+        set (id::tremRate, rndLog (3.0f, 30.0f));
+        set (id::tremDepth, rnd (0.3f, 0.9f));
+        setChoice (id::tremWave, rndInt (0, 3));
+    }
+    if (chance (0.1f))                                    // formant (vocal)
+    {
+        setBool (id::formOn, true);
+        set (id::formVowel, rnd (0.0f, 1.0f));
+        set (id::formReso, rnd (0.3f, 0.7f));
+        set (id::formMix, rnd (0.5f, 1.0f));
+    }
+    if (chance (0.15f))                                   // delay
+    {
+        setBool (id::delayOn, true);
+        set (id::delayTime, rndLog (0.03f, 0.35f));
+        set (id::delayFb, rnd (0.2f, 0.6f));
+        set (id::delayMix, rnd (0.2f, 0.5f));
+    }
+
+    // FM voice (4-op): occasionally layer a random algorithm into OSC 3's slot
+    if (chance (0.3f))
+    {
+        setBool (oscId (3, "on"), true);
+        setChoice (id::fmAlgo, rndInt (0, 11));
+        set (id::fmFeedback, chance (0.4f) ? rnd (0.2f, 0.9f) : rnd (0.0f, 0.2f));
+        for (int i = 1; i <= 4; ++i)
+        {
+            const float ratio = chance (0.6f) ? (float) rndInt (1, 8)
+                                              : (float) rndInt (2, 14) * 0.5f;
+            set (fmOpId (i, "ratio"), ratio);
+            set (fmOpId (i, "level"), rnd (0.3f, 0.9f));
+        }
     }
 
     // unison
@@ -358,6 +467,15 @@ void Randomizer::applyCategory (Category c)
                 setBool (id::crushOn, true);
                 set (id::crushBits, rnd (8.0f, 12.0f));
                 set (id::crushDown, rnd (1.0f, 4.0f));
+            }
+            if (chance (0.45f))                                    // FM bell/chime sparkle
+                fmChime (3);
+            if (chance (0.2f))                                     // sci-fi echoing coin
+            {
+                setBool (id::delayOn, true);
+                set (id::delayTime, rndLog (0.04f, 0.12f));
+                set (id::delayFb, rnd (0.15f, 0.4f));
+                set (id::delayMix, rnd (0.2f, 0.4f));
             }
             set (id::gateTime, 0.2f);
             break;
@@ -434,6 +552,17 @@ void Randomizer::applyCategory (Category c)
                 set (id::phaseDepth, rnd (0.4f, 0.9f));
                 set (id::phaseFb, rnd (0.3f, 0.7f));
             }
+            if (chance (0.4f))                                     // metallic FM beam (rides the pitch dive)
+            {
+                fmClang();
+                set (oscId (1, "level"), rnd (0.3f, 0.55f));       // FM leads
+            }
+            if (chance (0.25f))                                    // biting ring-mod edge
+            {
+                setBool (id::ringOn, true);
+                set (id::ringFreq, rndLog (200.0f, 1600.0f));
+                set (id::ringMix, rnd (0.3f, 0.7f));
+            }
             set (id::gateTime, 0.2f);
             break;
         }
@@ -478,6 +607,8 @@ void Randomizer::applyCategory (Category c)
                 set (id::flangeDepth, rnd (0.5f, 1.0f));
                 set (id::flangeFb, rnd (0.5f, 0.8f));
             }
+            if (chance (0.3f))                                     // FM-noise debris burst
+                fmNoise();
             set (id::gateTime, 0.4f);
             if (chance (0.4f))                                     // crackle
             {
@@ -544,6 +675,8 @@ void Randomizer::applyCategory (Category c)
                 set (id::flangeDepth, rnd (0.3f, 0.6f));
                 set (id::flangeFb, rnd (0.2f, 0.5f));
             }
+            if (chance (0.4f))                                     // glassy FM sparkle on the climb
+                fmChime (3);
             set (id::gateTime, rnd (0.9f, 1.3f));                  // let the rise finish
             break;
         }
@@ -597,6 +730,8 @@ void Randomizer::applyCategory (Category c)
                 set (id::crushBits, rnd (4.0f, 9.0f));
                 set (id::crushDown, rnd (2.0f, 10.0f));
             }
+            if (chance (0.4f))                                     // metallic FM clang
+                fmClang();
             set (id::gateTime, 0.15f);
             break;
         }
@@ -638,6 +773,8 @@ void Randomizer::applyCategory (Category c)
                 set (id::crushBits, rnd (6.0f, 10.0f));
                 set (id::crushDown, rnd (2.0f, 8.0f));
             }
+            if (chance (0.3f))                                     // FM blip timbre
+                fmChime (3);
             set (id::gateTime, 0.08f);
             break;
         }
@@ -669,6 +806,8 @@ void Randomizer::applyCategory (Category c)
                 set (id::crushBits, rnd (8.0f, 12.0f));
                 set (id::crushDown, rnd (1.0f, 4.0f));
             }
+            if (chance (0.45f))                                    // bell arpeggio FM layer
+                fmChime (3);
             set (id::gateTime, 0.3f);
             break;
         }
@@ -697,6 +836,8 @@ void Randomizer::applyCategory (Category c)
             set (id::envARelease, rnd (0.25f, 0.4f));
             set (id::lpfCutoff, rndLog (2000.0f, 6000.0f));
             set (id::lpfRes, rnd (0.05f, 0.25f));
+            if (chance (0.3f))                                     // melancholy FM bell
+                fmChime (3);
             set (id::gateTime, rnd (0.8f, 1.1f));
             break;
         }

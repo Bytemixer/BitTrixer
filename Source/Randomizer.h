@@ -102,6 +102,13 @@ private:
     void setChoice (const juce::String& paramId, int index);
     void setBool (const juce::String& paramId, bool on);
 
+    // 4-operator FM voice presets (the engine in OSC 3's slot)
+    void setFmVoice (int algo, float feedback, const float* ratios,
+                     const float* levels, float outLevel);
+    void fmChime (int modSlot);   // bell / coin / chime cascade
+    void fmClang();               // metallic / inharmonic clang
+    void fmNoise();               // op-1 feedback driven into noise
+
     float rnd (float lo, float hi)      { return juce::jmap (random.nextFloat(), lo, hi); }
     float rndLog (float lo, float hi)   { return lo * std::pow (hi / lo, random.nextFloat()); }
     bool  chance (float probability01)  { return random.nextFloat() < probability01; }
