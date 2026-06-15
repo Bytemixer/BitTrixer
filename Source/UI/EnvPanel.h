@@ -92,7 +92,13 @@ public:
         g.strokePath (p, juce::PathStrokeType (1.6f, juce::PathStrokeType::curved,
                                                juce::PathStrokeType::rounded));
 
-        // gate-off marker (release start)
+        // faint stage boundaries (attack->decay, decay->sustain) so the four
+        // ADSR sections read at a glance even when a stage is very short
+        g.setColour (RetroColors::textDim.withAlpha (0.18f));
+        g.drawLine (px (wA),      r.getY(), px (wA),      r.getBottom(), 1.0f);
+        g.drawLine (px (wA + wD), r.getY(), px (wA + wD), r.getBottom(), 1.0f);
+
+        // gate-off marker (release start) — the key one, drawn brighter
         g.setColour (RetroColors::textDim.withAlpha (0.5f));
         const float gx = px (wA + wD + wS);
         g.drawLine (gx, r.getY(), gx, r.getBottom(), 1.0f);
