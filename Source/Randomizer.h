@@ -115,6 +115,7 @@ private:
     void maybeFold (float prob);          // bias the OSC 1/2 wavefolder
     void maybeNoise (float prob);         // occasional light noise mix-in
     void addModSpice (int slot);          // a tasteful extra mod-matrix route
+    void wildcardSprinkle();              // faint "anything-goes" off-recipe layer
 
     float rnd (float lo, float hi)      { return juce::jmap (random.nextFloat(), lo, hi); }
     float rndLog (float lo, float hi)   { return lo * std::pow (hi / lo, random.nextFloat()); }
