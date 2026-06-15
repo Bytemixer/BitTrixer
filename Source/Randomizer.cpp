@@ -532,6 +532,12 @@ void Randomizer::applyCategory (Category c)
                 set (id::delayFb, rnd (0.15f, 0.4f));
                 set (id::delayMix, rnd (0.2f, 0.4f));
             }
+            if (chance (0.2f))                                     // robotic coin (ring mod)
+            {
+                setBool (id::ringOn, true);
+                set (id::ringFreq, rndLog (300.0f, 1800.0f));
+                set (id::ringMix, rnd (0.3f, 0.6f));
+            }
             set (id::gateTime, 0.2f);
             break;
         }
@@ -620,6 +626,13 @@ void Randomizer::applyCategory (Category c)
                 if (chance (0.5f))                                 // ring pre-filter: filtered sidebands
                     setBool (id::ringPre, true);
             }
+            if (chance (0.25f))                                    // echoing space zap (delay)
+            {
+                setBool (id::delayOn, true);
+                set (id::delayTime, rndLog (0.05f, 0.18f));
+                set (id::delayFb, rnd (0.2f, 0.5f));
+                set (id::delayMix, rnd (0.2f, 0.4f));
+            }
             set (id::gateTime, 0.2f);
             break;
         }
@@ -670,6 +683,19 @@ void Randomizer::applyCategory (Category c)
                 set (id::flangeRate, rnd (0.1f, 0.4f));
                 set (id::flangeDepth, rnd (0.5f, 1.0f));
                 set (id::flangeFb, rnd (0.5f, 0.8f));
+            }
+            if (chance (0.4f))                                     // low sub layer (OSC 2)
+            {
+                setBool (oscId (2, "on"), true);
+                setChoice (oscId (2, "wave"), (int) OscWave::Sine);
+                set (oscId (2, "pitch"), -12.0f);
+                set (oscId (2, "level"), rnd (0.3f, 0.5f));
+            }
+            if (chance (0.25f))                                    // rumble flutter (tremolo)
+            {
+                setBool (id::tremOn, true);
+                set (id::tremRate, rndLog (8.0f, 25.0f));
+                set (id::tremDepth, rnd (0.3f, 0.6f));
             }
             if (chance (0.3f))                                     // FM-noise debris burst
                 fmNoise();
@@ -750,6 +776,20 @@ void Randomizer::applyCategory (Category c)
                 set (id::flangeDepth, rnd (0.3f, 0.6f));
                 set (id::flangeFb, rnd (0.2f, 0.5f));
             }
+            if (chance (0.3f))                                     // pulsing power throb (tremolo)
+            {
+                setBool (id::tremOn, true);
+                set (id::tremRate, rndLog (6.0f, 16.0f));
+                set (id::tremDepth, rnd (0.3f, 0.7f));
+                setChoice (id::tremWave, chance (0.5f) ? 0 : 1);   // sine / triangle
+            }
+            if (chance (0.25f))                                    // talking power-up (formant)
+            {
+                setBool (id::formOn, true);
+                set (id::formVowel, rnd (0.0f, 1.0f));
+                set (id::formReso, rnd (0.3f, 0.6f));
+                set (id::formMix, rnd (0.5f, 0.9f));
+            }
             if (chance (0.4f))                                     // glassy FM sparkle on the climb
                 fmChime (3);
             set (id::gateTime, rnd (0.9f, 1.3f));                  // let the rise finish
@@ -806,6 +846,20 @@ void Randomizer::applyCategory (Category c)
                 set (id::crushDown, rnd (2.0f, 10.0f));
                 if (chance (0.5f))                                 // crush pre-filter: filtered grit
                     setBool (id::crushPre, true);
+            }
+            if (! sharp && chance (0.45f))                         // low body layer (OSC 2)
+            {
+                setBool (oscId (2, "on"), true);
+                setChoice (oscId (2, "wave"), chance (0.5f) ? (int) OscWave::Triangle
+                                                            : (int) OscWave::Sine);
+                set (oscId (2, "pitch"), -12.0f);
+                set (oscId (2, "level"), rnd (0.3f, 0.5f));
+            }
+            if (chance (0.3f))                                     // metallic ring edge
+            {
+                setBool (id::ringOn, true);
+                set (id::ringFreq, rndLog (150.0f, 1400.0f));
+                set (id::ringMix, rnd (0.3f, 0.6f));
             }
             if (chance (0.4f))                                     // metallic FM clang
                 fmClang();
@@ -879,6 +933,19 @@ void Randomizer::applyCategory (Category c)
                 set (id::crushBits, rnd (6.0f, 10.0f));
                 set (id::crushDown, rnd (2.0f, 8.0f));
             }
+            if (chance (0.3f))                                     // robotic ring blip
+            {
+                setBool (id::ringOn, true);
+                set (id::ringFreq, rndLog (200.0f, 2000.0f));
+                set (id::ringMix, rnd (0.4f, 0.8f));
+            }
+            if (chance (0.2f))                                     // slapback echo
+            {
+                setBool (id::delayOn, true);
+                set (id::delayTime, rndLog (0.03f, 0.1f));
+                set (id::delayFb, rnd (0.1f, 0.3f));
+                set (id::delayMix, rnd (0.15f, 0.3f));
+            }
             if (chance (0.3f))                                     // FM blip timbre
                 fmChime (3);
             set (id::gateTime, 0.08f);
@@ -912,6 +979,20 @@ void Randomizer::applyCategory (Category c)
                 set (id::crushBits, rnd (8.0f, 12.0f));
                 set (id::crushDown, rnd (1.0f, 4.0f));
             }
+            if (chance (0.3f))                                     // echoing arpeggio (delay)
+            {
+                setBool (id::delayOn, true);
+                set (id::delayTime, rndLog (0.08f, 0.2f));
+                set (id::delayFb, rnd (0.2f, 0.45f));
+                set (id::delayMix, rnd (0.2f, 0.4f));
+            }
+            if (chance (0.2f))                                     // singing 1-up (formant)
+            {
+                setBool (id::formOn, true);
+                set (id::formVowel, rnd (0.0f, 1.0f));
+                set (id::formReso, rnd (0.3f, 0.6f));
+                set (id::formMix, rnd (0.4f, 0.8f));
+            }
             if (chance (0.45f))                                    // bell arpeggio FM layer
                 fmChime (3);
             set (id::gateTime, 0.3f);
@@ -942,6 +1023,26 @@ void Randomizer::applyCategory (Category c)
             set (id::envARelease, rnd (0.25f, 0.4f));
             set (id::lpfCutoff, rndLog (2000.0f, 6000.0f));
             set (id::lpfRes, rnd (0.05f, 0.25f));
+            if (chance (0.35f))                                    // sad harmony layer (OSC 2)
+            {
+                setBool (oscId (2, "on"), true);
+                setChoice (oscId (2, "wave"), (int) OscWave::Triangle);
+                set (oscId (2, "pitch"), chance (0.5f) ? -3.0f : -5.0f);   // minor-ish below
+                set (oscId (2, "level"), rnd (0.3f, 0.5f));
+            }
+            if (chance (0.3f))                                     // wavering, dying tremolo
+            {
+                setBool (id::tremOn, true);
+                set (id::tremRate, rndLog (3.0f, 9.0f));
+                set (id::tremDepth, rnd (0.3f, 0.6f));
+            }
+            if (chance (0.25f))                                    // fading echo (delay)
+            {
+                setBool (id::delayOn, true);
+                set (id::delayTime, rndLog (0.1f, 0.3f));
+                set (id::delayFb, rnd (0.25f, 0.5f));
+                set (id::delayMix, rnd (0.2f, 0.4f));
+            }
             if (chance (0.3f))                                     // melancholy FM bell
                 fmChime (3);
             set (id::gateTime, rnd (0.8f, 1.1f));
@@ -949,9 +1050,19 @@ void Randomizer::applyCategory (Category c)
         }
     }
 
-    // shared spice for every category: a little wavefolder grit, plus occasional
-    // extra mod-matrix routes for source/destination variety
+    // shared spice for every category: a little wavefolder grit, extra mod-matrix
+    // routes (source/destination variety), an occasional chain reorder and an
+    // occasional pre-filter route
     maybeFold (0.35f);
     if (chance (0.4f)) addModSpice (5);
     if (chance (0.2f)) addModSpice (6);
+    if (chance (0.18f)) shuffleFxOrder();
+    if (chance (0.15f))
+    {
+        setBool (id::crushPre, chance (0.5f));
+        setBool (id::ringPre,  chance (0.45f));
+        setBool (id::phasePre, chance (0.35f));
+        setBool (id::tremPre,  chance (0.35f));
+        setBool (id::formPre,  chance (0.35f));
+    }
 }
