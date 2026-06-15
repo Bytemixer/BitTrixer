@@ -53,10 +53,11 @@ private:
     void paintContent (juce::Graphics&);
     void drawSignalTraces (juce::Graphics&);
     void layoutPanels (juce::Rectangle<int> bounds);
-    void timerCallback() override;   // repaint the traces when the FX split toggles
+    void timerCallback() override;   // repaint the traces when a pre-filter flag toggles
+    bool anyPreFilter() const;       // any mono effect routed before the filter
 
     RetroForgeProcessor& proc;
-    std::atomic<float>* fxSplitParam = nullptr;
+    std::atomic<float>* prePresent[5] {};   // the 5 per-effect pre-filter flags
     bool lastSplit = false;
 
     RetroLookAndFeel lookAndFeel;

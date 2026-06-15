@@ -265,10 +265,14 @@ void SynthEngine::Instance::renderAdd (float* left, float* right, int n,
     const float delayFbM    = clampf (p.delayFb    + mv.delayFb,                  0.0f,  1.0f);
     const float delayMixM   = clampf (p.delayMix   + mv.delayMix,                 0.0f,  1.0f);
 
-    // when split, the mono subgroup runs per-voice before the filter. Build its
-    // config (params already modulated) and the pre sub-order from fxOrder.
+    // any mono effect flagged pre-filter runs per-voice before the filter.
+    // Build the subgroup config (params already modulated) and its sub-order.
     PreFx::Config pre;
-    pre.on      = p.fxSplit;
+    pre.on      = (p.crushOn && p.crushPre) || (p.ringOn && p.ringPre)
+               || (p.tremOn && p.tremPre)   || (p.phaseOn && p.phasePre)
+               || (p.formOn && p.formPre);
+    pre.crushPre = p.crushPre; pre.ringPre = p.ringPre; pre.tremPre = p.tremPre;
+    pre.phasePre = p.phasePre; pre.formPre = p.formPre;
     pre.crushOn = p.crushOn; pre.crushBits  = crushBitsM;    pre.crushDown = crushDownM;
     pre.ringOn  = p.ringOn;  pre.ringFreq   = ringFreqM;     pre.ringMix   = ringMixM;    pre.ringWave = p.ringWave;
     pre.tremOn  = p.tremOn;  pre.tremRate   = tremRateM;     pre.tremDepth = tremDepthM;  pre.tremWave = p.tremWave;
@@ -288,7 +292,7 @@ void SynthEngine::Instance::renderAdd (float* left, float* right, int n,
             }
     }
     ctx.preFx = &pre;
-    fxChain.setSplit (p.fxSplit);
+    fxChain.setPreFlags (p.crushPre, p.phasePre, p.ringPre, p.tremPre, p.formPre);
 
     // voices render into a local scratch so the per-instance FX get applied
     // to this sound only (not to other overlapping triggers)
@@ -301,9 +305,9 @@ void SynthEngine::Instance::renderAdd (float* left, float* right, int n,
         voices[(size_t) i].renderAdd (scratchL, scratchR, n, ctx);
     }
 
-    // post-VCA effect chain, processed in the user's order. When split, the
-    // mono effects above were already applied per-voice, so setSplit() makes
-    // these calls run only Flanger/Delay here.
+    // post-VCA effect chain, processed in the user's order. Any mono effect
+    // flagged pre-filter already ran per-voice in PreFx, so setPreFlags() makes
+    // the chain skip it here (the rest, incl. Flanger/Delay, run post).
     fxChain.setOrder   (p.fxOrder.data());
     fxChain.setCrush   (p.crushOn,  crushBitsM,   crushDownM);
     fxChain.setPhaser  (p.phaseOn,  phaseRateM,   phaseDepthM,   phaseFbM);

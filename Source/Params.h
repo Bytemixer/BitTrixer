@@ -185,7 +185,13 @@ namespace Params
         inline constexpr const char* delayTime   = "fxdelay_time";
         inline constexpr const char* delayFb     = "fxdelay_fb";
         inline constexpr const char* delayMix    = "fxdelay_mix";
-        inline constexpr const char* fxSplit     = "fx_split";   // mono subgroup pre-filter
+        // per-effect pre-filter routing: each buffer-free effect can run
+        // per-voice BEFORE the filter. Flanger/Delay (delay buffers) stay post.
+        inline constexpr const char* crushPre    = "fxcrush_pre";
+        inline constexpr const char* phasePre    = "fxphase_pre";
+        inline constexpr const char* ringPre     = "fxring_pre";
+        inline constexpr const char* tremPre     = "fxtrem_pre";
+        inline constexpr const char* formPre     = "fxform_pre";
 
         // 4-operator FM (3rd generator slot). Its on/pitch/fine/level reuse the
         // OSC 3 params (osc3_*); only the FM-specific params live here.
@@ -323,7 +329,8 @@ namespace Params
         // pre-capable effects first, Flanger(2)/Delay(6) last (right) so they
         // sit where they land when the pre-filter split engages.
         std::array<int, kFxChainLen> fxOrder { 0, 1, 3, 4, 5, 2, 6 };
-        bool fxSplit = false;   // true => mono subgroup runs per-voice pre-filter
+        // per-effect pre-filter flags (Crush/Phaser/RingMod/Tremolo/Formant)
+        bool crushPre = false, phasePre = false, ringPre = false, tremPre = false, formPre = false;
 
         // reorderable FX chain: per-slot type index (FxChain::Type) + 3 generic params A/B/C
         std::array<int,   kFxSlots> fxSlotType { 0, 0, 0, 0, 0, 0 };
@@ -442,7 +449,9 @@ namespace Params
             delayOn  = get (id::delayOn);  delayTime = get (id::delayTime);  delayFb   = get (id::delayFb);   delayMix = get (id::delayMix);
             for (int k = 0; k < kFxChainLen; ++k)
                 fxOrder[k] = get (fxOrderId (k));
-            fxSplit = get (id::fxSplit);
+            crushPre = get (id::crushPre); phasePre = get (id::phasePre);
+            ringPre  = get (id::ringPre);  tremPre  = get (id::tremPre);
+            formPre  = get (id::formPre);
 
             fmAlgo     = get (id::fmAlgo);
             fmFeedback = get (id::fmFeedback);
@@ -563,7 +572,9 @@ namespace Params
             p.delayOn = delayOn->load() > 0.5f; p.delayTime = delayTime->load(); p.delayFb  = delayFb->load();  p.delayMix = delayMix->load();
             for (int k = 0; k < kFxChainLen; ++k)
                 p.fxOrder[(size_t) k] = (int) fxOrder[k]->load();
-            p.fxSplit = fxSplit->load() > 0.5f;
+            p.crushPre = crushPre->load() > 0.5f; p.phasePre = phasePre->load() > 0.5f;
+            p.ringPre  = ringPre->load()  > 0.5f; p.tremPre  = tremPre->load()  > 0.5f;
+            p.formPre  = formPre->load()  > 0.5f;
 
             p.fmAlgo     = (int) fmAlgo->load();
             p.fmFeedback = fmFeedback->load();
@@ -660,7 +671,9 @@ namespace Params
         std::atomic<float>* formOn {};  std::atomic<float>* formVowel {}; std::atomic<float>* formReso {};  std::atomic<float>* formMix {};
         std::atomic<float>* delayOn {}; std::atomic<float>* delayTime {}; std::atomic<float>* delayFb {};   std::atomic<float>* delayMix {};
         std::atomic<float>* fxOrder[kFxChainLen] {};
-        std::atomic<float>* fxSplit {};
+        std::atomic<float>* crushPre {}; std::atomic<float>* phasePre {};
+        std::atomic<float>* ringPre {};  std::atomic<float>* tremPre {};
+        std::atomic<float>* formPre {};
 
         std::atomic<float>* fmAlgo {};
         std::atomic<float>* fmFeedback {};
@@ -960,7 +973,11 @@ namespace Params
         for (int k = 0; k < kFxChainLen; ++k)
             layout.add (std::make_unique<AudioParameterInt> (ParameterID { fxOrderId (k), 1 },
                             "FX Order " + String (k + 1), 0, kFxChainLen - 1, defOrder[k]));
-        layout.add (std::make_unique<AudioParameterBool> (ParameterID { id::fxSplit, 1 }, "FX Pre-filter Split", false));
+        layout.add (std::make_unique<AudioParameterBool> (ParameterID { id::crushPre, 1 }, "Crush Pre-filter",   false));
+        layout.add (std::make_unique<AudioParameterBool> (ParameterID { id::phasePre, 1 }, "Phaser Pre-filter",  false));
+        layout.add (std::make_unique<AudioParameterBool> (ParameterID { id::ringPre, 1 },  "Ring Pre-filter",    false));
+        layout.add (std::make_unique<AudioParameterBool> (ParameterID { id::tremPre, 1 },  "Tremolo Pre-filter", false));
+        layout.add (std::make_unique<AudioParameterBool> (ParameterID { id::formPre, 1 },  "Formant Pre-filter", false));
 
         // ---- reorderable FX chain slots (type + 3 generic A/B/C params each) ----
         for (int k = 1; k <= kFxSlots; ++k)

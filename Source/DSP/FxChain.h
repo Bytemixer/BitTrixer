@@ -46,9 +46,12 @@ public:
         trem.retrigger();   formant.retrigger(); delay.retrigger();
     }
 
-    // when split, the mono subgroup runs per-voice pre-filter (in PreFx), so we
-    // skip them here and run only the buffer effects (Flanger, Delay) post-VCA.
-    void setSplit (bool s) noexcept { split = s; }
+    // per-effect pre-filter flags: a mono effect flagged pre ran per-voice in
+    // PreFx, so it is skipped here. Flanger/Delay have no pre flag (always post).
+    void setPreFlags (bool crushF, bool phaseF, bool ringF, bool tremF, bool formF) noexcept
+    {
+        crushPre = crushF; phasePre = phaseF; ringPre = ringF; tremPre = tremF; formPre = formF;
+    }
 
     // order is a permutation of 0..kCount-1 (chain position -> Effect)
     void setOrder (const int* order) noexcept
@@ -77,23 +80,19 @@ public:
 private:
     void runEffect (int e, float* l, float* r, int n) noexcept
     {
-        // when split, the mono effects are handled per-voice (pre-filter); only
-        // the buffer effects stay here.
-        if (split && (Effect) e != Effect::Flanger && (Effect) e != Effect::Delay)
-            return;
-
+        // a mono effect flagged pre-filter already ran per-voice in PreFx -> skip
         switch ((Effect) e)
         {
             case Effect::Crush:
-                if (crushOn)
+                if (crushOn && ! crushPre)
                     for (int s = 0; s < n; ++s) { l[s] = crushL.tick (l[s]); r[s] = crushR.tick (r[s]); }
                 break;
-            case Effect::Phaser:  if (phaseOn)  phaser.process  (l, r, n); break;
-            case Effect::Flanger: if (flangeOn) flanger.process (l, r, n); break;
-            case Effect::RingMod: if (ringOn)   ring.process    (l, r, n); break;
-            case Effect::Tremolo: if (tremOn)   trem.process    (l, r, n); break;
-            case Effect::Formant: if (formOn)   formant.process (l, r, n); break;
-            case Effect::Delay:   if (delayOn)  delay.process   (l, r, n); break;
+            case Effect::Phaser:  if (phaseOn  && ! phasePre) phaser.process  (l, r, n); break;
+            case Effect::Flanger: if (flangeOn)               flanger.process (l, r, n); break;
+            case Effect::RingMod: if (ringOn   && ! ringPre)  ring.process    (l, r, n); break;
+            case Effect::Tremolo: if (tremOn   && ! tremPre)  trem.process    (l, r, n); break;
+            case Effect::Formant: if (formOn   && ! formPre)  formant.process (l, r, n); break;
+            case Effect::Delay:   if (delayOn)                delay.process   (l, r, n); break;
             default: break;
         }
     }
@@ -108,7 +107,7 @@ private:
 
     bool crushOn = false, phaseOn = false, flangeOn = false, ringOn = false,
          tremOn = false, formOn = false, delayOn = false;
-    bool split = false;
+    bool crushPre = false, phasePre = false, ringPre = false, tremPre = false, formPre = false;
 
     int ord[kCount] { 0, 1, 2, 3, 4, 5, 6 };
 };
