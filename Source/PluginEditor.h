@@ -55,10 +55,13 @@ private:
     void layoutPanels (juce::Rectangle<int> bounds);
     void timerCallback() override;   // repaint the traces when a pre-filter flag toggles
     bool anyPreFilter() const;       // any mono effect routed before the filter
+    void updateMidiStatus();         // reflect MIDI-learn state in the header
 
     RetroForgeProcessor& proc;
     std::atomic<float>* prePresent[5] {};   // the 5 per-effect pre-filter flags
     bool lastSplit = false;
+    int  lastLearnGen = 0;
+    int  midiStatusTicks = 0;
 
     RetroLookAndFeel lookAndFeel;
     ThemeManager themeManager;

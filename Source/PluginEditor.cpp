@@ -112,6 +112,25 @@ RetroForgeEditor::RetroForgeEditor (RetroForgeProcessor& p)
 
     header.setPresetName (presetManager.getCurrentName());
 
+    // ---- MIDI learn ----
+    {
+        auto& midi = proc.getMidiLearn();
+        lastLearnGen = midi.learnGeneration();
+        midi.onChanged = [this] { updateMidiStatus(); };
+    }
+    header.onMidiLearn = [this]
+    {
+        auto& m = proc.getMidiLearn();
+        m.setArmed (! m.isArmed());           // toggle; onChanged refreshes the UI
+    };
+    header.onMidiClear = [this]
+    {
+        proc.getMidiLearn().clearAll();
+        header.setMidiArmed (false);
+        header.setPresetName ("MIDI mappings cleared");
+        midiStatusTicks = 22;
+    };
+
     // resizable, aspect-locked: the design is 1180x996, everything scales
     setResizable (true, true);
     setResizeLimits (1004, 847, 2360, 1992);   // ~0.85x .. 2x
@@ -144,10 +163,40 @@ void RetroForgeEditor::timerCallback()
         lastSplit = now;
         content.repaint();
     }
+
+    // revert the transient MIDI status back to the preset name
+    if (midiStatusTicks > 0 && --midiStatusTicks == 0 && ! proc.getMidiLearn().isArmed())
+        header.setPresetName (presetManager.getCurrentName());
+}
+
+void RetroForgeEditor::updateMidiStatus()
+{
+    auto& ml = proc.getMidiLearn();
+    header.setMidiArmed (ml.isArmed());
+
+    if (ml.isArmed())
+    {
+        header.setPresetName ("MIDI LEARN  -  touch a control, then move a hardware knob");
+        midiStatusTicks = 0;
+    }
+    else if (ml.learnGeneration() != lastLearnGen)
+    {
+        lastLearnGen = ml.learnGeneration();
+        const int cc = ml.lastLearnedCc();
+        auto* p = ml.paramForCc (cc);
+        header.setPresetName ("Learned:  CC " + juce::String (cc) + "   ->   "
+                              + (p != nullptr ? p->getName (24) : juce::String()));
+        midiStatusTicks = 28;        // ~2.8 s at 10 Hz, then revert
+    }
+    else if (midiStatusTicks <= 0)
+    {
+        header.setPresetName (presetManager.getCurrentName());
+    }
 }
 
 RetroForgeEditor::~RetroForgeEditor()
 {
+    proc.getMidiLearn().onChanged = nullptr;
     stopTimer();
     setLookAndFeel (nullptr);
 }
