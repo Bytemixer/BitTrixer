@@ -1,4 +1,4 @@
-/*  This file is part of the RetroForge audio plugin.
+/*  This file is part of the BitTrixer audio plugin.
     Copyright (C) 2026 Bytemixer
     SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -11,7 +11,7 @@
 
 #include "PluginEditor.h"
 
-RetroForgeEditor::RetroForgeEditor (RetroForgeProcessor& p)
+BitTrixerEditor::BitTrixerEditor (BitTrixerProcessor& p)
     : AudioProcessorEditor (p), proc (p),
       randomizer (p.apvts),
       presetManager (p.apvts),
@@ -63,6 +63,9 @@ RetroForgeEditor::RetroForgeEditor (RetroForgeProcessor& p)
 
     header.onSave = [this] { presetManager.saveAsync(); };
     header.onLoad = [this] { presetManager.loadAsync(); };
+    header.onPresetPrev = [this] { presetManager.step (-1); previewSound(); };
+    header.onPresetNext = [this] { presetManager.step (+1); previewSound(); };
+    header.onPresetMenu = [this] { showPresetMenu(); };
     presetManager.onPresetChanged = [this]
     {
         header.setPresetName (presetManager.getCurrentName());
@@ -79,8 +82,8 @@ RetroForgeEditor::RetroForgeEditor (RetroForgeProcessor& p)
     {
         juce::AlertWindow::showMessageBoxAsync (
             juce::MessageBoxIconType::InfoIcon,
-            "RetroForge",
-            "RetroForge - Retro Game SFX Synthesizer\n"
+            "BitTrixer",
+            "BitTrixer - Retro Game SFX Synthesizer\n"
             "Copyright (C) 2026 Bytemixer\n\n"
             "Licensed under the GNU Affero General Public License v3.0 or later.\n"
             "This program comes with ABSOLUTELY NO WARRANTY.\n"
@@ -130,6 +133,8 @@ RetroForgeEditor::RetroForgeEditor (RetroForgeProcessor& p)
         header.setPresetName ("MIDI mappings cleared");
         midiStatusTicks = 22;
     };
+    header.onMidiChannel = [this] (int ch) { proc.getMidiLearn().setChannel (ch); };
+    header.setMidiChannel (proc.getMidiLearn().getChannel());
 
     // resizable, aspect-locked: the design is 1180x996, everything scales
     setResizable (true, true);
@@ -148,14 +153,14 @@ RetroForgeEditor::RetroForgeEditor (RetroForgeProcessor& p)
     startTimerHz (10);
 }
 
-bool RetroForgeEditor::anyPreFilter() const
+bool BitTrixerEditor::anyPreFilter() const
 {
     for (auto* p : prePresent)
         if (p != nullptr && p->load() > 0.5f) return true;
     return false;
 }
 
-void RetroForgeEditor::timerCallback()
+void BitTrixerEditor::timerCallback()
 {
     const bool now = anyPreFilter();
     if (now != lastSplit)
@@ -169,10 +174,11 @@ void RetroForgeEditor::timerCallback()
         header.setPresetName (presetManager.getCurrentName());
 }
 
-void RetroForgeEditor::updateMidiStatus()
+void BitTrixerEditor::updateMidiStatus()
 {
     auto& ml = proc.getMidiLearn();
     header.setMidiArmed (ml.isArmed());
+    header.setMidiChannel (ml.getChannel());     // reflect a state-loaded channel
 
     if (ml.isArmed())
     {
@@ -194,24 +200,66 @@ void RetroForgeEditor::updateMidiStatus()
     }
 }
 
-RetroForgeEditor::~RetroForgeEditor()
+BitTrixerEditor::~BitTrixerEditor()
 {
     proc.getMidiLearn().onChanged = nullptr;
     stopTimer();
     setLookAndFeel (nullptr);
 }
 
-void RetroForgeEditor::previewSound()
+void BitTrixerEditor::previewSound()
 {
     proc.uiOneShot();
 }
 
-void RetroForgeEditor::paint (juce::Graphics& g)
+void BitTrixerEditor::showPresetMenu()
+{
+    presetManager.rescan();
+    const auto& list = presetManager.getPresets();
+
+    juce::PopupMenu menu;
+    if (list.empty())
+        menu.addItem (-1, "(no presets in the BitTrixer Presets folder)", false);
+
+    // entries are sorted (uncategorised first, then by category); uncategorised
+    // sit at the root, each subfolder becomes a submenu
+    juce::String cat;
+    juce::PopupMenu sub;
+    auto flush = [&menu, &cat, &sub]
+    {
+        if (cat.isNotEmpty()) { menu.addSubMenu (cat, sub); sub.clear(); cat = {}; }
+    };
+    for (int i = 0; i < (int) list.size(); ++i)
+    {
+        const auto& e = list[(size_t) i];
+        if (e.category.isEmpty())
+            menu.addItem (i + 1, e.name);
+        else
+        {
+            if (e.category != cat) { flush(); cat = e.category; }
+            sub.addItem (i + 1, e.name);
+        }
+    }
+    flush();
+
+    menu.showMenuAsync (juce::PopupMenu::Options(), [this] (int result)
+    {
+        if (result <= 0) return;
+        const auto& l = presetManager.getPresets();
+        if (result - 1 < (int) l.size())
+        {
+            presetManager.loadFile (l[(size_t) (result - 1)].file);
+            previewSound();
+        }
+    });
+}
+
+void BitTrixerEditor::paint (juce::Graphics& g)
 {
     g.fillAll (RetroColors::background);   // fills any letterbox margin
 }
 
-void RetroForgeEditor::paintContent (juce::Graphics& g)
+void BitTrixerEditor::paintContent (juce::Graphics& g)
 {
     g.fillAll (RetroColors::background);
     drawSignalTraces (g);
@@ -302,7 +350,7 @@ namespace
 
 }
 
-void RetroForgeEditor::drawSignalTraces (juce::Graphics& g)
+void BitTrixerEditor::drawSignalTraces (juce::Graphics& g)
 {
     // pride theme: the signal path becomes a rainbow ribbon — each leg of
     // the audio chain takes the next flag stripe, input to output
@@ -531,23 +579,23 @@ void RetroForgeEditor::drawSignalTraces (juce::Graphics& g)
     }
 }
 
-void RetroForgeEditor::resized()
+void BitTrixerEditor::resized()
 {
     themeEditor.setBounds (getLocalBounds());
 
     // the layout is authored at a fixed design size; scale the content holder
     // to the actual window (aspect ratio is locked, so the scale is uniform)
-    constexpr int baseW = 1180, baseH = 996;
+    constexpr int baseW = 1180, baseH = 996;    // single-row top bar (46px)
     const float scale = (float) getWidth() / (float) baseW;
     content.setTransform (juce::AffineTransform::scale (scale));
     content.setBounds (0, 0, baseW, baseH);
     layoutPanels ({ 0, 0, baseW, baseH });
 }
 
-void RetroForgeEditor::layoutPanels (juce::Rectangle<int> bounds)
+void BitTrixerEditor::layoutPanels (juce::Rectangle<int> bounds)
 {
     auto b = bounds;
-    header.setBounds (b.removeFromTop (46));
+    header.setBounds (b.removeFromTop (46));   // single-row top bar
     b.reduce (8, 8);
     constexpr int gap = 6;        // vertical gap within the right column
     constexpr int leftGap = 26;   // between the oscillator strips

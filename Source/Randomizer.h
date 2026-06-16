@@ -1,4 +1,4 @@
-/*  This file is part of the RetroForge audio plugin.
+/*  This file is part of the BitTrixer audio plugin.
     Copyright (C) 2026 Bytemixer
     SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -37,8 +37,9 @@
 class Randomizer : private juce::AudioProcessorValueTreeState::Listener
 {
 public:
-    enum class Category { Pickup = 0, Laser, Explosion, Powerup, Hit, Jump, Blip, OneUp, Lose };
-    static constexpr int kNumCategories = 9;
+    enum class Category { Pickup = 0, Laser, Explosion, Powerup, Hit, Jump, Blip, OneUp, Lose,
+                          Clang, Slash, Gust, Flame, Spark, Shimmer };
+    static constexpr int kNumCategories = 15;
 
     static const char* categoryName (Category c)
     {
@@ -53,6 +54,12 @@ public:
             case Category::Blip:      return "BLIP";
             case Category::OneUp:     return "1-UP";
             case Category::Lose:      return "LOSE";
+            case Category::Clang:     return "CLANG";
+            case Category::Slash:     return "SLASH";
+            case Category::Gust:      return "GUST";
+            case Category::Flame:     return "FLAME";
+            case Category::Spark:     return "SPARK";
+            case Category::Shimmer:   return "SHIMMER";
         }
         return "?";
     }
@@ -116,6 +123,7 @@ private:
     void maybeNoise (float prob);         // occasional light noise mix-in
     void addModSpice (int slot);          // a tasteful extra mod-matrix route
     void wildcardSprinkle();              // faint "anything-goes" off-recipe layer
+    void compactModMatrix();              // pull populated routings up to the top slots (no gaps)
 
     float rnd (float lo, float hi)      { return juce::jmap (random.nextFloat(), lo, hi); }
     float rndLog (float lo, float hi)   { return lo * std::pow (hi / lo, random.nextFloat()); }

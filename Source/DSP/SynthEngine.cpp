@@ -1,4 +1,4 @@
-/*  This file is part of the RetroForge audio plugin.
+/*  This file is part of the BitTrixer audio plugin.
     Copyright (C) 2026 Bytemixer
     SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -132,8 +132,8 @@ void SynthEngine::Instance::renderAdd (float* left, float* right, int n,
     stepLfo.setRate (p.lfo[1].rateHz * std::exp2 (mv.lfoRateOct[1]));
     stepLfo.setDelay (p.lfo[1].delaySec);
     stepLfo.setSteps (p.stepCount);
-    stepLfo.setGlide (p.stepGlide);
-    stepLfo.setSkew (p.stepSkew);
+    stepLfo.setGlide (clampf (p.stepGlide + mv.stepGlide, 0.0f, 1.0f));
+    stepLfo.setSkew  (clampf (p.stepSkew  + mv.stepSkew, -1.0f, 1.0f));
     for (int k = 0; k < Params::kMaxSteps; ++k)
         stepLfo.setStepValue (k, p.stepVals[(size_t) k]);
 
@@ -177,7 +177,8 @@ void SynthEngine::Instance::renderAdd (float* left, float* right, int n,
         }
     }
 
-    const float base = freqOverrideHz > 0.0f ? freqOverrideHz : p.baseFreqHz;
+    const float base = clampf ((freqOverrideHz > 0.0f ? freqOverrideHz : p.baseFreqHz)
+                               + mv.baseHz, 1.0f, fsf * 0.49f);
 
     // discrete pitch jumps (sfxr-style arpeggio steps)
     const float ageSec = (float) ageSamples / fsf;
@@ -220,7 +221,7 @@ void SynthEngine::Instance::renderAdd (float* left, float* right, int n,
         ctx.fmOut        = clampf (o3.level + mv.oscLevel[2], 0.0f, 1.0f);
         for (int i = 0; i < 4; ++i)
         {
-            ctx.fmRatio[i] = p.fmRatio[(size_t) i];
+            ctx.fmRatio[i] = clampf (p.fmRatio[(size_t) i] + mv.fmOpRatio[i], 0.0f, 32.0f);
             ctx.fmLevel[i] = clampf (p.fmLevel[(size_t) i] + mv.fmOpLevel[i], 0.0f, 1.0f);
         }
     }
@@ -232,13 +233,13 @@ void SynthEngine::Instance::renderAdd (float* left, float* right, int n,
     const float envFv = envF.value();
     ctx.cutoffHz = clampf (p.lpfCutoff
                        * std::exp2 (mv.cutoffOct
-                                    + envFv * p.lpfEnvAmt * ModMatrix::kCutoffRangeOct
+                                    + envFv * (p.lpfEnvAmt + mv.lpfEnvAmt) * ModMatrix::kCutoffRangeOct
                                     + var.cutoffOct),
                        20.0f, fsf * 0.45f);
     ctx.res01    = clampf (p.lpfRes + mv.resonance, 0.0f, 1.0f);
     ctx.fourPole = p.lpf4Pole;
     ctx.hpfOn    = p.hpfOn;
-    ctx.hpfHz    = p.hpfCutoff;
+    ctx.hpfHz    = clampf (p.hpfCutoff * std::exp2 (mv.hpfOct), 20.0f, fsf * 0.45f);
     ctx.driveAmt = p.vcaDrive;
     ctx.amp      = amp;
 
@@ -301,7 +302,7 @@ void SynthEngine::Instance::renderAdd (float* left, float* right, int n,
 
     for (int i = 0; i < numVoices; ++i)
     {
-        voices[(size_t) i].setNoiseColor (p.noiseColor);
+        voices[(size_t) i].setNoiseColor (clampf (p.noiseColor + mv.noiseColor, 0.0f, 1.0f));
         voices[(size_t) i].renderAdd (scratchL, scratchR, n, ctx);
     }
 
@@ -325,7 +326,16 @@ void SynthEngine::Instance::renderAdd (float* left, float* right, int n,
     }
 
     if (! envA.isActive())
+    {
         active = false;
+        // Clear leftover envelope level so the NEXT trigger reusing this (now
+        // idle) instance starts from a clean, deterministic state. Without this
+        // the filter env's residual release level brightened re-triggers, and
+        // the offline export (always a fresh engine, env from 0) never matched
+        // the "warmed" live preview.
+        envF.reset();
+        envA.reset();
+    }
 }
 
 // ============================================================================
@@ -374,8 +384,14 @@ SynthEngine::Instance* SynthEngine::findFreeInstance()
 
 void SynthEngine::fire (int noteTag, float overrideHz, int gateSamples)
 {
+    // Deterministic voice seed: every trigger of a patch -- AND the offline WAV
+    // export -- produces the identical noise / unison realization, so the
+    // exported file matches the live preview exactly. (The live engine's RNG
+    // used to seed this, which drifted with history; the export ran a fresh
+    // engine and never matched. Per-shot variation is opt-in via Auto-Variate,
+    // which still draws from the live RNG below.)
     findFreeInstance()->start (patch, noteTag, overrideHz, gateSamples,
-                               makeVariate(), nextRand(), clock);
+                               makeVariate(), kVoiceSeed, clock);
 }
 
 SynthEngine::VariateOffsets SynthEngine::makeVariate()

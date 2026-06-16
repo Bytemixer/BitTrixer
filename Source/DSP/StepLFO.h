@@ -1,4 +1,4 @@
-/*  This file is part of the RetroForge audio plugin.
+/*  This file is part of the BitTrixer audio plugin.
     Copyright (C) 2026 Bytemixer
     SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -16,7 +16,7 @@
 #include <algorithm>
 
 // ============================================================================
-//  StepLFO — a step-sequencer LFO (the unique RetroForge twist). Advances
+//  StepLFO — a step-sequencer LFO (the unique BitTrixer twist). Advances
 //  through 2..8 user-drawn steps at a settable rate and outputs the current
 //  step level, bipolar (-1..+1). Routed through the mod matrix like LFO 1,
 //  so mapping it to pitch gives an arpeggio/sequence, to cutoff a rhythmic

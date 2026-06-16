@@ -1,4 +1,4 @@
-/*  This file is part of the RetroForge audio plugin.
+/*  This file is part of the BitTrixer audio plugin.
     Copyright (C) 2026 Bytemixer
     SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -12,7 +12,7 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
 
-RetroForgeProcessor::RetroForgeProcessor()
+BitTrixerProcessor::BitTrixerProcessor()
     : AudioProcessor (BusesProperties()
           .withOutput ("Output", juce::AudioChannelSet::stereo(), true)),
       apvts (*this, nullptr, "PARAMS", Params::createLayout()),
@@ -20,18 +20,18 @@ RetroForgeProcessor::RetroForgeProcessor()
 {
 }
 
-void RetroForgeProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
+void BitTrixerProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
     engine.setPatch (paramCache.read());
     engine.prepare (sampleRate, samplesPerBlock);
 }
 
-bool RetroForgeProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
+bool BitTrixerProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
 {
     return layouts.getMainOutputChannelSet() == juce::AudioChannelSet::stereo();
 }
 
-void RetroForgeProcessor::processBlock (juce::AudioBuffer<float>& buffer,
+void BitTrixerProcessor::processBlock (juce::AudioBuffer<float>& buffer,
                                         juce::MidiBuffer& midi)
 {
     juce::ScopedNoDenormals noDenormals;
@@ -51,12 +51,19 @@ void RetroForgeProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     for (const auto metadata : midi)
     {
         const auto msg = metadata.getMessage();
+        const bool chOk = midiLearn.acceptsChannel (msg.getChannel());
         if (msg.isNoteOn())
-            engine.noteOn (msg.getNoteNumber());
+        {
+            if (chOk) engine.noteOn (msg.getNoteNumber());
+        }
         else if (msg.isNoteOff())
-            engine.noteOff (msg.getNoteNumber());
+        {
+            if (chOk) engine.noteOff (msg.getNoteNumber());
+        }
         else if (msg.isController())
-            midiLearn.handleCc (msg.getControllerNumber(), msg.getControllerValue());
+        {
+            if (chOk) midiLearn.handleCc (msg.getControllerNumber(), msg.getControllerValue());
+        }
         else if (msg.isAllNotesOff() || msg.isAllSoundOff())
         {
             for (int n = 0; n < 128; ++n)
@@ -78,29 +85,29 @@ void RetroForgeProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     }
 }
 
-juce::AudioProcessorEditor* RetroForgeProcessor::createEditor()
+juce::AudioProcessorEditor* BitTrixerProcessor::createEditor()
 {
-    return new RetroForgeEditor (*this);
+    return new BitTrixerEditor (*this);
 }
 
-void RetroForgeProcessor::getStateInformation (juce::MemoryBlock& destData)
+void BitTrixerProcessor::getStateInformation (juce::MemoryBlock& destData)
 {
     // wrap the parameter tree and the MIDI map under one root
-    juce::ValueTree root ("RETROFORGE");
+    juce::ValueTree root ("BITTRIXER");
     root.appendChild (apvts.copyState(), nullptr);
     midiLearn.saveTo (root);
     if (auto xml = root.createXml())
         copyXmlToBinary (*xml, destData);
 }
 
-void RetroForgeProcessor::setStateInformation (const void* data, int sizeInBytes)
+void BitTrixerProcessor::setStateInformation (const void* data, int sizeInBytes)
 {
     auto xml = getXmlFromBinary (data, sizeInBytes);
     if (xml == nullptr)
         return;
 
     auto tree = juce::ValueTree::fromXml (*xml);
-    if (tree.hasType ("RETROFORGE"))
+    if (tree.hasType ("BITTRIXER"))
     {
         auto params = tree.getChildWithName (apvts.state.getType());
         if (params.isValid())
@@ -115,5 +122,5 @@ void RetroForgeProcessor::setStateInformation (const void* data, int sizeInBytes
 
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()
 {
-    return new RetroForgeProcessor();
+    return new BitTrixerProcessor();
 }

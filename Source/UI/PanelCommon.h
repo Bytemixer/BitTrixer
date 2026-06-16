@@ -1,4 +1,4 @@
-/*  This file is part of the RetroForge audio plugin.
+/*  This file is part of the BitTrixer audio plugin.
     Copyright (C) 2026 Bytemixer
     SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -13,6 +13,7 @@
 
 #include <juce_audio_processors/juce_audio_processors.h>
 #include "RetroLookAndFeel.h"
+#include "ParamTooltips.h"
 
 // ============================================================================
 //  PanelCommon — shared building blocks for the front-panel sections:
@@ -93,6 +94,7 @@ struct LabeledKnob : public juce::Component
         slider.setTextBoxStyle (showValue ? juce::Slider::TextBoxBelow
                                           : juce::Slider::NoTextBox,
                                 false, 58, 13);
+        slider.setTooltip (ParamTooltips::lookup (paramId));
         addAndMakeVisible (slider);
 
         label.setText (name, juce::dontSendNotification);
@@ -135,6 +137,7 @@ struct VFader : public juce::Component
     {
         slider.setSliderStyle (juce::Slider::LinearVertical);
         slider.setTextBoxStyle (juce::Slider::NoTextBox, false, 0, 0);
+        slider.setTooltip (ParamTooltips::lookup (paramId));
         addAndMakeVisible (slider);
 
         label.setText (name, juce::dontSendNotification);
@@ -168,6 +171,7 @@ struct SwitchToggle : public juce::Component
                   const juce::String& name)
     {
         button.setButtonText (name);
+        button.setTooltip (ParamTooltips::lookup (paramId));
         addAndMakeVisible (button);
         attachment = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (
             s, paramId, button);
@@ -187,6 +191,7 @@ struct ChoiceCombo : public juce::Component
     {
         if (auto* choice = dynamic_cast<juce::AudioParameterChoice*> (s.getParameter (paramId)))
             box.addItemList (choice->choices, 1);
+        box.setTooltip (ParamTooltips::lookup (paramId));
         addAndMakeVisible (box);
         attachment = std::make_unique<juce::AudioProcessorValueTreeState::ComboBoxAttachment> (
             s, paramId, box);

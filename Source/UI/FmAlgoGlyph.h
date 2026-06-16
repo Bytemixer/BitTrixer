@@ -1,4 +1,4 @@
-/*  This file is part of the RetroForge audio plugin.
+/*  This file is part of the BitTrixer audio plugin.
     Copyright (C) 2026 Bytemixer
     SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -23,12 +23,15 @@
 //  algorithms draw automatically from FmUnit::kAlgos. Repaints on change.
 // ============================================================================
 
-class FmAlgoGlyph : public juce::Component, private juce::Timer
+class FmAlgoGlyph : public juce::Component,
+                    public juce::SettableTooltipClient,
+                    private juce::Timer
 {
 public:
     explicit FmAlgoGlyph (juce::AudioProcessorValueTreeState& s)
     {
         algoParam = s.getRawParameterValue (Params::id::fmAlgo);
+        setTooltip ("Selected FM algorithm: boxes are operators, highlighted ones are carriers");
         startTimerHz (8);
     }
     ~FmAlgoGlyph() override { stopTimer(); }

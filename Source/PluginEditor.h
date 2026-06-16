@@ -1,4 +1,4 @@
-/*  This file is part of the RetroForge audio plugin.
+/*  This file is part of the BitTrixer audio plugin.
     Copyright (C) 2026 Bytemixer
     SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -33,23 +33,24 @@
 #include "UI/FxPanel.h"
 
 // ============================================================================
-//  RetroForgeEditor
+//  BitTrixerEditor
 //  The front panel. Arranges the per-section panel components; all controls
 //  live inside the panels (Source/UI/*), never directly in here.
 // ============================================================================
 
-class RetroForgeEditor : public juce::AudioProcessorEditor,
+class BitTrixerEditor : public juce::AudioProcessorEditor,
                          private juce::Timer
 {
 public:
-    explicit RetroForgeEditor (RetroForgeProcessor&);
-    ~RetroForgeEditor() override;
+    explicit BitTrixerEditor (BitTrixerProcessor&);
+    ~BitTrixerEditor() override;
 
     void paint (juce::Graphics&) override;
     void resized() override;
 
 private:
     void previewSound();
+    void showPresetMenu();           // browse-menu popup from the preset folder
     void paintContent (juce::Graphics&);
     void drawSignalTraces (juce::Graphics&);
     void layoutPanels (juce::Rectangle<int> bounds);
@@ -57,7 +58,7 @@ private:
     bool anyPreFilter() const;       // any mono effect routed before the filter
     void updateMidiStatus();         // reflect MIDI-learn state in the header
 
-    RetroForgeProcessor& proc;
+    BitTrixerProcessor& proc;
     std::atomic<float>* prePresent[5] {};   // the 5 per-effect pre-filter flags
     bool lastSplit = false;
     int  lastLearnGen = 0;
@@ -73,11 +74,14 @@ private:
     // which is scaled by a transform so everything resizes proportionally
     struct Content : juce::Component
     {
-        explicit Content (RetroForgeEditor& e) : owner (e) {}
+        explicit Content (BitTrixerEditor& e) : owner (e) {}
         void paint (juce::Graphics& g) override { owner.paintContent (g); }
-        RetroForgeEditor& owner;
+        BitTrixerEditor& owner;
     };
     Content content { *this };
+
+    // hover hints for knobs / switches / combos / visual windows (600ms delay)
+    juce::TooltipWindow tooltipWindow { this, 600 };
 
     HeaderBar header;
     GeneratorsPanel generatorsPanel;
@@ -94,5 +98,5 @@ private:
     FxPanel fxPanel;
     ThemeEditor themeEditor { themeManager };
 
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (RetroForgeEditor)
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (BitTrixerEditor)
 };

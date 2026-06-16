@@ -1,4 +1,4 @@
-/*  This file is part of the RetroForge audio plugin.
+/*  This file is part of the BitTrixer audio plugin.
     Copyright (C) 2026 Bytemixer
     SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -70,6 +70,11 @@ public:
         }
     }
 
+    // ---- channel filter (0 = omni / All, 1-16 = that channel) ----
+    void setChannel (int ch)         { channel.store (ch); notify(); }
+    int  getChannel() const          { return channel.load(); }
+    bool acceptsChannel (int ch) const { const int c = channel.load(); return c == 0 || c == ch; }
+
     // ---- message-thread API ----
     void setArmed (bool a)     { armed.store (a); notify(); }
     bool isArmed() const       { return armed.load(); }
@@ -86,6 +91,7 @@ public:
     void saveTo (juce::ValueTree& parent) const
     {
         juce::ValueTree mm ("MIDIMAP");
+        mm.setProperty ("chan", channel.load(), nullptr);
         for (int cc = 0; cc < 128; ++cc)
             if (auto* p = byCc[(size_t) cc].load())
             {
@@ -101,6 +107,7 @@ public:
     {
         for (auto& p : byCc) p.store (nullptr);
         auto mm = parent.getChildWithName ("MIDIMAP");
+        channel.store ((int) mm.getProperty ("chan", 0));
         for (int i = 0; i < mm.getNumChildren(); ++i)
         {
             auto e = mm.getChild (i);
@@ -148,4 +155,5 @@ private:
     std::atomic<juce::RangedAudioParameter*> lastTouched { nullptr };
     std::atomic<int>   learnedCc { -1 };
     std::atomic<int>   learnGen { 0 };
+    std::atomic<int>   channel { 0 };       // 0 = omni
 };

@@ -30,3 +30,6 @@ _backups/
 Thumbs.db
 desktop.ini
 .DS_Store
+
+# Logs / temp
+*.log
