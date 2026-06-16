@@ -2,12 +2,13 @@
 
 **Retro game SFX synthesizer** — VST3 + Standalone (JUCE 8, C++17).
 
-An sfxr/bfxr-inspired sound-effect design tool built as a real subtractive synth,
+An sfxr/bfxr-inspired (and also Deepmind 12 inspired)
+sound-effect design tool built as a real subtractive synth,
 modeled on classic VCO / VCF / VCA voltage-control architecture. Not a musical
 keyboard instrument: a one-shot SFX generator for 8-bit/16-bit arcade-style game
-audio, with hand-tuned category randomizers and an editable front panel.
+audio, with hand-tuned category randomizers and an color customizable front panel.
 
-> 📖 Full usage guide: **[MANUAL.md](MANUAL.md)**.
+> Full usage guide: **[MANUAL.md](MANUAL.md)**.
 
 ## Features
 
