@@ -13,7 +13,7 @@
 ```
   OSC 1  ┐
   OSC 2  ┤
-  FM     ┼──► (mix) ──► FILTER (LP + HP) ──► VCA (drive ► comp) ──► FX CHAIN ──► master (gain ► lo‑fi) ──► out
+  FM     ┼ ──► (mix) ──► FILTER (LP + HP) ──► VCA (drive ► comp) ──► FX CHAIN ──► master (gain ► lo‑fi) ──► out
   NOISE  ┘                 ▲                      ▲                   ▲
                            │                      │                   │
                  FILTER ENV, AMP ENV, LFO 1, LFO 2 (step) ─── routed by the MOD MATRIX
