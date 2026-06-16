@@ -1,4 +1,4 @@
-/*  This file is part of the RetroForge audio plugin.
+/*  This file is part of the BitTrixer audio plugin.
     Copyright (C) 2026 Bytemixer
     SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -21,6 +21,7 @@
 // ============================================================================
 
 class ScopePanel : public SectionPanel,
+                   public juce::SettableTooltipClient,
                    private juce::Timer,
                    private juce::AudioProcessorValueTreeState::Listener
 {
@@ -30,6 +31,8 @@ public:
         : SectionPanel ("Scope"), apvts (state), getPatch (std::move (patchProvider)),
           renderer (44100.0)
     {
+        setTooltip ("Preview of the whole rendered sound; re-renders as you tweak");
+
         for (auto* p : apvts.processor.getParameters())
             if (auto* rp = dynamic_cast<juce::RangedAudioParameter*> (p))
             {

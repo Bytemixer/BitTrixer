@@ -1,4 +1,4 @@
-/*  This file is part of the RetroForge audio plugin.
+/*  This file is part of the BitTrixer audio plugin.
     Copyright (C) 2026 Bytemixer
     SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -44,7 +44,13 @@ public:
             juce::Colour (0xff4da3ff),   // jump    - blue
             juce::Colour (0xff4dd6d2),   // blip    - teal
             juce::Colour (0xffb8e84f),   // 1-up    - lime
-            juce::Colour (0xffd46a8a)    // lose    - dusky rose
+            juce::Colour (0xffd46a8a),   // lose    - dusky rose
+            juce::Colour (0xff8fa3b8),   // clang   - steel
+            juce::Colour (0xffc4dbe0),   // slash   - silver-cyan
+            juce::Colour (0xff9fd9c4),   // gust    - airy mint
+            juce::Colour (0xffff5a2e),   // flame   - fiery red-orange
+            juce::Colour (0xfff5d028),   // spark   - electric yellow
+            juce::Colour (0xff86d4f5)    // shimmer - icy cyan
         };
 
         for (int i = 0; i < Randomizer::kNumCategories; ++i)
@@ -61,28 +67,43 @@ public:
 
     void resized() override
     {
+        // three equal-height rows so the new category row matches the others
         auto b = content();
-        const int rowH = b.getHeight() / 2;
-        auto top = b.removeFromTop (rowH).reduced (0, 2);
-        auto bottom = b.reduced (0, 2);
+        const int rowH = b.getHeight() / 3;
+        auto row1 = b.removeFromTop (rowH).reduced (0, 2);
+        auto row2 = b.removeFromTop (rowH).reduced (0, 2);
+        auto row3 = b.reduced (0, 2);
 
-        // top row: RANDOM + MUTATE + first 3 categories; bottom: last 6
-        const int cw = top.getWidth() / 5;
-        randomButton.setBounds (top.removeFromLeft (cw).reduced (2, 0));
-        mutateButton.setBounds (top.removeFromLeft (cw).reduced (2, 0));
+        // row 1: RANDOM + MUTATE + first 3 categories (Pickup / Laser / Explode)
+        const int cw = row1.getWidth() / 5;
+        randomButton.setBounds (row1.removeFromLeft (cw).reduced (2, 0));
+        mutateButton.setBounds (row1.removeFromLeft (cw).reduced (2, 0));
         for (int i = 0; i < 3; ++i)
-            categoryButtons[i]->setBounds (top.removeFromLeft (cw).reduced (2, 0));
-        // bottom row: variable widths so "Power-Up" fits (Hit narrower, the rest
-        // trimmed a touch). Order: powerup, hit, jump, blip, 1-up, lose.
+            categoryButtons[i]->setBounds (row1.removeFromLeft (cw).reduced (2, 0));
+
+        // row 2: categories 3..8 — variable widths so "Power-Up" fits (Hit
+        // narrower). Order: powerup, hit, jump, blip, 1-up, lose.
         const float wts[6] = { 1.42f, 0.80f, 0.95f, 0.90f, 0.95f, 0.98f };
         float wsum = 0.0f; for (float wgt : wts) wsum += wgt;
-        const int bw = bottom.getWidth();
-        for (int i = 3; i < Randomizer::kNumCategories; ++i)
+        const int bw = row2.getWidth();
+        for (int i = 3; i < 9; ++i)
         {
-            const int colW = (i == Randomizer::kNumCategories - 1)
-                               ? bottom.getWidth()
-                               : (int) ((float) bw * wts[i - 3] / wsum);
-            categoryButtons[i]->setBounds (bottom.removeFromLeft (colW).reduced (2, 0));
+            const int colW = (i == 8) ? row2.getWidth()
+                                      : (int) ((float) bw * wts[i - 3] / wsum);
+            categoryButtons[i]->setBounds (row2.removeFromLeft (colW).reduced (2, 0));
+        }
+
+        // row 3: the six new categories (Clang / Slash / Gust / Flame / Spark /
+        // Shimmer). "Shimmer" is the long one, so it gets a wider cell.
+        const float w3[6] = { 0.93f, 0.93f, 0.86f, 0.93f, 0.93f, 1.42f };
+        float w3sum = 0.0f; for (float wgt : w3) w3sum += wgt;
+        const int bw3 = row3.getWidth();
+        for (int i = 9; i < Randomizer::kNumCategories; ++i)
+        {
+            const int w = (i == Randomizer::kNumCategories - 1)
+                            ? row3.getWidth()
+                            : (int) ((float) bw3 * w3[i - 9] / w3sum);
+            categoryButtons[i]->setBounds (row3.removeFromLeft (w).reduced (2, 0));
         }
     }
 

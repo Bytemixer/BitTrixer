@@ -1,4 +1,4 @@
-/*  This file is part of the RetroForge audio plugin.
+/*  This file is part of the BitTrixer audio plugin.
     Copyright (C) 2026 Bytemixer
     SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -20,18 +20,18 @@
 #include "DSP/SynthEngine.h"
 
 // ============================================================================
-//  RetroForgeProcessor
+//  BitTrixerProcessor
 //  The JUCE AudioProcessor shell. Owns the parameter tree (APVTS) and the
 //  standalone synth engine. processBlock snapshots the parameters once per
 //  block, consumes UI trigger requests, and hands MIDI gating + rendering
 //  to the engine.
 // ============================================================================
 
-class RetroForgeProcessor : public juce::AudioProcessor
+class BitTrixerProcessor : public juce::AudioProcessor
 {
 public:
-    RetroForgeProcessor();
-    ~RetroForgeProcessor() override = default;
+    BitTrixerProcessor();
+    ~BitTrixerProcessor() override = default;
 
     void prepareToPlay (double sampleRate, int samplesPerBlock) override;
     void releaseResources() override {}
@@ -41,7 +41,7 @@ public:
     juce::AudioProcessorEditor* createEditor() override;
     bool hasEditor() const override { return true; }
 
-    const juce::String getName() const override { return "RetroForge"; }
+    const juce::String getName() const override { return "BitTrixer"; }
     bool acceptsMidi() const override { return true; }
     bool producesMidi() const override { return false; }
     bool isMidiEffect() const override { return false; }
@@ -81,5 +81,5 @@ private:
     std::atomic<int> uiGateOffRequests { 0 };
     std::atomic<int> uiOneShotRequests { 0 };
 
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (RetroForgeProcessor)
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (BitTrixerProcessor)
 };

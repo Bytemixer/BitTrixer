@@ -1,4 +1,4 @@
-/*  This file is part of the RetroForge audio plugin.
+/*  This file is part of the BitTrixer audio plugin.
     Copyright (C) 2026 Bytemixer
     SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -15,7 +15,7 @@
 #include "../Params.h"
 
 // ============================================================================
-//  StepLfoPanel — LFO 2 is a step sequencer (the RetroForge twist). A
+//  StepLfoPanel — LFO 2 is a step sequencer (the BitTrixer twist). A
 //  draggable bar-graph sets 2..8 bipolar step levels; routed through the mod
 //  matrix (mapping it to pitch gives an arpeggio, to cutoff a rhythmic
 //  filter, ...). Plus STEPS / RATE / GLIDE controls.
@@ -54,13 +54,16 @@ public:
 
 private:
     // ---- the draggable bar-graph ----
-    struct StepEditor : public juce::Component, private juce::Timer
+    struct StepEditor : public juce::Component,
+                        public juce::SettableTooltipClient,
+                        private juce::Timer
     {
         explicit StepEditor (juce::AudioProcessorValueTreeState& s) : apvts (s)
         {
             countRaw = apvts.getRawParameterValue (Params::id::stepCount);
             for (int i = 0; i < Params::kMaxSteps; ++i)
                 stepRaw[i] = apvts.getRawParameterValue (Params::stepValId (i + 1));
+            setTooltip ("Drag to set each step's level; route through the mod matrix");
             startTimerHz (24);
         }
 

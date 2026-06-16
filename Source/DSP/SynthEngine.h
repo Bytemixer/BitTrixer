@@ -1,4 +1,4 @@
-/*  This file is part of the RetroForge audio plugin.
+/*  This file is part of the BitTrixer audio plugin.
     Copyright (C) 2026 Bytemixer
     SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -39,6 +39,9 @@ class SynthEngine
 public:
     static constexpr int kMaxInstances = 4;
     static constexpr int kSubBlock = 16;
+    // fixed per-trigger voice/noise seed -> live preview and the WAV export are
+    // bit-identical for a given patch (see fire())
+    static constexpr uint32_t kVoiceSeed = 0x9E3779B9u;
 
     void prepare (double sampleRate, int maxBlockSize);
     void reset();
@@ -80,7 +83,7 @@ private:
 
         Envelope envF, envA;
         LFO lfo1;            // LFO 1: classic LFO
-        StepLFO stepLfo;     // LFO 2: step sequencer (the RetroForge twist)
+        StepLFO stepLfo;     // LFO 2: step sequencer (the BitTrixer twist)
         FxChain fxChain;     // per-instance effect chain (retriggers with the sound)
         std::array<Voice, Params::kMaxUnison> voices;
         int numVoices = 1;

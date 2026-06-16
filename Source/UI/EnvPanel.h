@@ -1,4 +1,4 @@
-/*  This file is part of the RetroForge audio plugin.
+/*  This file is part of the BitTrixer audio plugin.
     Copyright (C) 2026 Bytemixer
     SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -20,7 +20,9 @@
 //  the parameters on a slow timer.
 // ============================================================================
 
-class EnvCurveDisplay : public juce::Component, private juce::Timer
+class EnvCurveDisplay : public juce::Component,
+                        public juce::SettableTooltipClient,
+                        private juce::Timer
 {
 public:
     EnvCurveDisplay (juce::AudioProcessorValueTreeState& s,
@@ -30,7 +32,8 @@ public:
         const char* ids[6] = { aId, dId, sId, rId, cId, invId };
         for (int i = 0; i < 6; ++i)
             raw[i] = s.getRawParameterValue (ids[i]);
-        setInterceptsMouseClicks (false, false);
+        setInterceptsMouseClicks (true, false);   // hover-only, so the tooltip can show
+        setTooltip ("Live ADSR shape; faint lines mark the A/D/S boundaries");
         startTimerHz (8);
     }
 
