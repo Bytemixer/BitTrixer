@@ -9,7 +9,7 @@ And while I retain some knowledge and foundations of code,
 I'm not technically a coder, but more of a designer/conceptor/planner.
 
 The VST3 version of this tool was checked through
-Traction's PluginVal under R10 stress testing to
+Tracktion's PluginVal under R10 stress testing to
 make sure it didn't crash or exhibit weird issues, and
 to ensure this plugin should work in most DAWs.
 Still this is provided as is with no warranty.
