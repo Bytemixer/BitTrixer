@@ -10,6 +10,7 @@ were handled by LLM. I'm a musician and recording/mixing/audio engineer.
 And while I retain some knowledge and foundations of code,
 (My A.A. was in computer/information science)
 I'm not technically a coder, but more of a designer/conceptor/planner.
+UI uses JUCE 8 graphical assets/layouts, so no UI or graphical or visual asset used generative AI.
 
 The VST3 version of this tool was checked through
 Tracktion's PluginVal under R10 stress testing to
