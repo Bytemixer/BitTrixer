@@ -1,5 +1,8 @@
 # BitTrixer
 
+<img width="1477" height="1273" alt="BitTrixer" src="https://github.com/user-attachments/assets/1f2c2499-ba46-4e41-9558-b12b5f1f533f" />
+
+
 NOTE/caveat: 
 While I designed and architected the ideas and concepts for the signal flow
 and various sections of the synth, the actual math, calculations, and code
