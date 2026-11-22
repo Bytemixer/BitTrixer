@@ -196,7 +196,7 @@ public:
 
     void resized() override
     {
-        // one row: [wordmark] ... [preset display | Save Load] ... [globals]
+        // one row: [wordmark] [Save Load Browse] [< preset display >] [globals]
         auto b = getLocalBounds().reduced (8, 0);
         const int ctrlH = 26;
         auto row = b.withSizeKeepingCentre (b.getWidth(), ctrlH);
@@ -221,15 +221,15 @@ public:
         // reserve the wordmark area on the left
         row.removeFromLeft (250);
 
-        // Save / Load grouped at the right edge of the preset cluster
-        loadButton.setBounds (row.removeFromRight (54));
-        row.removeFromRight (4);
-        saveButton.setBounds (row.removeFromRight (54));
-        row.removeFromRight (10);
+        // Save / Load / Browse on the left of the preset cluster
+        saveButton.setBounds (row.removeFromLeft (54));
+        row.removeFromLeft (4);
+        loadButton.setBounds (row.removeFromLeft (54));
+        row.removeFromLeft (4);
+        browseButton.setBounds (row.removeFromLeft (66));
+        row.removeFromLeft (10);
 
-        // browse arrows flank the preset display; BROWSE opens the library
-        browseButton.setBounds (row.removeFromRight (66));
-        row.removeFromRight (4);
+        // step arrows flank the preset display
         nextButton.setBounds (row.removeFromRight (24));
         row.removeFromRight (4);
         prevButton.setBounds (row.removeFromLeft (24));

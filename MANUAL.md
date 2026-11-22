@@ -54,8 +54,8 @@ When the amp envelope ends, the voices stop but the **FX chain keeps ringing** u
 Left to right:
 
 - **BIT-TRIXER** wordmark.
-- **Preset display:** the current sound's name. **`<` / `>`** step through the presets in the current preset's folder. **Click the display**, or **BROWSE**, to open the preset library (section 15).
-- **SAVE** opens the save dialog. **LOAD** opens any `.rfxp` file from disk.
+- **SAVE** opens the save dialog. **LOAD** opens any `.rfxp` file from disk. **BROWSE** opens the preset library (section 15).
+- **Preset display:** the current sound's name. **`<` / `>`** step through the presets in the current preset's folder. **Click the display** to open the preset library too.
 - **THEME:** color scheme (section 19).
 - **RATE:** global output sample rate (48 / 44.1 / 22 / 11 / 8 kHz). Lower = lo-fi grit and a smaller exported file.
 - **CH:** MIDI channel (`All`, or `1` to `16`). See section 18.
