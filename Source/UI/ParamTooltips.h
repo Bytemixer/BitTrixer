@@ -65,7 +65,7 @@ namespace ParamTooltips
         if (id == P::vcaDrive)  return "Drive: saturation and grit at the output";
         if (id == P::comp)      return "Compression: density and punch";
         if (id == P::masterVol) return "Master output level";
-        if (id == P::outRate)   return "Output sample rate (lo-fi decimation)";
+        if (id == P::outRate)   return "Lo-fi sample rate (sample-and-hold grit); exports keep the host rate";
 
         // ---- voicing / trigger ----
         if (id == P::uniVoices)  return "Unison: number of stacked detuned voices";

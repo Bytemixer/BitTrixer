@@ -18,12 +18,9 @@
 
 // ============================================================================
 //  WavExporter — offline-renders a patch with a private engine instance (one
-//  timed gate + tail) and writes a stereo WAV at the patch's selected output
-//  rate (8/11/22 kHz ... or host) and bit depth (8 or 16).
-//  The render runs at the host rate so the sample-and-hold grit matches the
-//  live preview; the result is then decimated down to the chosen rate, giving
-//  a small, correctly-tagged file (jsfxr-style) that still sounds identical.
-//  Each render owns its engine, so any thread may render.
+//  timed gate + tail) and writes it as a stereo WAV at the host rate, with the
+//  lo-fi stage's sample-and-hold steps included, in the patch's bit depth
+//  (8 or 16). Each render owns its engine, so any thread may render.
 // ============================================================================
 
 class WavExporter
@@ -34,7 +31,7 @@ public:
 
     void setSampleRate (double sr) { sampleRate = sr > 8000.0 ? sr : 44100.0; }
 
-    // a render converted to the patch's lo-fi output rate and bit depth
+    // a render at the host rate with the patch's bit depth
     struct FileAudio
     {
         juce::AudioBuffer<float> buffer;
@@ -47,11 +44,6 @@ public:
         FileAudio f;
         f.buffer = renderPatch (patch);
         f.rate = sampleRate;
-        if (patch.outRateHz > 0.0f && (double) patch.outRateHz < sampleRate - 1.0)
-        {
-            f.buffer = decimateToRate (f.buffer, sampleRate, (double) patch.outRateHz);
-            f.rate   = (double) patch.outRateHz;
-        }
         f.bits = patch.out8bit ? 8 : 16;
         return f;
     }
@@ -76,40 +68,6 @@ public:
             return false;
 
         return writer->writeFromAudioSampleBuffer (f.buffer, 0, f.buffer.getNumSamples());
-    }
-
-    // Down-sample a host-rate buffer to targetRate by picking the sample-and-hold
-    // plateau values, replaying the same fractional stride LofiStage used to
-    // create them (decimStep = hostRate / targetRate). Because the input is
-    // already piecewise-constant on each plateau, this lands on the true
-    // target-rate samples -- a genuine low-rate buffer, like a jsfxr export.
-    static juce::AudioBuffer<float> decimateToRate (const juce::AudioBuffer<float>& src,
-                                                    double hostRate, double targetRate)
-    {
-        const double step  = hostRate / targetRate;     // mirrors LofiStage decimStep
-        const int    nIn   = src.getNumSamples();
-        const int    chans = src.getNumChannels();
-        const int    nOutMax = (int) std::ceil ((double) nIn / step) + 1;
-
-        juce::AudioBuffer<float> out (chans, nOutMax);
-        out.clear();
-
-        int    outIdx = 0;
-        double count  = 0.0;
-        for (int i = 0; i < nIn && outIdx < nOutMax; ++i)
-        {
-            if (count <= 0.0)
-            {
-                count += step;
-                for (int c = 0; c < chans; ++c)
-                    out.setSample (c, outIdx, src.getSample (c, i));
-                ++outIdx;
-            }
-            count -= 1.0;
-        }
-
-        out.setSize (chans, outIdx, true, true, true);
-        return out;
     }
 
     juce::AudioBuffer<float> renderPatch (const Params::Patch& patchIn,

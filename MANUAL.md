@@ -57,7 +57,7 @@ Left to right:
 - **SAVE** opens the save dialog. **LOAD** opens any `.rfxp` file from disk. **BROWSE** opens the preset library (section 15).
 - **Preset display:** the current sound's name. **`<` / `>`** step through the presets in the current preset's folder. **Click the display** to open the preset library too.
 - **THEME:** color scheme (section 19).
-- **RATE:** global output sample rate (48 / 44.1 / 22 / 11 / 8 kHz). Lower = lo-fi grit and a smaller exported file.
+- **RATE:** lo-fi sample rate (48 / 44.1 / 22 / 11 / 8 kHz). Lower = grittier and crunchier. It is an effect: exported files keep the host rate, so they sound exactly like the preview.
 - **CH:** MIDI channel (`All`, or `1` to `16`). See section 18.
 - **MIDI:** MIDI Learn. Right-click to clear all CC mappings.
 - **EXPORT WAV:** the export panel (section 16).
@@ -261,7 +261,7 @@ The factory bank has 4 presets for each Generate category plus a **Random** fold
 | Level match | Off, Match peak, Match loudness, or Loudness target |
 | Export to | Lists the directory and every file about to be written |
 
-- Files are written at the patch's **output rate** (top-bar RATE) and **bit depth**, so they are small and game-ready.
+- Files are written at the **host sample rate** with the RATE grit baked in, and at the patch's **bit depth** (8-BIT). They play back in any game or media player exactly as the preview sounds.
 - The render is **deterministic**: it matches the live trigger, and a batch never touches your knobs, undo or the VARIATE anchor.
 - **Level match** measures loudness as **LUFS (ungated, loudest 100 ms)**, K-weighted as in ITU BS.1770, which suits short sound effects. True peak never exceeds **-1 dBTP**: a file that would go over is held at the ceiling and flagged.
 - After exporting, the panel lists each file's LUFS, true peak and the gain applied. Existing files are listed and confirmed before they are overwritten.
@@ -301,7 +301,7 @@ Pick a color scheme from **THEME**: **Slate**, **Light**, **Cute**, **Cute Dark*
 - **The Scope** re-renders the whole sound on every change: use it to check attack, length and tail.
 - **PRE effects** put grit, ring or tremolo *into* the filter sweep rather than on top.
 - **Step LFO to pitch** makes arpeggios; **to Formant Vowel** makes a sound talk; **to VCA Level** gates it into stutters and crackles.
-- **Lo-fi on purpose:** RATE 11 kHz with 8-BIT for authentic crunch and a tiny file.
+- **Lo-fi on purpose:** RATE 11 kHz with 8-BIT for authentic crunch.
 - **Game-ready variations:** dial a hero sound, then export Count 6 with **Match loudness**: six siblings at one loudness, named `_0` to `_5`.
 
 ---

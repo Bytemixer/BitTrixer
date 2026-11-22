@@ -62,7 +62,7 @@ audio, with hand-tuned category randomizers and an color customizable front pane
   description), drag to move, in-app save; 80 built-in factory presets
 - **Export panel**: remembered export locations, seeded batches of variations
   (`Name_0..N`), level match by peak or LUFS (ungated, loudest 100 ms) with a -1 dBTP
-  ceiling; files at the patch's lo-fi rate/bit depth, deterministic (export == preview)
+  ceiling; files at the host rate with the lo-fi grit baked in, deterministic (export == preview)
 - **MIDI-learn** (CC mapping) + channel select; **themeable** UI (dark / light / pride / custom)
 
 ## Build
@@ -88,7 +88,7 @@ Source/
   PresetLibrary.h      preset index, metadata, favourites, folders
   PresetManager.h      current preset: load, step, save, browse snapshot
   FactoryBank.h        compiled-in factory presets
-  WavExporter.h        offline render + WAV write at the lo-fi rate/bit depth
+  WavExporter.h        offline render + WAV write (host rate, patch bit depth)
   BatchExporter.h      seeded background batches + level match
   Loudness.h           BS.1770 K-weighted loudness and true peak
   ShadowParams.h       offline copy of the parameters for batches
