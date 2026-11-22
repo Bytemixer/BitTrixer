@@ -41,7 +41,9 @@ public:
 
         folders.onSelect = [this] { refreshList(); updateFolderButtons(); };
         folders.onDropPreset = [this] (const juce::String& id, const juce::String& folder) { movePreset (id, folder); };
-        addAndMakeVisible (folders);
+        folderView.setViewedComponent (&folders, false);
+        folderView.setScrollBarsShown (true, false);
+        addAndMakeVisible (folderView);
 
         list.setModel (this);
         list.setRowHeight (26);
@@ -105,7 +107,7 @@ public:
     {
         before = presets.snapshot();
         lib.rescan();
-        folders.rebuild (lib);
+        rebuildFolders();
         refreshList();
         selectId (presets.getCurrentId());
         show();
@@ -138,7 +140,8 @@ public:
         folderButtons.removeFromLeft (6);
         deleteFolderButton.setBounds (folderButtons);
         left.removeFromBottom (6);
-        folders.setBounds (left);
+        folderView.setBounds (left);
+        layoutFolders();
 
         list.setBounds (b);
 
@@ -167,8 +170,9 @@ public:
 
 private:
     // ---------------------------------------------------------------- folders
-    // the left column: views and folders; user folders accept dropped presets
-    struct FolderList : public juce::Component, public juce::DragAndDropTarget
+    // the left column: views and folders; user folders accept dropped presets.
+    // Sits in a Viewport, which it scrolls while a drag rests near its edge.
+    struct FolderList : public juce::Component, public juce::DragAndDropTarget, private juce::Timer
     {
         enum class Kind { All, Favourites, Recent, Heading, User, Factory };
         struct Node { Kind kind; juce::String label, folder; };
@@ -203,11 +207,11 @@ private:
 
         bool currentIsUserFolder() const { return current().kind == Kind::User && current().folder.isNotEmpty(); }
 
+        int contentHeight() const { return 2 + (int) nodes.size() * kRowH; }
+
         void paint (juce::Graphics& g) override
         {
             g.fillAll (RetroColors::track);
-            g.setColour (RetroColors::panelEdge);
-            g.drawRect (getLocalBounds());
             for (int i = 0; i < (int) nodes.size(); ++i)
             {
                 const auto& n = nodes[(size_t) i];
@@ -247,17 +251,20 @@ private:
             return d.description.toString().startsWith ("user:");
         }
 
-        void itemDragMove (const SourceDetails& d) override
-        {
-            const int i = rowAt (d.localPosition.y);
-            const int hover = i >= 0 && nodes[(size_t) i].kind == Kind::User ? i : -1;
-            if (hover != dropHover) { dropHover = hover; repaint(); }
-        }
+        void itemDragEnter (const SourceDetails&) override { startTimerHz (30); }
 
-        void itemDragExit (const SourceDetails&) override { dropHover = -1; repaint(); }
+        void itemDragMove (const SourceDetails& d) override { setHover (d.localPosition.y); }
+
+        void itemDragExit (const SourceDetails&) override
+        {
+            stopTimer();
+            dropHover = -1;
+            repaint();
+        }
 
         void itemDropped (const SourceDetails& d) override
         {
+            stopTimer();
             const int i = rowAt (d.localPosition.y);
             dropHover = -1;
             repaint();
@@ -269,6 +276,25 @@ private:
         std::function<void (const juce::String& id, const juce::String& folder)> onDropPreset;
 
     private:
+        void setHover (int y)
+        {
+            const int i = rowAt (y);
+            const int hover = i >= 0 && nodes[(size_t) i].kind == Kind::User ? i : -1;
+            if (hover != dropHover) { dropHover = hover; repaint(); }
+        }
+
+        // scrolls the viewport while the dragged preset rests near its top or bottom edge
+        void timerCallback() override
+        {
+            auto* view = findParentComponentOfClass<juce::Viewport>();
+            if (view == nullptr)
+                return;
+            const auto mouse = juce::Desktop::getMousePosition();
+            const auto inView = view->getLocalPoint (nullptr, mouse);
+            if (view->autoScroll (inView.x, inView.y, 28, 10))
+                setHover (getLocalPoint (nullptr, mouse).y);
+        }
+
         static constexpr int kRowH = 26;
         juce::Rectangle<int> rowBounds (int i) const { return { 1, 1 + i * kRowH, getWidth() - 2, kRowH }; }
         int rowAt (int y) const
@@ -494,6 +520,28 @@ private:
     }
 
     // ---------------------------------------------------------------- folder ops
+    void rebuildFolders()
+    {
+        folders.rebuild (lib);
+        layoutFolders();
+        updateFolderButtons();
+    }
+
+    // the folder list fills the view width, less the scrollbar when it overflows
+    void layoutFolders()
+    {
+        const int h = folders.contentHeight();
+        const bool overflows = h > folderView.getHeight();
+        folders.setSize (folderView.getWidth() - (overflows ? folderView.getScrollBarThickness() : 0),
+                         juce::jmax (h, folderView.getHeight()));
+    }
+
+    void paintOverChildren (juce::Graphics& g) override
+    {
+        g.setColour (RetroColors::panelEdge);
+        g.drawRect (folderView.getBounds());
+    }
+
     void updateFolderButtons()
     {
         renameFolderButton.setEnabled (folders.currentIsUserFolder());
@@ -506,7 +554,7 @@ private:
         {
             if (! lib.createFolder (name))
                 return showMessage ("Could not create that folder.");
-            folders.rebuild (lib);
+            rebuildFolders();
             refreshList();
         });
     }
@@ -522,7 +570,7 @@ private:
                 return;
             if (! lib.renameFolder (from, to))
                 return showMessage ("Could not rename the folder. That name may already be in use.");
-            folders.rebuild (lib);
+            rebuildFolders();
             refreshList();
         });
     }
@@ -537,9 +585,8 @@ private:
                  {
                      if (lib.removeFolder (name))
                      {
-                         folders.rebuild (lib);
+                         rebuildFolders();
                          refreshList();
-                         updateFolderButtons();
                      }
                  });
     }
@@ -596,6 +643,7 @@ private:
 
     juce::TextEditor search;
     FolderList folders;
+    juce::Viewport folderView;
     juce::ListBox list;
     juce::Label nameLabel, folderLabel, authorLabel, categoryLabel, descLabel, tagsLabel;
     juce::Label folderValue, categoryValue;

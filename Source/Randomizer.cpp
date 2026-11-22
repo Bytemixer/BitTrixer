@@ -643,7 +643,7 @@ void Randomizer::applyCategory (Category c)
             set (id::envADecay, sweepLen * rnd (0.9f, 1.3f));      // amp holds through the sweep
             set (id::envACurve, rnd (-0.3f, 0.1f));
             const bool invertedDive = chance (0.5f);
-            bool osc2Used = false;
+            bool osc2Used = false, fmUsed = false;
             setChoice (modId (1, "src"), (int) ModSrc::FilterEnv);
             setChoice (modId (1, "dest"), (int) ModDest::AllPitch);
             if (! invertedDive)
@@ -654,7 +654,7 @@ void Randomizer::applyCategory (Category c)
             }
             else
             {
-                // B: inverted dive from base (user-suggested invert flavor)
+                // B: inverted filter env: dive from base and hold the bottom
                 set (id::baseFreq, rndLog (1200.0f, 2600.0f));
                 setBool (id::envFInvert, true);
                 set (modId (1, "depth"), rnd (-0.85f, -0.5f));
@@ -695,6 +695,7 @@ void Randomizer::applyCategory (Category c)
                 }
                 else                                               // FM voice as a pure sine sub
                 {
+                    fmUsed = true;
                     const float ratios[4] = { 1.0f, 1.0f, 1.0f, 1.0f };
                     const float levels[4] = { 0.0f, 0.0f, 0.0f, 0.9f };
                     setFmVoice (0, 0.0f, ratios, levels, rnd (0.4f, 0.7f));
@@ -720,7 +721,7 @@ void Randomizer::applyCategory (Category c)
                 set (id::phaseDepth, rnd (0.4f, 0.9f));
                 set (id::phaseFb, rnd (0.3f, 0.7f));
             }
-            if (chance (0.4f))                                     // metallic FM beam (rides the pitch dive)
+            if (! fmUsed && chance (0.4f))                         // metallic FM beam (rides the pitch dive)
             {
                 fmClang();
                 set (oscId (1, "level"), rnd (0.5f, 0.7f));        // FM leads

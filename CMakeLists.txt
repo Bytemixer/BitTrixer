@@ -8,7 +8,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # JUCE 8: use a local checkout if RF_JUCE_PATH is set, otherwise fetch it.
 set(RF_JUCE_PATH "" CACHE PATH
     "Path to a local JUCE 8 checkout (leave empty to download JUCE automatically)")
-set(RF_JUCE_TAG "8.0.4" CACHE STRING
+set(RF_JUCE_TAG "8.0.13" CACHE STRING
     "JUCE git tag/branch to fetch when RF_JUCE_PATH is empty")
 
 if(RF_JUCE_PATH)

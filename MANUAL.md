@@ -155,7 +155,7 @@ A draggable bar graph of **2 to 8** bipolar steps. Routed to pitch it is an arpe
 Six slots, each **Source to Destination** at a bipolar **Depth**.
 
 - **Sources:** Off, LFO 1, LFO 2, Filt Env, Amp Env.
-- **Destinations** (56, grouped by section):
+- **Destinations** (55, grouped by section):
   - **All Pitch / Base Hz / All PWM / All Fold.** All Pitch is in semitones; Base Hz is a linear frequency sweep.
   - **OSC 1 / OSC 2:** Pitch, Fine, PWM, Fold, Level.
   - **FM:** Pitch, Fine, Out, Feedback, and each operator's Ratio and Level.
@@ -277,6 +277,8 @@ The factory bank has 4 presets for each Generate category plus a **Random** fold
 
 Settings, favourites and recent presets are kept in `BitTrixer.prefs` in your user AppData folder, shared by the plugin and the standalone.
 
+**Known limit:** each running program (the standalone, or a DAW hosting the plugin) keeps its own copy of these settings. If two run at once, the one that saves last overwrites the other's changes to favourites, recent presets and export locations. Make those changes in one program at a time.
+
 ---
 
 ## 18. MIDI
@@ -289,7 +291,7 @@ Settings, favourites and recent presets are kept in `BitTrixer.prefs` in your us
 
 ## 19. Themes
 
-Pick a color scheme from **THEME**: several dark schemes plus light, Pride, Pride Light and a **Custom** scheme with eight editable colors. Themes are purely visual.
+Pick a color scheme from **THEME**: **Slate**, **Light**, **Cute**, **Cute Dark**, **Pride**, **Pride Light**, or **Custom** with eight editable colors. Themes are purely visual.
 
 ---
 

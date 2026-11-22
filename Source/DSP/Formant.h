@@ -66,7 +66,6 @@ public:
         }
     }
 
-    // single-channel variant for the per-voice pre-filter path
     // formant k (0..2) in Hz for vowel01, interpolated between the two nearest vowels
     static float formantHz (float vowel01, int k) noexcept
     {
@@ -77,6 +76,7 @@ public:
         return kFormants[i0][k] + fr * (kFormants[i0 + 1][k] - kFormants[i0][k]);
     }
 
+    // single-channel variant for the per-voice pre-filter path
     void processMono (float* buf, int n) noexcept
     {
         for (int s = 0; s < n; ++s)

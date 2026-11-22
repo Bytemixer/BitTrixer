@@ -65,11 +65,20 @@ public:
         tagsEditor.setText (cur != nullptr ? cur->meta.tags.joinIntoString (", ") : juce::String(), false);
 
         // folder choices: Unsorted, every user folder, and the category's folder
+        // the category's folder takes the spelling of a matching user or factory folder
         const auto& cat = presets.getSourceCategory();
-        const auto categoryFolder = cat.substring (0, 1).toUpperCase() + cat.substring (1).toLowerCase();
+        const auto userFolders = lib.userFolders();
+        const auto factoryFolders = lib.factoryFolders();
+        auto categoryFolder = cat.substring (0, 1).toUpperCase() + cat.substring (1).toLowerCase();
+        for (const auto* names : { &userFolders, &factoryFolders })
+            if (const int i = names->indexOf (categoryFolder, true); i >= 0)
+            {
+                categoryFolder = (*names)[i];
+                break;
+            }
         folderChoices.clear();
         folderChoices.add ({});
-        folderChoices.addArray (lib.userFolders());
+        folderChoices.addArray (userFolders);
         if (categoryFolder.isNotEmpty())
             folderChoices.addIfNotAlreadyThere (categoryFolder);
         folderBox.clear (juce::dontSendNotification);

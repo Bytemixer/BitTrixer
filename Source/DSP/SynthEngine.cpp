@@ -439,13 +439,8 @@ SynthEngine::Instance* SynthEngine::findFreeInstance()
 
 void SynthEngine::fire (int noteTag, float overrideHz, int gateSamples)
 {
-    // Deterministic voice seed: every trigger of a patch -- AND the offline WAV
-    // export -- produces the identical noise / unison realization, so the
-    // exported file matches the live preview exactly. (The live engine's RNG
-    // used to seed this, which drifted with history; the export ran a fresh
-    // engine and never matched. Per-shot variation is opt-in via Auto-Variate,
-    // which still draws from the live RNG below.)
-    // With nothing sounding, the lo-fi hold also restarts, as in a fresh export.
+    // starts an instance with the fixed voice seed; Auto-Variate offsets come
+    // from the live RNG. With nothing sounding, the lo-fi hold restarts first.
     if (! anyActive())
         lofi.reset();
     findFreeInstance()->start (patch, noteTag, overrideHz, gateSamples,

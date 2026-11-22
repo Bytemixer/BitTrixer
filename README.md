@@ -47,7 +47,7 @@ audio, with hand-tuned category randomizers and an color customizable front pane
 - **Filter**: resonant ladder LPF (2/4-pole) with invertible envelope amount; switchable HPF
 - **2 ADSR envelopes** (filter + amp): variable curve shape, invertible
 - **LFO 1** (classic) + **LFO 2 step sequencer** (draggable 2–8 steps, glide, skew)
-- **6-slot, 56-destination mod matrix** grouped by section (oscillators, FM, noise,
+- **6-slot, 55-destination mod matrix** grouped by section (oscillators, FM, noise,
   filter, amp, LFOs, and every FX parameter)
 - **7-effect chain**, drag-reorderable, with per-effect pre/post-filter routing
   (Crush · Phaser · Flanger · Ring Mod · Tremolo · Formant · Delay)
@@ -71,7 +71,7 @@ cmake -S . -B build -G "Visual Studio 17 2022" -DRF_JUCE_PATH=G:/JUCE
 cmake --build build --config Release --parallel
 ```
 
-Leave `RF_JUCE_PATH` empty to fetch JUCE 8.0.4 automatically.
+Leave `RF_JUCE_PATH` empty to fetch JUCE 8.0.13 automatically.
 Artefacts land in `build/BitTrixer_artefacts/Release/` (VST3 + Standalone).
 Every `.rfxp` under `Presets/Factory/<Folder>/` is compiled in as a factory preset
 (file names must be unique across folders).
