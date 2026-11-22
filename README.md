@@ -1,6 +1,7 @@
 # BitTrixer
 
-<img width="1477" height="1273" alt="BitTrixer" src="https://github.com/user-attachments/assets/1f2c2499-ba46-4e41-9558-b12b5f1f533f" />
+<img width="1477" height="1273" alt="image" src="https://github.com/user-attachments/assets/c920c507-0fba-4fe9-8bbb-3518ad0ed7ad" />
+
 
 
 NOTE/caveat: 
