@@ -151,7 +151,7 @@ void RetroLookAndFeel::drawToggleButton (juce::Graphics& g, juce::ToggleButton& 
     g.fillEllipse (thumbX - thumbR, sw.getCentreY() - thumbR, thumbR * 2.0f, thumbR * 2.0f);
 
     g.setColour (highlighted ? text.brighter() : text);
-    g.setFont (juce::Font (juce::FontOptions (12.0f)));
+    g.setFont (juce::Font (juce::FontOptions (12.0f * fontScale())));
     g.drawText (b.getButtonText(),
                 bounds.withTrimmedLeft (swW + 8.0f).toNearestInt(),
                 juce::Justification::centredLeft);
@@ -193,15 +193,15 @@ void RetroLookAndFeel::drawComboBox (juce::Graphics& g, int width, int height, b
 juce::Font RetroLookAndFeel::getLabelFont (juce::Label& l)
 {
     juce::ignoreUnused (l);
-    return juce::Font (juce::FontOptions (11.5f));
+    return juce::Font (juce::FontOptions (11.5f * fontScale()));
 }
 
 juce::Font RetroLookAndFeel::getComboBoxFont (juce::ComboBox&)
 {
-    return juce::Font (juce::FontOptions (12.0f));
+    return juce::Font (juce::FontOptions (12.0f * fontScale()));
 }
 
 juce::Font RetroLookAndFeel::getPopupMenuFont()
 {
-    return juce::Font (juce::FontOptions (13.0f));
+    return juce::Font (juce::FontOptions (13.0f * fontScale()));
 }

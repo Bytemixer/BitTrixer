@@ -17,14 +17,13 @@
 #include "DSP/SynthEngine.h"
 
 // ============================================================================
-//  WavExporter — offline-renders the current patch with a private engine
-//  instance (one timed gate + tail) and writes a stereo WAV at the patch's
-//  selected output rate (8/11/22 kHz ... or host) and bit depth (8 or 16).
+//  WavExporter — offline-renders a patch with a private engine instance (one
+//  timed gate + tail) and writes a stereo WAV at the patch's selected output
+//  rate (8/11/22 kHz ... or host) and bit depth (8 or 16).
 //  The render runs at the host rate so the sample-and-hold grit matches the
 //  live preview; the result is then decimated down to the chosen rate, giving
 //  a small, correctly-tagged file (jsfxr-style) that still sounds identical.
-//  Designed for the standalone "design a sound, drop it into the game"
-//  workflow. Message-thread only; the render itself takes milliseconds.
+//  Each render owns its engine, so any thread may render.
 // ============================================================================
 
 class WavExporter
@@ -35,46 +34,32 @@ public:
 
     void setSampleRate (double sr) { sampleRate = sr > 8000.0 ? sr : 44100.0; }
 
-    void exportAsync (const Params::Patch& patch)
+    // a render converted to the patch's lo-fi output rate and bit depth
+    struct FileAudio
     {
-        pendingPatch = patch;
-        chooser = std::make_unique<juce::FileChooser> (
-            "Export WAV",
-            juce::File::getSpecialLocation (juce::File::userDocumentsDirectory)
-                .getChildFile ("bittrixer_sfx.wav"),
-            "*.wav");
+        juce::AudioBuffer<float> buffer;
+        double rate = 44100.0;
+        int bits = 16;
+    };
 
-        chooser->launchAsync (juce::FileBrowserComponent::saveMode
-                            | juce::FileBrowserComponent::canSelectFiles
-                            | juce::FileBrowserComponent::warnAboutOverwriting,
-            [this] (const juce::FileChooser& fc)
-            {
-                auto file = fc.getResult();
-                if (file == juce::File())
-                    return;
-                renderToFile (pendingPatch, file.withFileExtension ("wav"));
-            });
-    }
-
-    bool renderToFile (const Params::Patch& patch, const juce::File& file)
+    FileAudio renderForFile (const Params::Patch& patch)
     {
-        auto buffer = renderPatch (patch);
-        if (buffer.getNumSamples() == 0)
-            return false;
-
-        // Match the file format to the patch's lo-fi output settings so the
-        // exported file IS the chosen rate / bit depth -- small and correctly
-        // tagged -- instead of a fat host-rate / 16-bit container. The render
-        // already baked the sample-and-hold grit in at host rate; decimating
-        // it back down recovers those exact staircase values, so the small
-        // file still sounds like the live preview.
-        double fileRate = sampleRate;
+        FileAudio f;
+        f.buffer = renderPatch (patch);
+        f.rate = sampleRate;
         if (patch.outRateHz > 0.0f && (double) patch.outRateHz < sampleRate - 1.0)
         {
-            buffer   = decimateToRate (buffer, sampleRate, (double) patch.outRateHz);
-            fileRate = (double) patch.outRateHz;
+            f.buffer = decimateToRate (f.buffer, sampleRate, (double) patch.outRateHz);
+            f.rate   = (double) patch.outRateHz;
         }
-        const int bitsPerSample = patch.out8bit ? 8 : 16;
+        f.bits = patch.out8bit ? 8 : 16;
+        return f;
+    }
+
+    static bool writeWav (const FileAudio& f, const juce::File& file)
+    {
+        if (f.buffer.getNumSamples() == 0)
+            return false;
 
         file.deleteFile();
         juce::WavAudioFormat wav;
@@ -84,14 +69,13 @@ public:
 
         auto writer = wav.createWriterFor (stream,
             juce::AudioFormatWriterOptions{}
-                .withSampleRate (fileRate)
-                .withNumChannels (buffer.getNumChannels())
-                .withBitsPerSample (bitsPerSample));
+                .withSampleRate (f.rate)
+                .withNumChannels (f.buffer.getNumChannels())
+                .withBitsPerSample (f.bits));
         if (writer == nullptr)
             return false;
 
-        writer->writeFromAudioSampleBuffer (buffer, 0, buffer.getNumSamples());
-        return true;
+        return writer->writeFromAudioSampleBuffer (f.buffer, 0, f.buffer.getNumSamples());
     }
 
     // Down-sample a host-rate buffer to targetRate by picking the sample-and-hold
@@ -172,6 +156,4 @@ public:
 
 private:
     double sampleRate = 44100.0;
-    Params::Patch pendingPatch;
-    std::unique_ptr<juce::FileChooser> chooser;
 };

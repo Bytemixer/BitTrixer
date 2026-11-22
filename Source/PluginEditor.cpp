@@ -73,12 +73,11 @@ BitTrixerEditor::BitTrixerEditor (BitTrixerProcessor& p)
 
     header.onExport = [this]
     {
-        const double sr = proc.getSampleRate();
-        wavExporter.setSampleRate (sr > 8000.0 ? sr : 44100.0);
-        wavExporter.exportAsync (proc.snapshotPatch());
+        exportPanel.open (presetManager.getCurrentName(), proc.getSampleRate());
     };
 
-    header.onAbout = [this]
+    header.onSettings = [this] { settingsPanel.open(); };
+    settingsPanel.onAbout = [this]
     {
         juce::AlertWindow::showMessageBoxAsync (
             juce::MessageBoxIconType::InfoIcon,
@@ -111,6 +110,10 @@ BitTrixerEditor::BitTrixerEditor (BitTrixerProcessor& p)
     };
     themeEditor.setVisible (false);
     addChildComponent (themeEditor);       // fullscreen overlay (unscaled)
+    exportPanel.setVisible (false);
+    addChildComponent (exportPanel);
+    settingsPanel.setVisible (false);
+    addChildComponent (settingsPanel);
     themeManager.onThemeChanged();   // apply persisted theme on open
 
     header.setPresetName (presetManager.getCurrentName());
@@ -582,6 +585,8 @@ void BitTrixerEditor::drawSignalTraces (juce::Graphics& g)
 void BitTrixerEditor::resized()
 {
     themeEditor.setBounds (getLocalBounds());
+    exportPanel.setBounds (getLocalBounds());
+    settingsPanel.setBounds (getLocalBounds());
 
     // the layout is authored at a fixed design size; scale the content holder
     // to the actual window (aspect ratio is locked, so the scale is uniform)

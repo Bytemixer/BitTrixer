@@ -83,4 +83,8 @@ public:
     juce::Font getLabelFont (juce::Label&) override;
     juce::Font getComboBoxFont (juce::ComboBox&) override;
     juce::Font getPopupMenuFont() override;
+
+protected:
+    // multiplies every text size this LookAndFeel sets
+    virtual float fontScale() const { return 1.0f; }
 };

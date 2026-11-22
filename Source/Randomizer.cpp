@@ -293,51 +293,7 @@ void Randomizer::compactModMatrix()
 //  variate — perturb the current patch (editable, undo-able variation)
 // ----------------------------------------------------------------------------
 
-std::vector<Randomizer::Nudge> Randomizer::perturbTargets (bool includeLoudnessAndLength) const
-{
-    std::vector<Nudge> t;
-    for (int i = 1; i <= kNumOscs; ++i)
-    {
-        t.push_back ({ oscId (i, "fine"), 1.0f });
-        t.push_back ({ oscId (i, "pwm"),  1.0f });
-        t.push_back ({ oscId (i, "fold"), 0.7f });
-    }
-    t.push_back ({ id::baseFreq,   0.6f });
-    t.push_back ({ id::noiseColor, 1.0f });
-    for (int j = 1; j <= kNumLfos; ++j)
-        t.push_back ({ lfoId (j, "rate"), 0.8f });
-    for (int k = 1; k <= kNumModSlots; ++k)
-        t.push_back ({ modId (k, "depth"), 0.5f });
-    t.push_back ({ id::lpfCutoff, 0.6f });
-    t.push_back ({ id::lpfRes,    0.6f });
-    t.push_back ({ id::lpfEnv,    0.5f });
-    t.push_back ({ id::envFDecay, 0.5f });
-    t.push_back ({ id::envADecay, 0.5f });
-    t.push_back ({ id::uniDetune, 0.8f });
-
-    // FM voice (3rd generator slot): operator ratios/levels + feedback
-    for (int i = 1; i <= 4; ++i)
-    {
-        t.push_back ({ fmOpId (i, "ratio"), 0.5f });
-        t.push_back ({ fmOpId (i, "level"), 0.6f });
-    }
-    t.push_back ({ id::fmFeedback, 0.6f });
-
-    if (includeLoudnessAndLength)
-    {
-        for (int i = 1; i <= kNumOscs; ++i)
-            t.push_back ({ oscId (i, "level"), 0.5f });
-        t.push_back ({ id::noiseLevel,  0.5f });
-        t.push_back ({ id::vcaDrive,    0.5f });
-        t.push_back ({ id::envFAttack,  0.5f });
-        t.push_back ({ id::envARelease, 0.5f });
-        t.push_back ({ id::pj1Amt,      0.4f });
-        t.push_back ({ id::pj2Amt,      0.4f });
-    }
-    return t;
-}
-
-void Randomizer::refreshAnchorIfNeeded (const std::vector<Nudge>& targets)
+void Randomizer::refreshAnchorIfNeeded (const std::vector<Variation::Nudge>& targets)
 {
     if (! anchorDirty.exchange (false) && ! anchor.empty())
         return;
@@ -348,42 +304,42 @@ void Randomizer::refreshAnchorIfNeeded (const std::vector<Nudge>& targets)
             anchor[t.pid] = p->getValue();
 }
 
-void Randomizer::applyNudges (const std::vector<Nudge>& targets, float baseScale,
+void Randomizer::applyNudges (const std::vector<Variation::Nudge>& targets, float baseScale,
                               bool fromAnchor)
 {
     const float amt = apvts.getRawParameterValue (id::autoVarAmt)->load();
     const juce::ScopedValueSetter<bool> guard (selfChanging, true);
 
-    for (const auto& t : targets)
-    {
-        if (auto* p = apvts.getParameter (t.pid))
+    Variation::apply (targets, baseScale, amt, random,
+        [this, fromAnchor] (const juce::String& pid, float& base)
         {
-            float base = p->getValue();                  // normalized 0..1
+            auto* p = apvts.getParameter (pid);
+            if (p == nullptr)
+                return false;
+            base = p->getValue();
             if (fromAnchor)
             {
-                const auto it = anchor.find (t.pid);
+                const auto it = anchor.find (pid);
                 if (it != anchor.end())
                     base = it->second;
             }
-
-            // triangular distribution: extremes are rare, centre is likely
-            const float r = 0.5f * ((random.nextFloat() * 2.0f - 1.0f)
-                                  + (random.nextFloat() * 2.0f - 1.0f));
-            const float nv = juce::jlimit (0.0f, 1.0f,
-                                           base + r * amt * baseScale * t.scale);
-            p->setValueNotifyingHost (nv);
-        }
-    }
+            return true;
+        },
+        [this] (const juce::String& pid, float v)
+        {
+            if (auto* p = apvts.getParameter (pid))
+                p->setValueNotifyingHost (v);
+        });
 }
 
 void Randomizer::variate()
 {
     // anchored: every press is a fresh sibling of the SAME sound, so it can
     // never random-walk out of its family
-    const auto targets = perturbTargets (true);
+    const auto targets = Variation::targets (true);
     refreshAnchorIfNeeded (targets);
     snapshotForUndo();
-    applyNudges (targets, 0.12f, true);
+    applyNudges (targets, Variation::kVariateScale, true);
     anchorDirty.store (false);   // our own writes must not invalidate the anchor
 }
 
@@ -391,7 +347,7 @@ void Randomizer::mutate()
 {
     // compounding explorer: walks from wherever the sound currently is
     snapshotForUndo();
-    applyNudges (perturbTargets (true), 0.4f, false);
+    applyNudges (Variation::targets (true), Variation::kMutateScale, false);
     anchorDirty.store (true);    // mutate moves the family itself
 }
 

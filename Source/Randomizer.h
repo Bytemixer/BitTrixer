@@ -16,6 +16,7 @@
 #include <map>
 #include <vector>
 #include "Params.h"
+#include "Variation.h"
 
 // ============================================================================
 //  Randomizer — sfxr/bfxr-style patch generation, message-thread only.
@@ -89,8 +90,6 @@ public:
     void undo();
 
 private:
-    struct Nudge { juce::String pid; float scale; };
-
     void parameterChanged (const juce::String&, float) override
     {
         // a change we did not make ourselves = new sound family
@@ -100,9 +99,8 @@ private:
 
     void snapshotForUndo();
     void resetToNeutral();
-    std::vector<Nudge> perturbTargets (bool includeLoudnessAndLength) const;
-    void applyNudges (const std::vector<Nudge>& targets, float baseScale, bool fromAnchor);
-    void refreshAnchorIfNeeded (const std::vector<Nudge>& targets);
+    void applyNudges (const std::vector<Variation::Nudge>& targets, float baseScale, bool fromAnchor);
+    void refreshAnchorIfNeeded (const std::vector<Variation::Nudge>& targets);
 
     // real-value setters (converted through each parameter's range)
     void set (const juce::String& paramId, float realValue);

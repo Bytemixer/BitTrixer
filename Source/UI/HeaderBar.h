@@ -16,7 +16,7 @@
 
 // ============================================================================
 //  HeaderBar — title, current preset name, and the file actions:
-//  Save / Load preset, Export WAV, About (AGPL notice).
+//  Save / Load preset, Export WAV, Settings.
 // ============================================================================
 
 class HeaderBar : public juce::Component
@@ -79,7 +79,7 @@ public:
         initButton (saveButton,   "SAVE",       onSave);
         initButton (loadButton,   "LOAD",       onLoad);
         initButton (exportButton, "EXPORT WAV", onExport);
-        initButton (aboutButton,  "ABOUT",      onAbout);
+        initButton (settingsButton, "SETTINGS", onSettings);
         exportButton.setColour (juce::TextButton::buttonColourId, RetroColors::accentDark);
 
         midiButton.setButtonText ("MIDI");
@@ -198,7 +198,7 @@ public:
         auto row = b.withSizeKeepingCentre (b.getWidth(), ctrlH);
 
         // right cluster: global settings, right-aligned, each combo labelled
-        aboutButton.setBounds (row.removeFromRight (58));
+        settingsButton.setBounds (row.removeFromRight (72));
         row.removeFromRight (6);
         exportButton.setBounds (row.removeFromRight (90));
         row.removeFromRight (10);
@@ -236,7 +236,7 @@ public:
         presetLabel.setBounds (presetBounds.reduced (12, 3));
     }
 
-    std::function<void()> onSave, onLoad, onExport, onAbout, onMidiLearn, onMidiClear,
+    std::function<void()> onSave, onLoad, onExport, onSettings, onMidiLearn, onMidiClear,
                           onPresetPrev, onPresetNext, onPresetMenu;
     std::function<void (int)> onThemeSelected, onMidiChannel;
 
@@ -246,7 +246,7 @@ private:
     juce::Label themeLabel, rateLabel, chanLabel;
     juce::ComboBox rateBox;
     std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> rateAtt;
-    juce::TextButton saveButton, loadButton, exportButton, aboutButton;
+    juce::TextButton saveButton, loadButton, exportButton, settingsButton;
     juce::TextButton prevButton, nextButton;
     ClickButton midiButton;
     juce::ComboBox midiChanBox;

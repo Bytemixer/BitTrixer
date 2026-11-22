@@ -14,10 +14,11 @@
 #include "PluginProcessor.h"
 #include "Randomizer.h"
 #include "PresetManager.h"
-#include "WavExporter.h"
 #include "UI/RetroLookAndFeel.h"
 #include "UI/Theme.h"
 #include "UI/ThemeEditor.h"
+#include "UI/ExportPanel.h"
+#include "UI/SettingsPanel.h"
 #include "UI/HeaderBar.h"
 #include "UI/GeneratorsPanel.h"
 #include "UI/PitchPanel.h"
@@ -68,7 +69,6 @@ private:
     ThemeManager themeManager;
     Randomizer randomizer;
     PresetManager presetManager;
-    WavExporter wavExporter;
 
     // the whole UI lives at a fixed "design" resolution inside this holder,
     // which is scaled by a transform so everything resizes proportionally
@@ -97,6 +97,8 @@ private:
     ScopePanel scopePanel;
     FxPanel fxPanel;
     ThemeEditor themeEditor { themeManager };
+    ExportPanel exportPanel { proc.apvts, themeManager.settings() };
+    SettingsPanel settingsPanel { themeManager.settings() };
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (BitTrixerEditor)
 };

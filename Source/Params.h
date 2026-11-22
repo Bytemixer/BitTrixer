@@ -383,12 +383,17 @@ namespace Params
     struct Cache
     {
         using APVTS = juce::AudioProcessorValueTreeState;
+        using Lookup = std::function<std::atomic<float>* (const juce::String&)>;
 
         explicit Cache (APVTS& s)
+            : Cache (Lookup ([&s] (const juce::String& pid) { return s.getRawParameterValue (pid); })) {}
+
+        // binds every value through lookup (the live APVTS or an offline copy)
+        explicit Cache (const Lookup& lookup)
         {
-            auto get = [&s] (const juce::String& pid)
+            auto get = [&lookup] (const juce::String& pid)
             {
-                auto* p = s.getRawParameterValue (pid);
+                auto* p = lookup (pid);
                 jassert (p != nullptr);
                 return p;
             };

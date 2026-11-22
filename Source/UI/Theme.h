@@ -289,6 +289,9 @@ public:
 
     std::function<void()> onThemeChanged;
 
+    // the shared per-user settings file (theme, export folders)
+    juce::PropertiesFile& settings() noexcept { return *props; }
+
 private:
     void loadCustom()
     {
