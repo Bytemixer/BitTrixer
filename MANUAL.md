@@ -1,10 +1,10 @@
-# BitTrixer — User Manual
+# BitTrixer User Manual (v0.2.0)
 
-**BitTrixer** is a retro game **SFX synthesizer**: a compact subtractive + FM synth built for designing 8/16‑bit arcade sound effects — coins, lasers, explosions, power‑ups, sword swooshes, zaps, UI blips — and exporting them as ready‑to‑drop WAV files. It is inspired by sfxr / bfxr / ChipTone, but with a full modern voice underneath: two oscillators, a 4‑operator FM voice, noise, a resonant filter, two envelopes, two LFOs (one a step sequencer), a 6‑slot modulation matrix, and a reorderable 7‑effect chain.
+**BitTrixer** is a retro game **SFX synthesizer**: a compact subtractive and FM synth for designing 8/16-bit arcade sound effects (coins, lasers, explosions, power-ups, sword swooshes, zaps, voices, fire, UI blips) and exporting them as ready-to-drop WAV files. It is inspired by sfxr, bfxr and ChipTone, with a full modern voice underneath: two oscillators, a 4-operator FM voice, noise, a resonant filter, two envelopes, two LFOs (one a step sequencer), a 6-slot modulation matrix and a reorderable 7-effect chain.
 
-- **Formats:** VST3 + Standalone (Windows; built with JUCE 8).
-- **In one line:** dial a sound (or hit a category/RANDOM button), audition it, then export a small lo‑fi WAV — or generate subtle variations for a whole batch.
-- **License:** GNU AGPL v3.0 or later. Copyright © 2026 Bytemixer.
+- **Formats:** VST3 and Standalone (Windows; built with JUCE 8).
+- **In one line:** dial a sound (or press a category or RANDOM), audition it, then export a small lo-fi WAV, or a seeded batch of level-matched variations.
+- **License:** GNU AGPL v3.0 or later. Copyright (C) 2026 Bytemixer.
 
 ---
 
@@ -13,15 +13,19 @@
 ```
   OSC 1  ┐
   OSC 2  ┤
-  FM     ┼ ──► (mix) ──► FILTER (LP + HP) ──► VCA (drive ► comp) ──► FX CHAIN ──► master (gain ► lo‑fi) ──► out
-  NOISE  ┘                 ▲                      ▲                   ▲
-                           │                      │                   │
-                 FILTER ENV, AMP ENV, LFO 1, LFO 2 (step) ─── routed by the MOD MATRIX
+  FM     ┼ ──► (mix) ──► FILTER (LP + HP) ──► VCA (drive) ──► FX CHAIN ──► master ──► out
+  NOISE  ┘                 ▲                      ▲                ▲
+                           │                      │                │
+                 FILTER ENV, AMP ENV, LFO 1, LFO 2 (step), routed by the MOD MATRIX
+
+  master = gain ► soft clip ► compression ► lo-fi (rate reduction + 8-bit)
 ```
 
-Every sound is **triggered** as a one‑shot (or held/looped). The two envelopes, two LFOs and the mod matrix shape it over the length of the shot. Per‑effect, any of the buffer‑free FX can be moved **before** the filter (pre‑filter) instead of after.
+Every sound is **triggered** as a one-shot (or held or looped). The envelopes, LFOs and mod matrix shape it over the length of the shot. Any of the five buffer-free effects can run **before** the filter (PRE) instead of after.
 
-**Determinism:** for a given patch, every trigger — and the WAV export — renders **identically** (fixed voice seed + clean envelope state). The only intentional variation comes from **Auto‑Variate** or a free‑running (non‑retriggered) LFO. This is what makes "what you hear is what you export" true.
+When the amp envelope ends, the voices stop but the **FX chain keeps ringing** until it falls silent (delay echoes, flanger swirl), up to 6 seconds with a short fade.
+
+**Determinism:** for a given patch, every trigger and the WAV export render **identically**: the voices, noise and LFO 1 start from the same state on every trigger. The only intended variation comes from **AUTO** (auto-variate). At host buffer sizes that are not a multiple of 16 samples, sample-and-hold modulation can land up to a third of a millisecond differently in the live preview; the export is unaffected.
 
 ---
 
@@ -29,19 +33,19 @@ Every sound is **triggered** as a one‑shot (or held/looped). The two envelopes
 
 **VST3:** copy `BitTrixer.vst3` into your VST3 folder (Windows: `C:\Program Files\Common Files\VST3\`), then rescan in your DAW.
 
-**Standalone:** run `BitTrixer.exe`. Use its menu bar (top of the window, outside the plugin UI) to pick your audio device and sample rate.
+**Standalone:** run `BitTrixer.exe`. Its **Options** menu (top of the window, outside the plugin UI) picks the audio device and sample rate.
 
-**Building from source:** it's a JUCE 8 / CMake project (AGPL). `cmake -B build && cmake --build build --config Release`. JUCE is fetched automatically (or point `RF_JUCE_PATH` at a local checkout).
+**Building from source:** a JUCE 8 / CMake project (AGPL). `cmake -B build && cmake --build build --config Release`. JUCE is fetched automatically, or point `RF_JUCE_PATH` at a local checkout. The factory presets in `Presets/Factory` are compiled in.
 
 ---
 
-## 3. Quick start — make a sound and export it
+## 3. Quick start: make a sound and export it
 
-1. Click a **category** button at the bottom (e.g. **LASER**, **EXPLODE**, **SHIMMER**). A fresh sound of that archetype is generated and auditioned.
-2. Press **RANDOM** for more of the same archetype, or hit the **Trigger** button (in the TRIGGER panel) to re‑audition.
-3. Tweak knobs to taste — the **Scope** (center) re‑renders the whole sound as you edit.
-4. Happy with it? **EXPORT WAV** (top bar) → choose a name → done. The file is written at the patch's chosen output rate / bit depth (small, game‑ready).
-5. Want a batch of subtle variations? See §14 (Variate).
+1. Click a **category** button in the GENERATE panel (e.g. **LASER**, **EXPLODE**, **VOICE**). A fresh sound of that type is generated and played.
+2. Press it again for another take, or **TRIGGER** (in the TRIGGER panel) to hear it again.
+3. Tweak knobs to taste. The **Scope** re-renders the whole sound as you edit.
+4. **EXPORT WAV** (top bar) opens the export panel: type a file name, pick a directory, press **EXPORT**.
+5. Want a set of variations? Set **Count** above 1 in the export panel (see section 16).
 
 ---
 
@@ -49,17 +53,17 @@ Every sound is **triggered** as a one‑shot (or held/looped). The two envelopes
 
 Left to right:
 
-- **BIT‑TRIXER** wordmark.
-- **Preset display** (center): shows the current patch name. **`<` / `>`** step through presets; **click the display** to open a browse menu (categories are submenus — see §15).
-- **SAVE / LOAD** — write/read a `.rfxp` preset file.
-- **CH** — MIDI channel to listen on (`All`, or `1`–`16`). See §17.
-- **MIDI** — MIDI‑Learn (see §17). Right‑click to clear all CC mappings.
-- **RATE** — global output sample rate (48 / 44.1 / 22 / 11 / 8 kHz). Lower = lo‑fi grit, and a smaller exported file.
-- **THEME** — color scheme (see §18).
-- **EXPORT WAV** — render the current patch to a WAV file.
-- **ABOUT** — version + license notice.
+- **BIT-TRIXER** wordmark.
+- **Preset display:** the current sound's name. **`<` / `>`** step through the presets in the current preset's folder. **Click the display**, or **BROWSE**, to open the preset library (section 15).
+- **SAVE** opens the save dialog. **LOAD** opens any `.rfxp` file from disk.
+- **THEME:** color scheme (section 19).
+- **RATE:** global output sample rate (48 / 44.1 / 22 / 11 / 8 kHz). Lower = lo-fi grit and a smaller exported file.
+- **CH:** MIDI channel (`All`, or `1` to `16`). See section 18.
+- **MIDI:** MIDI Learn. Right-click to clear all CC mappings.
+- **EXPORT WAV:** the export panel (section 16).
+- **SETTINGS:** export locations and About (section 17).
 
-Hover any control for a one‑line tooltip.
+Hover any control for a one-line tooltip.
 
 ---
 
@@ -68,39 +72,38 @@ Hover any control for a one‑line tooltip.
 Three tonal sources plus noise, mixed before the filter.
 
 ### OSC 1 / OSC 2
-Classic subtractive oscillators.
-- **Wave** — Sine, Triangle, Square, Saw, Rev Saw, SuperSaw, Tan, Breaker.
-- **Tune** — coarse pitch (semitones).
-- **Fine** — fine pitch (cents).
-- **PWM** — pulse width / square duty cycle.
-- **Fold** — wavefolder; adds harmonics by folding the wave.
-- **Level** — this oscillator's level in the mix.
-- **Sync** — hard‑sync this oscillator to OSC 1 (OSC 1 is always the master).
+- **Wave:** Sine, Triangle, Square, Saw, Rev Saw, SuperSaw, Tan, Breaker.
+- **Tune:** coarse pitch (semitones). **Fine:** fine pitch (cents).
+- **PWM:** pulse width. **Fold:** wavefolder, adds harmonics.
+- **Level:** this oscillator's level in the mix.
+- **Sync:** hard-sync OSC 2 to OSC 1 (OSC 1 is always the master).
 
-### FM (4‑operator FM voice)
-The 3rd generator slot is a **4‑operator FM synth** (sine operators), great for bells, coins, metallic clangs and inharmonic timbres.
-- **Enable** + **Algorithm** — choose one of **12 operator routings** (the 8 classic YM2612/Genesis algorithms plus 4 extras). The small **glyph** diagrams the selected algorithm: boxes are operators, highlighted ones are carriers.
-- **Feedback** — operator‑1 feedback: adds brightness, then collapses toward noise at high settings.
-- **Op 1–4 Ratio / Level** — each operator's frequency ratio (harmonic of the note) and level (carrier gain or modulation depth, depending on the algorithm).
-- The FM voice reuses OSC 3's **Pitch / Fine / Level** as its transpose and output level.
+### FM (4-operator FM voice)
+The third generator is a **4-operator FM synth** (sine operators): bells, coins, metallic clangs, inharmonic tones, formant voices.
+- **Enable** and **Algorithm:** one of **12 operator routings** (the 8 classic YM2612 algorithms plus 4 extras). The glyph diagrams the routing; highlighted boxes are carriers.
+- **Feedback:** operator 1 feedback; brighter, then collapses toward noise.
+- **Op 1 to 4 Ratio / Level:** each operator's frequency ratio and level (carrier gain or modulation depth).
+- The FM voice uses OSC 3's **Pitch / Fine / Level** as its transpose and output level.
 
 ### NOISE
-- **Type** — Analog (white→pink), LFSR Hiss, LFSR Buzz, Rasp.
-- **Color** — noise tone (white→pink, or the LFSR clock).
-- **Level** — noise level in the mix.
+- **Type** and what **Color** does for it:
+  - **Analog:** white to pink blend.
+  - **LFSR Hiss / LFSR Buzz:** console-style shift-register noise; Color slows the clock (bright hiss to crunchy rattle).
+  - **Rasp:** clocked near-binary noise; Color sets the grit rate.
+  - **Dust:** sparse random clicks, each a 0.2 to 3 ms burst, mostly quiet with the odd loud pop. Color sets the rate, about 2 to 2000 clicks per second: embers and vinyl at the low end, campfire in the middle, crinkling paper and sizzle at the top.
+- **Level:** noise level in the mix.
 
 ---
 
 ## 6. Filter
 
-A resonant low‑pass with an optional high‑pass.
+A resonant low-pass with an optional high-pass.
 
-- **Cutoff** — low‑pass cutoff (overall brightness).
-- **Resonance** — emphasis at the cutoff.
-- **Key** — key tracking (cutoff follows pitch).
-- **Env Amount** — how much the **Filter Envelope** opens/closes the cutoff (bipolar — positive opens on attack, negative closes).
-- **Poles** — 2‑pole (gentle) or 4‑pole (steeper).
-- **HPF** — high‑pass on/off + **HPF Freq** to remove the low end.
+- **Cutoff:** low-pass cutoff (overall brightness).
+- **Resonance:** emphasis at the cutoff.
+- **Env Amount:** how much the Filter Envelope moves the cutoff (bipolar: positive opens on the attack, negative closes).
+- **Poles:** 2-pole (gentle) or 4-pole (steeper).
+- **HPF:** high-pass on/off, and **HPF Freq** to remove the low end.
 
 ---
 
@@ -108,158 +111,199 @@ A resonant low‑pass with an optional high‑pass.
 
 Two ADSR envelopes with a continuously variable curve and an invert switch.
 
-- **Filter Envelope** — drives the filter cutoff (via the filter **Env Amount**), and is also a mod‑matrix source.
-- **Amp Envelope** — the VCA shape; when it finishes, the voice ends.
+- **Filter Envelope:** drives the cutoff (through Env Amount) and is a mod-matrix source.
+- **Amp Envelope:** the VCA shape. When it finishes, the voices stop and the FX chain rings out.
 
-Per envelope: **A / D / S / R** faders, **Curve** (exponential ← linear → logarithmic), **Invert** (flips the shape). The live **curve display** shows the actual ADSR shape; faint lines mark the A/D/S boundaries. An instant (0) attack reads near‑vertical.
-
-> Note: each trigger starts the envelopes from a **clean** state — re‑triggers don't carry over a residual level, so the sound is consistent and the export matches the preview.
+Per envelope: **A / D / S / R** faders, **Curve** (exponential, linear, logarithmic) and **Invert**. The curve display shows the actual shape; faint lines mark the stage boundaries.
 
 ---
 
 ## 8. VCA / Output
 
-- **Drive** — saturation / grit at the output.
-- **Comp** — bfxr‑style compression: density and punch (boosts the quiet parts).
-- **Master** — output level.
+- **Drive:** saturation at the VCA.
+- **Comp:** bfxr-style compression: density and punch (lifts the quiet parts).
+- **Master:** output level.
 
-The final master stage applies gain → compression → a safety soft‑clip → the **lo‑fi stage** (anti‑aliased rate reduction + bit‑depth quantization, set by the top‑bar **RATE** and the bit‑depth option).
+The master stage runs **gain, soft clip, compression, then the lo-fi stage**: sample-and-hold rate reduction to the RATE setting (deliberately **not** anti-aliased, for the authentic grit) and optional 8-bit quantisation.
 
 ---
 
 ## 9. Pitch & Voices
 
-- **Base Hz** — the fundamental pitch of the sound.
-- **Pitch Jumps (JUMP 1 / JUMP 2)** — sfxr‑style arpeggio steps: at a set time after the trigger, the pitch jumps by N semitones (the classic coin "ding‑ding").
-- **Unison** — **Voices** (stacked detuned copies), **Detune** (spread in cents), **Spread** (stereo width).
+- **Base Hz:** the fundamental pitch. **MIDI PITCH:** follow incoming MIDI notes instead.
+- **Pitch jumps (JUMP 1 / JUMP 2):** sfxr-style steps: at a set time after the trigger, the pitch jumps by N semitones (the coin "ding-ding").
+- **Unison:** **Voices** (stacked detuned copies), **Detune** (cents), **Spread** (stereo width).
 
 ---
 
 ## 10. LFO 1 & LFO 2 (Step Sequencer)
 
-### LFO 1 — classic LFO
-- **Rate** (Hz), **Amount**, **Phase**, **Wave** (Sine, Triangle, Saw, Rev Saw, Square, S&H, S&G), **Delay** (fade‑in), **Trig** (retrigger per note) / **Sync**.
+Both LFOs restart with every trigger. Their depth is set per routing in the mod matrix.
 
-### LFO 2 — step sequencer (the BitTrixer twist)
-A draggable **2–8 step** bar graph of bipolar levels. Route it through the mod matrix: to pitch it's an arpeggio; to cutoff a rhythmic filter; to a vowel it "talks."
-- **Steps** — number of steps. **Rate** — advance rate (Hz). **Glide** — glide between steps (0 = hard). **Skew** — stagger the step timing (swing). Drag the bars to set each step's level.
+### LFO 1
+- **Wave:** Sine, Triangle, Saw, Rev Saw, Square, S&H (stepped random), S&G (gliding random).
+- **Rate** (Hz) and **Delay** (fade-in time after the trigger).
+
+### LFO 2: step sequencer
+A draggable bar graph of **2 to 8** bipolar steps. Routed to pitch it is an arpeggio, to cutoff a rhythmic filter, to the formant vowel it "talks", to the VCA it gates.
+- **Steps**, **Rate** (step advance rate), **Glide** (0 = hard steps), **Skew** (staggers the step timing, like swing). Drag the bars to set each step.
 
 ---
 
 ## 11. Mod Matrix
 
-Six routing slots. Each slot: **Source → Destination** at a bipolar **Depth**.
+Six slots, each **Source to Destination** at a bipolar **Depth**.
 
 - **Sources:** Off, LFO 1, LFO 2, Filt Env, Amp Env.
-- **Destinations** (56, grouped by section in the dropdown):
-  - **All Pitch / Base Hz / All PWM / All Fold** (global) — All Pitch is musical (semitones); Base Hz is linear (frequency‑domain sweep).
+- **Destinations** (56, grouped by section):
+  - **All Pitch / Base Hz / All PWM / All Fold.** All Pitch is in semitones; Base Hz is a linear frequency sweep.
   - **OSC 1 / OSC 2:** Pitch, Fine, PWM, Fold, Level.
-  - **FM:** Pitch, Fine, Out, Feedback, and per‑operator Ratio + Level.
-  - **Noise:** Level, Color.
-  - **Filter:** Cutoff, Resonance, Filter Env amount, HPF Freq.
-  - **Amp:** VCA Level.
-  - **LFO 1 / LFO 2:** Rate; plus LFO 2 Glide & Skew.
-  - **FX:** every effect's parameters (Crush, Phaser, Flanger, Ring, Tremolo, Formant, Delay).
+  - **FM:** Pitch, Fine, Out, Feedback, and each operator's Ratio and Level.
+  - **Noise:** Level, Color. **Filter:** Cutoff, Resonance, Filter Env amount, HPF Freq. **Amp:** VCA Level.
+  - **LFO 1 / LFO 2:** Rate, plus LFO 2 Glide and Skew.
+  - **FX:** the effects' parameters.
 
-Sources are sampled once per audio sub‑block ("CV" snapshot). LFOs are bipolar; envelopes unipolar (and respect their Invert switch).
+Sources are sampled every 16 samples. LFOs are bipolar; envelopes are unipolar and follow their Invert switch.
 
 ---
 
 ## 12. FX Chain
 
-Seven effects, each in its own named strip, **drag to reorder**:
-**Crush · Phaser · Flanger · Ring Mod · Tremolo · Formant · Delay.**
+Seven effects in named strips; **drag a strip by its grip to reorder**:
+**Crush, Phaser, Flanger, Ring Mod, Tremolo, Formant, Delay.**
 
-Each strip has an **on/off** and a **PRE** switch. The five buffer‑free effects (Crush, Phaser, Ring Mod, Tremolo, Formant) can run **pre‑filter** (before the cutoff shapes them) by flipping **PRE**; Flanger and Delay are always post (they use delay buffers). The chain order is reflected in the signal traces.
+Each strip has **on/off**. Crush, Phaser, Ring Mod, Tremolo and Formant also have **PRE**, which runs them per voice before the filter; Flanger and Delay always run after it.
 
-- **Crush** — Bits (lower = crunchier) + Sample‑rate divider.
-- **Phaser / Flanger** — Rate, Depth, Feedback.
-- **Ring Mod** — carrier Freq, Wet, Wave.
-- **Tremolo** — Speed, Depth, Wave.
-- **Formant** — Vowel (A‑E‑I‑O‑U morph), Reso, Wet.
-- **Delay** — Time, Feedback, Wet (+ stereo options).
+- **Crush:** Bits (lower = crunchier) and sample-rate divider.
+- **Phaser / Flanger:** Rate, Depth, Feedback.
+- **Ring Mod:** carrier Freq, Wet, Wave.
+- **Tremolo:** Speed, Depth, Wave.
+- **Formant:** Vowel (ee, eh, ah, oh, oo), Reso, Wet.
+- **Delay:** Time (1 to 400 ms), Feedback, Wet.
 
 ---
 
 ## 13. Trigger panel
 
-- **TRIGGER** — fire the sound once (or hold).
-- **Gate** — auto note length for one‑shots.
-- **Interval** — loop interval (when LOOP is on).
-- **Retrig** — re‑strike rate (stutter / arpeggio) while gated.
-- **Var Amt** — the Variate amount (see §14). *Note: this knob scales both VARIATE and MUTATE — at 0, neither changes the sound.*
-- **LOOP** — auto‑retrigger at the Interval rate.
-- **AUTO** — apply an Auto‑Variate nudge on every trigger (ephemeral, for live auditioning — see §14 / §16).
-- **8‑BIT** — export bit depth (8‑bit vs 16‑bit).
-- **VARIATE / UNDO** — see §14.
+- **TRIGGER:** play the sound once.
+- **Gate:** note length for one-shots.
+- **Interval:** loop interval (when LOOP is on).
+- **Retrig:** re-strike rate while gated (stutter).
+- **Var Amt:** the VARIATE and MUTATE amount. At 0, neither changes the sound.
+- **LOOP:** retrigger at the Interval rate.
+- **AUTO:** a fresh auto-variate nudge on every trigger, for live auditioning only (never exported).
+- **8-BIT:** 8-bit output (sound and export).
+- **VARIATE / UNDO:** see section 14.
 
 ---
 
-## 14. Generate — Random, Mutate, Variate, Categories
+## 14. Generate: Random, Mutate, Variate, Categories
 
-The colorful **GENERATE** panel is the heart of fast SFX creation.
+The **GENERATE** panel, in four rows grouped by family:
 
-- **RANDOM** — a full anything‑goes (but musically constrained) patch.
-- **MUTATE** — *explore*: a compounding random walk from the current sound. Each press builds on the last, progressively wandering toward new territory.
-- **Category buttons** (15) — hand‑tuned recipes per archetype, each biased toward its sound but able to occasionally reach any parameter:
-  - **PICKUP · LASER · EXPLODE · POWERUP · HIT · JUMP · BLIP · 1‑UP · LOSE** (classic sfxr family)
-  - **CLANG · SLASH · GUST · FLAME · SPARK · SHIMMER** (metal, sword swoosh, wind, fire, electric, ice/crystal)
+| Row | Buttons |
+|---|---|
+| 1 | RANDOM, MUTATE, PICKUP, POWERUP, 1-UP, LOSE |
+| 2 | BLIP, JUMP, LASER, EXPLODE, VOICE |
+| 3 | HIT, IMPACT, SLASH, CLANG, TWANG |
+| 4 | GUST, FLAME, CRACKLE, SPARK, SHIMMER |
 
-### VARIATE — subtle siblings of a dialed‑in sound
-**VARIATE** (TRIGGER panel) is *anchored*: it captures your current sound as an anchor and every press makes a fresh, subtly‑different **sibling** of it — it never wanders off, no matter how many times you press. This is the game‑audio workflow for avoiding "machine‑gun, identical sound" ear fatigue: dial in a sound, then generate a handful of variations.
+- **RANDOM:** an anything-goes (but musically constrained) patch.
+- **MUTATE:** explore: a compounding random walk from the current sound.
+- **Categories:** hand-tuned recipes, each with several takes picked at random per press, and a small chance of reaching any parameter:
+  - **PICKUP, POWERUP, 1-UP, LOSE, BLIP, JUMP, LASER:** the classic sfxr family.
+  - **EXPLODE:** a rolling explosion, or a short concussive blast.
+  - **VOICE:** shout or alarm, bark (sometimes "woof-woof"), growl, roar, death cry, screech, yelp or whimper, moan. Formant filter, FM formant voice, throat rattle and optional colour effects.
+  - **HIT:** punches and pierces. **IMPACT:** thump, thud, body fall, heavy door; a high-passed lighter variant.
+  - **SLASH:** a short blade swish. **CLANG:** metal. **TWANG:** bow string, sproing, plucked wire.
+  - **GUST:** wind (sometimes sand and debris). **FLAME:** flamethrower or rocket, firewall, ignition, torch.
+  - **CRACKLE:** campfire, embers, vinyl, crinkling paper, static and electric crackle.
+  - **SPARK:** electric arcs. **SHIMMER:** ice, crystal, magic sparkle.
 
-- **Var Amt** controls how large each variation is.
+### VARIATE: siblings of a dialed-in sound
+**VARIATE** (TRIGGER panel) is *anchored*: it captures your current sound and every press makes a fresh, slightly different **sibling** of it. It never wanders off, however often you press.
+
+- **Var Amt** sets the size of each variation.
 - **UNDO** reverts the last Random / Mutate / Variate / category press (one deep).
 
-> **Mutate vs Variate:** Mutate *drifts* (explore new sounds); Variate *stays in the family* (subtle variations of what you have).
+> Mutate drifts to new sounds; Variate stays in the family.
 
 ---
 
 ## 15. Presets
 
-Presets are `.rfxp` files stored in **`Documents\BitTrixer Presets`**.
+Presets are `.rfxp` files. **USER** presets live in **`Documents\BitTrixer Presets`** (one level of folders); **FACTORY** presets are built in and read-only.
 
-- **SAVE / LOAD** use a file dialog (defaulting to that folder).
-- **Browse:** click the preset display in the top bar for a menu of everything in the folder; **`<` / `>`** step through them.
-- **Categories = subfolders.** Drop presets into subfolders (`Sweeps`, `Explosions`, `Shots`, …) and each becomes a **submenu**, auto‑grouped on next open. The browser rescans every time you open the menu and after every Save.
+**The library** (click the preset display, or **BROWSE**):
+- **Left:** search (matches name, folder, description and tags), then **All presets, Favourites, Recent**, the USER folders (**Unsorted** is the top level) and the FACTORY folders. **+ FOLDER / RENAME / DELETE** manage user folders.
+- **Middle:** the presets in the selected view. **Click** loads and plays one; **up/down** steps and plays (also from the search box). **Double-click or Enter** keeps the sound and closes. **CANCEL or Esc** closes and restores the sound you had before browsing. **Drag** a user preset onto a user folder to move it.
+- **Right:** name, author, tags, **Favourite** and description. **SAVE INFO** writes them (and renames the file if you changed the name). **DELETE** moves the preset to the recycle bin. Factory presets are read-only.
+
+**SAVE** opens a dialog: name, folder (it offers a folder named after the Generate category that made the sound), author (remembered), tags and description. It asks before overwriting.
+
+The factory bank has 4 presets for each Generate category plus a **Random** folder. Favourites and Recent work for factory presets too.
 
 ---
 
 ## 16. Exporting WAV
 
-**EXPORT WAV** renders the current patch offline and writes a stereo WAV at the patch's **output rate** (top‑bar RATE) and **bit depth** (8/16), so the file is small and game‑ready (jsfxr‑style), not a fat host‑rate container.
+**EXPORT WAV** opens the export panel:
 
-- The render is **deterministic**: the exported file matches the live Trigger exactly for a given patch.
-- **Batch variations:** to make a folder of subtly‑different renders of the same sound, use the **VARIATE button** → **EXPORT** → repeat. Each Variate press commits a new sibling to the parameters, and the export captures it exactly.
-- **Auto‑Variate is for live auditioning, not export** — its per‑trigger nudges are ephemeral (they never touch the parameters) and are not baked into the exported file. Use the **Variate button** when you want exportable variations.
+| Field | What it does |
+|---|---|
+| File name | The name to write |
+| Directory | Your export locations (the default is pre-selected), or BROWSE for a one-off folder |
+| Create a folder named after the file | Writes into `Directory\Name\` |
+| Count | 1 writes `Name.wav`; N writes `Name_0.wav` to `Name_{N-1}.wav` |
+| Amount | How far the variations stray (the VARIATE scale) |
+| _0 is the unchanged sound | Keeps the original as `_0` |
+| Seed / NEW SEED | The same seed always renders the same batch |
+| Level match | Off, Match peak, Match loudness, or Loudness target |
+| Export to | Lists the directory and every file about to be written |
 
----
-
-## 17. MIDI
-
-- **Channel (CH):** listen on `All` channels or a specific `1`–`16`. Notes and CC outside the chosen channel are ignored.
-- **MIDI‑Learn:** click **MIDI** to arm, touch any control on the UI, then move a hardware knob/fader — the CC binds to that parameter. Right‑click **MIDI** to clear all mappings. Mappings persist in the plugin state.
-- Notes trigger the sound (pitch‑tracked if MIDI‑track is enabled); the Trigger button is a manual one‑shot.
-
----
-
-## 18. Themes
-
-Pick a color scheme from the **THEME** dropdown — the whole UI (including the preset display and signal traces) reskins to match, with several dark schemes plus light and Pride options. Themes are purely visual and have no effect on the sound.
-
----
-
-## 19. Workflow tips
-
-- **Fast SFX:** hit a category → RANDOM a few times until one grabs you → tweak → export. The category buttons are tuned but randomized, so press a few times to see the range.
-- **The Scope** re‑renders the whole sound on every change — use it to eyeball attack, length and shape.
-- **Pre‑filter FX** (the PRE switches) put grit/ring/tremolo *into* the filter sweep rather than on top — great for the filter to shape the effect.
-- **Step LFO → pitch** makes instant arpeggios; **Step LFO → Formant Vowel** makes a sound "talk."
-- **Lo‑fi on purpose:** drop the RATE to 11 kHz / 8‑bit for authentic crunch (and a tiny file).
-- **Variation batch:** dial a hero sound, then Variate → Export, Variate → Export… for a set of non‑repetitive in‑game instances.
+- Files are written at the patch's **output rate** (top-bar RATE) and **bit depth**, so they are small and game-ready.
+- The render is **deterministic**: it matches the live trigger, and a batch never touches your knobs, undo or the VARIATE anchor.
+- **Level match** measures loudness as **LUFS (ungated, loudest 100 ms)**, K-weighted as in ITU BS.1770, which suits short sound effects. True peak never exceeds **-1 dBTP**: a file that would go over is held at the ceiling and flagged.
+- After exporting, the panel lists each file's LUFS, true peak and the gain applied. Existing files are listed and confirmed before they are overwritten.
+- **AUTO** (auto-variate) only affects live triggers, never exports. Use **Count** for exportable variations.
 
 ---
 
-## 20. Credits & license
+## 17. Settings
 
-BitTrixer is **free software** under the **GNU Affero General Public License v3.0 or later**. It comes with **absolutely no warranty**; see the `LICENSE` file for details. Built with [JUCE 8](https://juce.com). Copyright © 2026 Bytemixer.
+**SETTINGS** (top bar):
+- **Export locations:** **ADD...** a folder, **REMOVE** one, **SET DEFAULT** (or double-click a row). EXPORT WAV opens on the default.
+- **ABOUT:** version and license notice.
+
+Settings, favourites and recent presets are kept in `BitTrixer.prefs` in your user AppData folder, shared by the plugin and the standalone.
+
+---
+
+## 18. MIDI
+
+- **Channel (CH):** listen on all channels or one of `1` to `16`.
+- **MIDI Learn:** click **MIDI** to arm, touch a control, then move a hardware knob or fader. Right-click **MIDI** to clear all mappings. Mappings are saved with the plugin state.
+- Notes trigger the sound (pitch-tracked if MIDI PITCH is on); the TRIGGER button is a manual one-shot.
+
+---
+
+## 19. Themes
+
+Pick a color scheme from **THEME**: several dark schemes plus light, Pride, Pride Light and a **Custom** scheme with eight editable colors. Themes are purely visual.
+
+---
+
+## 20. Workflow tips
+
+- **Fast SFX:** press a category a few times until one grabs you, tweak, export. The factory presets are a good starting point too.
+- **The Scope** re-renders the whole sound on every change: use it to check attack, length and tail.
+- **PRE effects** put grit, ring or tremolo *into* the filter sweep rather than on top.
+- **Step LFO to pitch** makes arpeggios; **to Formant Vowel** makes a sound talk; **to VCA Level** gates it into stutters and crackles.
+- **Lo-fi on purpose:** RATE 11 kHz with 8-BIT for authentic crunch and a tiny file.
+- **Game-ready variations:** dial a hero sound, then export Count 6 with **Match loudness**: six siblings at one loudness, named `_0` to `_5`.
+
+---
+
+## 21. Credits & license
+
+BitTrixer is **free software** under the **GNU Affero General Public License v3.0 or later**. It comes with **absolutely no warranty**; see the `LICENSE` file. Built with [JUCE 8](https://juce.com). Copyright (C) 2026 Bytemixer.

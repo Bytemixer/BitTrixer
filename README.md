@@ -28,7 +28,7 @@ It is my hope this SFX creation tool is unique enough to be appealing
 to various indie game developers. I'll be using it in my own projects,
 and I'm hoping my local indie game dev community will also find use for it.
 
-**Retro game SFX synthesizer** — VST3 + Standalone (JUCE 8, C++17).
+**Retro game SFX synthesizer**: VST3 + Standalone (JUCE 8, C++17).
 
 An sfxr/bfxr-inspired (and also Deepmind 12 inspired)
 sound-effect design tool built as a real subtractive synth,
@@ -43,7 +43,7 @@ audio, with hand-tuned category randomizers and an color customizable front pane
 - **2 oscillators** (sine, triangle, square/PWM, saw, rev-saw, supersaw, tan, breaker):
   per-osc pitch/fine, wavefolder, level, hard-sync
 - **4-operator FM voice** in the 3rd slot: 12 algorithms, per-op ratio + level, feedback
-- **Noise**: analog white↔pink + LFSR (hiss/buzz) + rasp, with color
+- **Noise**: analog white/pink, LFSR (hiss/buzz), rasp, and Dust (sparse 0.2-3 ms clicks, 2 to 2000 per second), with color
 - **Filter**: resonant ladder LPF (2/4-pole) with invertible envelope amount; switchable HPF
 - **2 ADSR envelopes** (filter + amp): variable curve shape, invertible
 - **LFO 1** (classic) + **LFO 2 step sequencer** (draggable 2–8 steps, glide, skew)
@@ -53,12 +53,16 @@ audio, with hand-tuned category randomizers and an color customizable front pane
   (Crush · Phaser · Flanger · Ring Mod · Tremolo · Formant · Delay)
 - **VCA**: drive + bfxr-style compression + master; lo-fi rate/bit-depth output stage
 - **Unison** (1–16 voices, detune, stereo spread); sfxr-style pitch jumps
-- **Generators**: RANDOM, MUTATE (explore), 15 category recipes (Pickup, Laser,
-  Explode, Powerup, Hit, Jump, Blip, 1-Up, Lose, Clang, Slash, Gust, Flame, Spark,
-  Shimmer), VARIATE (anchored siblings), one-step UNDO
-- **Preset browser**: `.rfxp` files, subfolders = categories, ◄ ► step + dropdown
-- **Export WAV** at the patch's lo-fi rate/bit-depth — deterministic (export == preview)
-- **MIDI-learn** (CC mapping) + channel select; **themeable** UI (dark / light / pride)
+- **Generators**: RANDOM, MUTATE (explore), 19 category recipes with several takes each
+  (Pickup, Powerup, 1-Up, Lose, Blip, Jump, Laser, Explode, Voice, Hit, Impact, Slash,
+  Clang, Twang, Gust, Flame, Crackle, Spark, Shimmer), VARIATE (anchored siblings),
+  one-step UNDO
+- **Preset library**: search, folders, favourites, recent, metadata (author, tags,
+  description), drag to move, in-app save; 80 built-in factory presets
+- **Export panel**: remembered export locations, seeded batches of variations
+  (`Name_0..N`), level match by peak or LUFS (ungated, loudest 100 ms) with a -1 dBTP
+  ceiling; files at the patch's lo-fi rate/bit depth, deterministic (export == preview)
+- **MIDI-learn** (CC mapping) + channel select; **themeable** UI (dark / light / pride / custom)
 
 ## Build
 
@@ -69,6 +73,8 @@ cmake --build build --config Release --parallel
 
 Leave `RF_JUCE_PATH` empty to fetch JUCE 8.0.4 automatically.
 Artefacts land in `build/BitTrixer_artefacts/Release/` (VST3 + Standalone).
+Every `.rfxp` under `Presets/Factory/<Folder>/` is compiled in as a factory preset
+(file names must be unique across folders).
 
 ## Source layout
 
@@ -77,13 +83,20 @@ Source/
   PluginProcessor.*    JUCE shell: APVTS, MIDI gating, block render
   Params.h             every parameter ID/range/default + Patch snapshot
   Randomizer.*         full random / categories / variate / undo
-  PresetManager.h      .rfxp save/load
-  WavExporter.h        offline render to 16-bit WAV
+  Variation.h          the VARIATE nudge set (live buttons and batch export)
+  PresetLibrary.h      preset index, metadata, favourites, folders
+  PresetManager.h      current preset: load, step, save, browse snapshot
+  FactoryBank.h        compiled-in factory presets
+  WavExporter.h        offline render + WAV write at the lo-fi rate/bit depth
+  BatchExporter.h      seeded background batches + level match
+  Loudness.h           BS.1770 K-weighted loudness and true peak
+  ShadowParams.h       offline copy of the parameters for batches
+  AppSettings.h        per-user settings file (BitTrixer.prefs)
   DSP/                 single-purpose blocks composed by Voice + SynthEngine
-  UI/                  RetroLookAndFeel + one Component per panel section
-docs/                  reference material (subtractive synthesis)
+  UI/                  RetroLookAndFeel + one Component per panel section and overlay
+Presets/Factory/       factory presets (.rfxp), one folder per category
 ```
 
 ## License
 
-AGPL-3.0-or-later — see [LICENSE](LICENSE). Copyright (C) 2026 Bytemixer.
+AGPL-3.0-or-later; see [LICENSE](LICENSE). Copyright (C) 2026 Bytemixer.
