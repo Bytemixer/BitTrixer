@@ -32,7 +32,7 @@
   <PARAM id="fxcrush_on" value="0.0"/>
   <PARAM id="fxcrush_pre" value="0.0"/>
   <PARAM id="fxdelay_fb" value="0.3330000042915344"/>
-  <PARAM id="fxdelay_mix" value="0.2150000035762787"/>
+  <PARAM id="fxdelay_mix" value="0.2739"/>
   <PARAM id="fxdelay_on" value="1.0"/>
   <PARAM id="fxdelay_time" value="0.1631167232990265"/>
   <PARAM id="fxflange_depth" value="0.5"/>

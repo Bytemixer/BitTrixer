@@ -95,6 +95,7 @@ namespace ParamTooltips
         if (id == P::formVowel) return "Vowel that morphs the formant filter";
         if (id == P::formReso)  return "Formant resonance and sharpness";
         if (id == P::delayTime) return "Echo time";
+        if (id == P::delayMix)  return "Echo level (the dry sound stays at full level)";
         if (ends ("_mix"))      return "Wet / dry balance";
 
         // ---- FM ----

@@ -45,7 +45,7 @@ public:
         writePos = 0;
     }
 
-    // timeMs 1 .. 400   feedback01 0 .. 1   mix01 0 = dry .. 1 = wet
+    // timeMs 1 .. 400   feedback01 0 .. 1   mix01 = echo level 0 .. 1 (the dry signal stays at full level)
     void setParams (float timeMs, float feedback01, float mix01) noexcept
     {
         float t = timeMs < 1.0f ? 1.0f : timeMs;
@@ -79,7 +79,7 @@ private:
         const float delayed = buf[(size_t) i0] + frac * (buf[(size_t) i1] - buf[(size_t) i0]);
 
         buf[(size_t) writePos] = x + delayed * fb;
-        return x * (1.0f - mix) + delayed * mix;
+        return x + delayed * mix;
     }
 
     float fs = 44100.0f;

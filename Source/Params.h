@@ -968,7 +968,7 @@ namespace Params
                         timeRange (0.001f, 0.4f, 0.12f), 0.12f, secAttr));
         layout.add (std::make_unique<AudioParameterFloat> (ParameterID { id::delayFb, 1 },    "Delay Feedback",
                         NormalisableRange<float> (0.0f, 1.0f, 0.001f), 0.4f, unitAttr));
-        layout.add (std::make_unique<AudioParameterFloat> (ParameterID { id::delayMix, 1 },   "Delay Wet/Dry",
+        layout.add (std::make_unique<AudioParameterFloat> (ParameterID { id::delayMix, 1 },   "Delay Wet",
                         NormalisableRange<float> (0.0f, 1.0f, 0.001f), 0.4f, unitAttr));
 
         // ---- 4-operator FM (3rd generator slot; on/pitch/fine/level reuse OSC 3) ----

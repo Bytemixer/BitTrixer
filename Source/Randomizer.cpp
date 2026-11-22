@@ -248,7 +248,7 @@ void Randomizer::wildcardSprinkle()
     if (! isOn (id::delayOn) && chance (0.06f))
     {
         setBool (id::delayOn, true);
-        set (id::delayTime, rndLog (0.03f, 0.35f)); set (id::delayFb, rnd (0.2f, 0.6f)); set (id::delayMix, rnd (0.2f, 0.5f));
+        set (id::delayTime, rndLog (0.03f, 0.35f)); set (id::delayFb, rnd (0.2f, 0.6f)); set (id::delayMix, rnd (0.25f, 1.0f));
     }
     if (! isOn (oscId (2, "on")) && chance (0.08f))                 // a stray OSC 2 layer
     {
@@ -515,7 +515,7 @@ void Randomizer::fullRandom()
         setBool (id::delayOn, true);
         set (id::delayTime, rndLog (0.03f, 0.35f));
         set (id::delayFb, rnd (0.2f, 0.6f));
-        set (id::delayMix, rnd (0.2f, 0.5f));
+        set (id::delayMix, rnd (0.25f, 1.0f));
     }
 
     // FM voice (4-op): occasionally layer a random algorithm into OSC 3's slot
@@ -617,7 +617,7 @@ void Randomizer::applyCategory (Category c)
                 setBool (id::delayOn, true);
                 set (id::delayTime, rndLog (0.04f, 0.12f));
                 set (id::delayFb, rnd (0.15f, 0.4f));
-                set (id::delayMix, rnd (0.2f, 0.4f));
+                set (id::delayMix, rnd (0.25f, 0.67f));
             }
             if (chance (0.2f))                                     // robotic coin (ring mod)
             {
@@ -739,7 +739,7 @@ void Randomizer::applyCategory (Category c)
                 setBool (id::delayOn, true);
                 set (id::delayTime, rndLog (0.05f, 0.18f));
                 set (id::delayFb, rnd (0.2f, 0.5f));
-                set (id::delayMix, rnd (0.2f, 0.4f));
+                set (id::delayMix, rnd (0.25f, 0.67f));
             }
             set (id::gateTime, 0.2f);
             break;
@@ -1075,7 +1075,7 @@ void Randomizer::applyCategory (Category c)
                 setBool (id::delayOn, true);
                 set (id::delayTime, rndLog (0.03f, 0.1f));
                 set (id::delayFb, rnd (0.1f, 0.3f));
-                set (id::delayMix, rnd (0.15f, 0.3f));
+                set (id::delayMix, rnd (0.18f, 0.43f));
             }
             if (chance (0.3f))                                     // FM blip timbre
                 fmChime (3);
@@ -1115,7 +1115,7 @@ void Randomizer::applyCategory (Category c)
                 setBool (id::delayOn, true);
                 set (id::delayTime, rndLog (0.08f, 0.2f));
                 set (id::delayFb, rnd (0.2f, 0.45f));
-                set (id::delayMix, rnd (0.2f, 0.4f));
+                set (id::delayMix, rnd (0.25f, 0.67f));
             }
             if (chance (0.2f))                                     // singing 1-up (formant)
             {
@@ -1172,7 +1172,7 @@ void Randomizer::applyCategory (Category c)
                 setBool (id::delayOn, true);
                 set (id::delayTime, rndLog (0.1f, 0.3f));
                 set (id::delayFb, rnd (0.25f, 0.5f));
-                set (id::delayMix, rnd (0.2f, 0.4f));
+                set (id::delayMix, rnd (0.25f, 0.67f));
             }
             if (chance (0.3f))                                     // melancholy FM bell
                 fmChime (3);
@@ -1215,7 +1215,7 @@ void Randomizer::applyCategory (Category c)
                 setBool (id::delayOn, true);
                 set (id::delayTime, rndLog (0.06f, 0.2f));
                 set (id::delayFb, rnd (0.25f, 0.55f));
-                set (id::delayMix, rnd (0.2f, 0.4f));
+                set (id::delayMix, rnd (0.25f, 0.67f));
             }
             set (id::gateTime, rnd (0.3f, 0.5f));
             break;
@@ -1626,7 +1626,7 @@ void Randomizer::applyCategory (Category c)
                 setBool (id::delayOn, true);
                 set (id::delayTime, rndLog (0.06f, 0.22f));
                 set (id::delayFb, rnd (0.3f, 0.6f));
-                set (id::delayMix, rnd (0.25f, 0.5f));
+                set (id::delayMix, rnd (0.33f, 1.0f));
             }
             if (chance (0.4f))                                   // glassy ring partials
             {
@@ -1783,27 +1783,9 @@ void Randomizer::applyCategory (Category c)
                     set (id::envFDecay, rnd (0.06f, 0.12f));
                     set (id::noiseLevel, rnd (0.15f, 0.3f));
                     set (id::vcaDrive, rnd (0.3f, 0.6f));
-                    if (chance (0.45f))                            // woof-woof: Step LFO opens twice
-                    {
-                        set (id::stepCount, 2.0f);
-                        set (id::stepGlide, 0.0f);
-                        set (stepValId (1), 0.0f);
-                        set (stepValId (2), -1.0f);
-                        set (lfoId (2, "rate"), rnd (5.0f, 8.0f));
-                        setChoice (modId (4, "src"),  (int) ModSrc::Lfo2);
-                        setChoice (modId (4, "dest"), (int) ModDest::VcaLevel);
-                        set (modId (4, "depth"), 1.0f);
-                        set (id::envADecay, rnd (0.3f, 0.45f));
-                        set (id::envASustain, rnd (0.5f, 0.7f));
-                        set (id::envARelease, 0.05f);
-                        set (id::gateTime, rnd (0.3f, 0.4f));
-                    }
-                    else
-                    {
-                        set (id::envADecay, rnd (0.1f, 0.2f));
-                        set (id::envARelease, 0.05f);
-                        set (id::gateTime, 0.12f);
-                    }
+                    set (id::envADecay, rnd (0.1f, 0.2f));
+                    set (id::envARelease, 0.05f);
+                    set (id::gateTime, 0.12f);
                     break;
 
                 case Growl:                                        // low, rough, sustained
@@ -2038,7 +2020,7 @@ void Randomizer::applyCategory (Category c)
                     setBool (id::delayOn, true);
                     set (id::delayTime, rndLog (0.02f, 0.06f));
                     set (id::delayFb, rnd (0.1f, 0.3f));
-                    set (id::delayMix, rnd (0.15f, 0.3f));
+                    set (id::delayMix, rnd (0.18f, 0.43f));
                 }
                 break;
             }
@@ -2161,7 +2143,7 @@ void Randomizer::applyCategory (Category c)
                 setBool (id::delayOn, true);
                 set (id::delayTime, juce::jlimit (0.0025f, 0.012f, (chance (0.5f) ? 1.0f : 2.0f) / hz));
                 set (id::delayFb, rnd (0.6f, 0.85f));
-                set (id::delayMix, rnd (0.35f, 0.55f));
+                set (id::delayMix, rnd (0.54f, 1.0f));
             }
             if (chance (0.25f))                                    // shimmering tail
             {
@@ -2190,7 +2172,8 @@ void Randomizer::applyCategory (Category c)
             const bool light = chance (0.55f);          // high-passed: less sub, more knock
             setChoice (oscId (1, "wave"), chance (0.7f) ? (int) OscWave::Sine
                                                         : (int) OscWave::Triangle);
-            set (id::baseFreq, light ? rndLog (40.0f, 120.0f) : rndLog (40.0f, 90.0f));
+            const float baseHz = light ? rndLog (40.0f, 120.0f) : rndLog (40.0f, 90.0f);
+            set (id::baseFreq, baseHz);
             set (oscId (1, "level"), rnd (0.7f, 0.9f));
             setChoice (modId (1, "src"),  (int) ModSrc::FilterEnv);   // pitch dive
             setChoice (modId (1, "dest"), (int) ModDest::AllPitch);
@@ -2211,6 +2194,7 @@ void Randomizer::applyCategory (Category c)
                 const float hpf = rndLog (80.0f, 2000.0f);
                 setBool (id::hpfOn, true);
                 set (id::hpfCutoff, hpf);
+                set (id::baseFreq, juce::jmax (baseHz, hpf / 6.0f));   // base at least HPF / 6
                 set (id::lpfCutoff, juce::jmax (rndLog (300.0f, 1200.0f), hpf * rnd (1.5f, 3.0f)));
             }
             else
@@ -2238,7 +2222,7 @@ void Randomizer::applyCategory (Category c)
                 setBool (id::delayOn, true);
                 set (id::delayTime, rndLog (0.03f, 0.07f));
                 set (id::delayFb, rnd (0.2f, 0.4f));
-                set (id::delayMix, rnd (0.2f, 0.35f));
+                set (id::delayMix, rnd (0.25f, 0.54f));
             }
             set (id::gateTime, 0.1f);
             break;

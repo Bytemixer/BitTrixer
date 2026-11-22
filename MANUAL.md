@@ -179,7 +179,7 @@ Each strip has **on/off**. Crush, Phaser, Ring Mod, Tremolo and Formant also hav
 - **Ring Mod:** carrier Freq, Wet, Wave.
 - **Tremolo:** Speed, Depth, Wave.
 - **Formant:** Vowel (ee, eh, ah, oh, oo), Reso, Wet.
-- **Delay:** Time (1 to 400 ms), Feedback, Wet.
+- **Delay:** Time (1 to 400 ms), Feedback, Wet. Wet sets the echo level; the dry sound always plays at full level, so at 100% the first echo matches the original.
 
 ---
 
@@ -213,7 +213,7 @@ The **GENERATE** panel, in four rows grouped by family:
 - **Categories:** hand-tuned recipes, each with several takes picked at random per press, and a small chance of reaching any parameter:
   - **PICKUP, POWERUP, 1-UP, LOSE, BLIP, JUMP, LASER:** the classic sfxr family.
   - **EXPLODE:** a rolling explosion, or a short concussive blast.
-  - **VOICE:** shout or alarm, bark (sometimes "woof-woof"), growl, roar, death cry, screech, yelp or whimper, moan. Formant filter, FM formant voice, throat rattle and optional colour effects.
+  - **VOICE:** shout or alarm, bark, growl, roar, death cry, screech, yelp or whimper, moan. Formant filter, FM formant voice, throat rattle and optional colour effects.
   - **HIT:** punches and pierces. **IMPACT:** thump, thud, body fall, heavy door; a high-passed lighter variant.
   - **SLASH:** a short blade swish. **CLANG:** metal. **TWANG:** bow string, sproing, plucked wire.
   - **GUST:** wind (sometimes sand and debris). **FLAME:** flamethrower or rocket, firewall, ignition, torch.
