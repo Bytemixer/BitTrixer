@@ -19,6 +19,10 @@
 #include "UI/ThemeEditor.h"
 #include "UI/ExportPanel.h"
 #include "UI/SettingsPanel.h"
+#include "UI/PresetBrowser.h"
+#include "UI/SavePresetDialog.h"
+#include "AppSettings.h"
+#include "FactoryBank.h"
 #include "UI/HeaderBar.h"
 #include "UI/GeneratorsPanel.h"
 #include "UI/PitchPanel.h"
@@ -51,7 +55,6 @@ public:
 
 private:
     void previewSound();
-    void showPresetMenu();           // browse-menu popup from the preset folder
     void paintContent (juce::Graphics&);
     void drawSignalTraces (juce::Graphics&);
     void layoutPanels (juce::Rectangle<int> bounds);
@@ -66,9 +69,11 @@ private:
     int  midiStatusTicks = 0;
 
     RetroLookAndFeel lookAndFeel;
-    ThemeManager themeManager;
+    juce::SharedResourcePointer<AppSettings> appSettings;
+    ThemeManager themeManager { appSettings->file() };
     Randomizer randomizer;
-    PresetManager presetManager;
+    PresetLibrary presetLibrary { appSettings->file(), FactoryBank::load() };
+    PresetManager presetManager { proc.apvts, presetLibrary };
 
     // the whole UI lives at a fixed "design" resolution inside this holder,
     // which is scaled by a transform so everything resizes proportionally
@@ -97,8 +102,10 @@ private:
     ScopePanel scopePanel;
     FxPanel fxPanel;
     ThemeEditor themeEditor { themeManager };
-    ExportPanel exportPanel { proc.apvts, themeManager.settings() };
-    SettingsPanel settingsPanel { themeManager.settings() };
+    ExportPanel exportPanel { proc.apvts, appSettings->file() };
+    SettingsPanel settingsPanel { appSettings->file() };
+    PresetBrowser presetBrowser { presetManager };
+    SavePresetDialog saveDialog { presetManager, appSettings->file() };
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (BitTrixerEditor)
 };

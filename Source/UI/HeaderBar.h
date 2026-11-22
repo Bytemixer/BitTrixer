@@ -68,6 +68,10 @@ public:
         nextButton.setTooltip ("Next preset");
         nextButton.onClick = [this] { if (onPresetNext) onPresetNext(); };
         addAndMakeVisible (nextButton);
+        browseButton.setButtonText ("BROWSE");
+        browseButton.setTooltip ("Open the preset library");
+        browseButton.onClick = [this] { if (onPresetMenu) onPresetMenu(); };
+        addAndMakeVisible (browseButton);
 
         auto initButton = [this] (juce::TextButton& b, const char* text,
                                   std::function<void()>& target)
@@ -140,7 +144,7 @@ public:
     void mouseDown (const juce::MouseEvent& e) override
     {
         if (presetBounds.contains (e.getPosition()) && onPresetMenu)
-            onPresetMenu();                 // click the preset display -> browse menu
+            onPresetMenu();                 // click the preset display -> the library
     }
 
     void paint (juce::Graphics& g) override
@@ -223,7 +227,9 @@ public:
         saveButton.setBounds (row.removeFromRight (54));
         row.removeFromRight (10);
 
-        // browse arrows flank the preset display
+        // browse arrows flank the preset display; BROWSE opens the library
+        browseButton.setBounds (row.removeFromRight (66));
+        row.removeFromRight (4);
         nextButton.setBounds (row.removeFromRight (24));
         row.removeFromRight (4);
         prevButton.setBounds (row.removeFromLeft (24));
@@ -247,7 +253,7 @@ private:
     juce::ComboBox rateBox;
     std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> rateAtt;
     juce::TextButton saveButton, loadButton, exportButton, settingsButton;
-    juce::TextButton prevButton, nextButton;
+    juce::TextButton prevButton, nextButton, browseButton;
     ClickButton midiButton;
     juce::ComboBox midiChanBox;
     juce::ComboBox themeBox;

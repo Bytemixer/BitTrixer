@@ -42,6 +42,28 @@ target_sources(BitTrixer PRIVATE
     Source/DSP/SynthEngine.cpp
     Source/UI/RetroLookAndFeel.cpp)
 
+# Factory presets: every .rfxp under Presets/Factory/<Folder>/ is compiled in,
+# with an index of their folder paths (binary resources keep only file names,
+# so file names must be unique across folders).
+set(BT_FACTORY_DIR "${CMAKE_CURRENT_SOURCE_DIR}/Presets/Factory")
+file(GLOB_RECURSE BT_FACTORY_PRESETS CONFIGURE_DEPENDS "${BT_FACTORY_DIR}/*.rfxp")
+set(BT_FACTORY_INDEX "")
+set(BT_FACTORY_NAMES "")
+foreach(preset ${BT_FACTORY_PRESETS})
+    file(RELATIVE_PATH rel "${BT_FACTORY_DIR}" "${preset}")
+    get_filename_component(base "${preset}" NAME)
+    if(base IN_LIST BT_FACTORY_NAMES)
+        message(FATAL_ERROR "Factory preset file name used twice: ${base}")
+    endif()
+    list(APPEND BT_FACTORY_NAMES "${base}")
+    string(APPEND BT_FACTORY_INDEX "${rel}\n")
+endforeach()
+file(CONFIGURE OUTPUT "${CMAKE_BINARY_DIR}/FactoryIndex.txt" CONTENT "${BT_FACTORY_INDEX}" @ONLY)
+juce_add_binary_data(BitTrixerFactory
+    HEADER_NAME FactoryData.h
+    NAMESPACE FactoryData
+    SOURCES ${BT_FACTORY_PRESETS} "${CMAKE_BINARY_DIR}/FactoryIndex.txt")
+
 target_compile_definitions(BitTrixer PUBLIC
     JUCE_WEB_BROWSER=0
     JUCE_USE_CURL=0
@@ -49,6 +71,7 @@ target_compile_definitions(BitTrixer PUBLIC
 
 target_link_libraries(BitTrixer
     PRIVATE
+        BitTrixerFactory
         juce::juce_audio_utils
         juce::juce_dsp
     PUBLIC

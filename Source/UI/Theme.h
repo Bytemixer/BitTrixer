@@ -227,14 +227,8 @@ class ThemeManager
 public:
     static constexpr int kCustomIndex = 6;
 
-    ThemeManager()
+    explicit ThemeManager (juce::PropertiesFile& settingsFile) : props (&settingsFile)
     {
-        juce::PropertiesFile::Options o;
-        o.applicationName = "BitTrixer";
-        o.filenameSuffix = "settings";
-        o.folderName = "BitTrixer";
-        o.osxLibrarySubFolder = "Application Support";
-        props = std::make_unique<juce::PropertiesFile> (o);
 
         presets = { ThemePresets::slate(), ThemePresets::light(),
                     ThemePresets::cute(), ThemePresets::cuteDark(),
@@ -289,9 +283,6 @@ public:
 
     std::function<void()> onThemeChanged;
 
-    // the shared per-user settings file (theme, export folders)
-    juce::PropertiesFile& settings() noexcept { return *props; }
-
 private:
     void loadCustom()
     {
@@ -308,7 +299,7 @@ private:
                                   base[4], base[5], base[6], base[7]);
     }
 
-    std::unique_ptr<juce::PropertiesFile> props;
+    juce::PropertiesFile* props;
     std::vector<Theme> presets;
     Theme custom;
     std::array<juce::Colour, kNumBase> base;

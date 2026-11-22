@@ -14,7 +14,6 @@
 BitTrixerEditor::BitTrixerEditor (BitTrixerProcessor& p)
     : AudioProcessorEditor (p), proc (p),
       randomizer (p.apvts),
-      presetManager (p.apvts),
       header (p.apvts),
       generatorsPanel (p.apvts),
       filterPanel (p.apvts),
@@ -47,7 +46,7 @@ BitTrixerEditor::BitTrixerEditor (BitTrixerProcessor& p)
     randomizerPanel.onRandom = [this]
     {
         randomizer.fullRandom();
-        presetManager.setCurrentName ("Random");
+        presetManager.setGenerated ("Random", {});
         header.setPresetName ("Random");
         previewSound();
     };
@@ -56,16 +55,17 @@ BitTrixerEditor::BitTrixerEditor (BitTrixerProcessor& p)
         const auto cat = (Randomizer::Category) index;
         randomizer.applyCategory (cat);
         const juce::String name = Randomizer::categoryName (cat);
-        presetManager.setCurrentName (name);
+        presetManager.setGenerated (name, name);
         header.setPresetName (name);
         previewSound();
     };
 
-    header.onSave = [this] { presetManager.saveAsync(); };
+    header.onSave = [this] { saveDialog.open(); };
     header.onLoad = [this] { presetManager.loadAsync(); };
     header.onPresetPrev = [this] { presetManager.step (-1); previewSound(); };
     header.onPresetNext = [this] { presetManager.step (+1); previewSound(); };
-    header.onPresetMenu = [this] { showPresetMenu(); };
+    header.onPresetMenu = [this] { presetBrowser.open(); };
+    presetBrowser.onAudition = [this] { previewSound(); };
     presetManager.onPresetChanged = [this]
     {
         header.setPresetName (presetManager.getCurrentName());
@@ -114,6 +114,10 @@ BitTrixerEditor::BitTrixerEditor (BitTrixerProcessor& p)
     addChildComponent (exportPanel);
     settingsPanel.setVisible (false);
     addChildComponent (settingsPanel);
+    presetBrowser.setVisible (false);
+    addChildComponent (presetBrowser);
+    saveDialog.setVisible (false);
+    addChildComponent (saveDialog);
     themeManager.onThemeChanged();   // apply persisted theme on open
 
     header.setPresetName (presetManager.getCurrentName());
@@ -213,48 +217,6 @@ BitTrixerEditor::~BitTrixerEditor()
 void BitTrixerEditor::previewSound()
 {
     proc.uiOneShot();
-}
-
-void BitTrixerEditor::showPresetMenu()
-{
-    presetManager.rescan();
-    const auto& list = presetManager.getPresets();
-
-    juce::PopupMenu menu;
-    if (list.empty())
-        menu.addItem (-1, "(no presets in the BitTrixer Presets folder)", false);
-
-    // entries are sorted (uncategorised first, then by category); uncategorised
-    // sit at the root, each subfolder becomes a submenu
-    juce::String cat;
-    juce::PopupMenu sub;
-    auto flush = [&menu, &cat, &sub]
-    {
-        if (cat.isNotEmpty()) { menu.addSubMenu (cat, sub); sub.clear(); cat = {}; }
-    };
-    for (int i = 0; i < (int) list.size(); ++i)
-    {
-        const auto& e = list[(size_t) i];
-        if (e.category.isEmpty())
-            menu.addItem (i + 1, e.name);
-        else
-        {
-            if (e.category != cat) { flush(); cat = e.category; }
-            sub.addItem (i + 1, e.name);
-        }
-    }
-    flush();
-
-    menu.showMenuAsync (juce::PopupMenu::Options(), [this] (int result)
-    {
-        if (result <= 0) return;
-        const auto& l = presetManager.getPresets();
-        if (result - 1 < (int) l.size())
-        {
-            presetManager.loadFile (l[(size_t) (result - 1)].file);
-            previewSound();
-        }
-    });
 }
 
 void BitTrixerEditor::paint (juce::Graphics& g)
@@ -587,6 +549,8 @@ void BitTrixerEditor::resized()
     themeEditor.setBounds (getLocalBounds());
     exportPanel.setBounds (getLocalBounds());
     settingsPanel.setBounds (getLocalBounds());
+    presetBrowser.setBounds (getLocalBounds());
+    saveDialog.setBounds (getLocalBounds());
 
     // the layout is authored at a fixed design size; scale the content holder
     // to the actual window (aspect ratio is locked, so the scale is uniform)

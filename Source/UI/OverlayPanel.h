@@ -59,9 +59,12 @@ public:
     }
 
 protected:
+    // a card size of 0 or less fills the overlay, less a margin
     juce::Rectangle<int> cardBounds() const
     {
-        return getLocalBounds().withSizeKeepingCentre (cardW, cardH);
+        constexpr int kMargin = 40;
+        return getLocalBounds().withSizeKeepingCentre (cardW > 0 ? cardW : getWidth()  - 2 * kMargin,
+                                                       cardH > 0 ? cardH : getHeight() - 2 * kMargin);
     }
 
     // the area under the title, inside the card margin
