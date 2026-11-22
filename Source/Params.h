@@ -32,7 +32,7 @@ namespace Params
 
     // ---- enum orderings (must match the choice arrays below) ----
     enum class OscWave  { Sine = 0, Triangle, Square, Saw, RevSaw, SuperSaw, Tan, Breaker };
-    enum class NoiseType { Analog = 0, LfsrHiss, LfsrBuzz, Rasp };
+    enum class NoiseType { Analog = 0, LfsrHiss, LfsrBuzz, Rasp, Dust };   // APPEND-only
     enum class LfoWave  { Sine = 0, Triangle, Saw, RevSaw, Square, SampleHold, SampleGlide };
     // Osc sync: OSC 1 is always the master; each other oscillator has its own
     // sync switch that hard-syncs it to OSC 1 (per-osc bool, see OscPatch).
@@ -79,7 +79,7 @@ namespace Params
                           Count };
 
     inline const juce::StringArray oscWaveNames  { "Sine", "Triangle", "Square", "Saw", "Rev Saw", "SuperSaw", "Tan", "Breaker" };
-    inline const juce::StringArray noiseTypeNames { "Analog W>P", "LFSR Hiss", "LFSR Buzz", "Rasp" };
+    inline const juce::StringArray noiseTypeNames { "Analog W>P", "LFSR Hiss", "LFSR Buzz", "Rasp", "Dust" };
     inline const juce::StringArray lfoWaveNames  { "Sine", "Triangle", "Saw", "Rev Saw", "Square", "S&H", "S&G" };
     inline const juce::StringArray modSrcNames   { "Off", "LFO 1", "LFO 2", "Filt Env", "Amp Env" };
     inline const juce::StringArray modDestNames  { "Off",

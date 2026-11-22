@@ -26,14 +26,21 @@
 //                 COLOR divides the clock the same way
 //   * Rasp      : random telegraph noise — clocked white noise slammed to
 //                 near-binary; COLOR sets the grit rate
+//   * Dust      : sparse random clicks, each a 0.2-3 ms decaying noise burst,
+//                 mostly quiet with the odd loud pop; COLOR sets the click
+//                 rate (about 2 to 2000 per second)
 // ============================================================================
 
 class NoiseGen
 {
 public:
-    enum class Type { Analog = 0, LfsrHiss, LfsrBuzz, Rasp };
+    enum class Type { Analog = 0, LfsrHiss, LfsrBuzz, Rasp, Dust };
 
-    void prepare (double /*sampleRate*/) noexcept { reset(); }
+    void prepare (double sampleRate) noexcept
+    {
+        fs = sampleRate > 0.0 ? (float) sampleRate : 44100.0f;
+        reset();
+    }
 
     void reset() noexcept
     {
@@ -41,6 +48,8 @@ public:
         clockCount = 1.0e9f;       // force a fresh value immediately
         held = 0.0f;
         lfsr = 0x4D21u;
+        burstAmp = 0.0f;
+        burstEnv = 0.0f;
     }
 
     void seed (uint32_t s) noexcept { state = s != 0 ? s : 0x9e3779b9u; }
@@ -52,6 +61,8 @@ public:
         color = c01 < 0.0f ? 0.0f : (c01 > 1.0f ? 1.0f : c01);
         // LFSR/Rasp clock divider: 1 (bright) .. 128 (crunchy low)
         clockStep = std::exp2 (color * 7.0f);
+        // Dust: 2 * 1000^color clicks per second
+        dustProb = 2.0f * std::exp2 (color * 9.9658f) / fs;
     }
 
     float tick() noexcept
@@ -83,6 +94,21 @@ public:
                 if (advanceClock())
                     held = FastMath::tanh (nextWhite() * 6.0f) * 0.9f;
                 return held;
+
+            case Type::Dust:
+            {
+                if (nextUnit() < dustProb)
+                {
+                    const float u = nextUnit();
+                    burstAmp = 0.2f + 0.8f * u * u * u;          // mostly quiet, the odd loud pop
+                    const float lenSec = 0.0002f + 0.0028f * nextUnit() * nextUnit();
+                    burstDecay = std::exp (-1.0f / (lenSec * fs));
+                    burstEnv = 1.0f;
+                }
+                const float out = burstAmp * burstEnv * nextWhite();
+                burstEnv *= burstDecay;
+                return out;
+            }
         }
         return 0.0f;
     }
@@ -111,6 +137,8 @@ private:
         return (lfsr & 1u) != 0;
     }
 
+    float nextUnit() noexcept { return 0.5f * (nextWhite() + 1.0f); }   // [0, 1)
+
     float nextWhite() noexcept
     {
         // xorshift32 -> [-1, 1)
@@ -128,4 +156,7 @@ private:
     float clockStep = 1.0f;
     float clockCount = 1.0e9f;
     float held = 0.0f;
+    float fs = 44100.0f;
+    float dustProb = 0.0f;
+    float burstAmp = 0.0f, burstEnv = 0.0f, burstDecay = 0.0f;
 };

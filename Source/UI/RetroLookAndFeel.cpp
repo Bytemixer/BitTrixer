@@ -201,6 +201,14 @@ juce::Font RetroLookAndFeel::getComboBoxFont (juce::ComboBox&)
     return juce::Font (juce::FontOptions (12.0f * fontScale()));
 }
 
+juce::Font RetroLookAndFeel::getTextButtonFont (juce::TextButton& b, int buttonHeight)
+{
+    const auto& h = b.getProperties()[kFontHeightProperty];
+    if (h.isVoid())
+        return LookAndFeel_V4::getTextButtonFont (b, buttonHeight);
+    return juce::Font (juce::FontOptions ((float) h * fontScale()));
+}
+
 juce::Font RetroLookAndFeel::getPopupMenuFont()
 {
     return juce::Font (juce::FontOptions (13.0f * fontScale()));

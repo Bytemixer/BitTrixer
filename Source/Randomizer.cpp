@@ -10,6 +10,7 @@
 */
 
 #include "Randomizer.h"
+#include "DSP/Formant.h"
 #include <vector>
 
 using namespace Params;
@@ -132,6 +133,19 @@ void Randomizer::fmNoise()
     setFmVoice (0, rnd (0.85f, 1.0f), ratios, levels, rnd (0.4f, 0.7f));
 }
 
+void Randomizer::fmFormantVoice (float baseHz, float vowel01, float outLevel)
+{
+    // the classic FM voice: operator 1 at the fundamental modulates three
+    // carriers, one on the fundamental and two on the harmonics nearest the
+    // vowel's first two formants (same vowel table as the Formant effect)
+    auto harmonicNear = [baseHz] (float hz)
+    { return juce::jlimit (1.0f, 16.0f, std::round (hz / juce::jmax (1.0f, baseHz))); };
+    const float ratios[4] = { 1.0f, harmonicNear (Formant::formantHz (vowel01, 0)),
+                              harmonicNear (Formant::formantHz (vowel01, 1)), 1.0f };
+    const float levels[4] = { rnd (0.15f, 0.35f), rnd (0.5f, 0.7f), rnd (0.25f, 0.45f), rnd (0.7f, 0.9f) };
+    setFmVoice (5, rnd (0.0f, 0.15f), ratios, levels, outLevel);   // algo 5: op 1 -> ops 2, 3, 4
+}
+
 void Randomizer::setFxOrder (const int* order)
 {
     for (int k = 0; k < kFxChainLen; ++k)
@@ -167,7 +181,7 @@ void Randomizer::maybeNoise (float prob)
     if (! chance (prob))
         return;
     setBool (id::noiseOn, true);
-    setChoice (id::noiseType, rndInt (0, 3));
+    setChoice (id::noiseType, rndInt (0, 4));
     set (id::noiseColor, rnd (0.0f, 1.0f));
     set (id::noiseLevel, rnd (0.1f, 0.4f));   // light: blends under the main tone
 }
@@ -378,7 +392,7 @@ void Randomizer::fullRandom()
 
     const bool noise = chance (0.35f) || ! anySource;
     setBool (id::noiseOn, noise);
-    setChoice (id::noiseType, rndInt (0, 3));
+    setChoice (id::noiseType, rndInt (0, 4));
     set (id::noiseColor, rnd (0.0f, 1.0f));
     set (id::noiseLevel, rnd (0.3f, 1.0f));
 
@@ -626,8 +640,10 @@ void Randomizer::applyCategory (Category c)
             const float sweepLen = rnd (0.15f, 0.4f);
             set (id::envFDecay, sweepLen);
             set (id::envFCurve, rnd (-0.4f, 0.0f));
-            set (id::envADecay, sweepLen * rnd (0.7f, 1.0f));      // amp dies with the sweep
+            set (id::envADecay, sweepLen * rnd (0.9f, 1.3f));      // amp holds through the sweep
+            set (id::envACurve, rnd (-0.3f, 0.1f));
             const bool invertedDive = chance (0.5f);
+            bool osc2Used = false;
             setChoice (modId (1, "src"), (int) ModSrc::FilterEnv);
             setChoice (modId (1, "dest"), (int) ModDest::AllPitch);
             if (! invertedDive)
@@ -646,26 +662,44 @@ void Randomizer::applyCategory (Category c)
             }
             set (id::lpfCutoff, rndLog (4000.0f, 14000.0f));
             set (id::lpfRes, rnd (0.35f, 0.7f));                   // the "pew" ring
+            set (id::vcaDrive, rnd (0.3f, 0.7f));                  // body and bite
+            set (id::comp, rnd (0.3f, 0.7f));
+            if (chance (0.4f))                                     // a wider beam
+            {
+                set (id::uniVoices, (float) rndInt (2, 4));
+                set (id::uniDetune, rnd (10.0f, 25.0f));
+            }
             if (chance (0.4f))                                     // sync sweep zap
             {
+                osc2Used = true;
                 setBool (oscId (2, "sync"), true);                 // OSC 2 -> master
                 setBool (oscId (2, "on"), true);
                 setChoice (oscId (2, "wave"), (int) OscWave::Saw);
                 set (oscId (2, "pitch"), rnd (4.0f, 14.0f));
                 set (oscId (2, "level"), rnd (0.6f, 0.9f));
-                set (oscId (1, "level"), 0.25f);
+                set (oscId (1, "level"), rnd (0.45f, 0.65f));
                 setChoice (modId (2, "src"), (int) ModSrc::FilterEnv);
                 setChoice (modId (2, "dest"), (int) ModDest::Osc2Pitch);
                 set (modId (2, "depth"), invertedDive ? rnd (-0.7f, -0.35f)
                                                       : rnd (0.35f, 0.7f));
             }
-            if (chance (0.35f))                                    // sub layer: fattens the beam
+            if (chance (0.5f))                                     // sub layer: fattens the beam
             {
-                setBool (oscId (3, "on"), true);
-                setChoice (oscId (3, "wave"), chance (0.5f) ? (int) OscWave::Sine
-                                                            : (int) OscWave::Triangle);
-                set (oscId (3, "pitch"), -12.0f);
-                set (oscId (3, "level"), rnd (0.4f, 0.7f));
+                if (! osc2Used)                                    // OSC 2 an octave down
+                {
+                    setBool (oscId (2, "on"), true);
+                    setChoice (oscId (2, "wave"), chance (0.5f) ? (int) OscWave::Sine
+                                                                : (int) OscWave::Triangle);
+                    set (oscId (2, "pitch"), -12.0f);
+                    set (oscId (2, "level"), rnd (0.4f, 0.7f));
+                }
+                else                                               // FM voice as a pure sine sub
+                {
+                    const float ratios[4] = { 1.0f, 1.0f, 1.0f, 1.0f };
+                    const float levels[4] = { 0.0f, 0.0f, 0.0f, 0.9f };
+                    setFmVoice (0, 0.0f, ratios, levels, rnd (0.4f, 0.7f));
+                    set (oscId (3, "pitch"), -12.0f);
+                }
             }
             if (chance (0.3f))                                     // discharge sizzle
             {
@@ -689,7 +723,7 @@ void Randomizer::applyCategory (Category c)
             if (chance (0.4f))                                     // metallic FM beam (rides the pitch dive)
             {
                 fmClang();
-                set (oscId (1, "level"), rnd (0.3f, 0.55f));       // FM leads
+                set (oscId (1, "level"), rnd (0.5f, 0.7f));        // FM leads
             }
             if (chance (0.25f))                                    // biting ring-mod edge
             {
@@ -712,6 +746,9 @@ void Randomizer::applyCategory (Category c)
 
         case Category::Explosion:
         {
+            // a rolling explosion, or (blast) a sudden short bang with a
+            // concussive low thump behind the crack
+            const bool blast = chance (0.4f);
             setBool (oscId (1, "on"), chance (0.5f));              // optional rumble
             setChoice (oscId (1, "wave"), (int) OscWave::Sine);
             set (oscId (1, "level"), 0.6f);
@@ -737,6 +774,26 @@ void Randomizer::applyCategory (Category c)
             set (id::envARelease, rnd (0.2f, 0.5f));
             set (id::vcaDrive, rnd (0.3f, 0.8f));
             set (id::comp, rnd (0.3f, 0.7f));                      // body/punch
+            if (blast)                                             // bright crack over a heavy thump
+            {
+                if (chance (0.5f))
+                    set (id::noiseColor, rnd (0.0f, 0.4f));        // whiter = sharper
+                set (id::noiseLevel, rnd (0.6f, 0.85f));           // the thump carries the weight
+                setBool (oscId (1, "on"), true);                   // concussive body, always
+                set (id::baseFreq, rndLog (40.0f, 70.0f));
+                set (oscId (1, "level"), rnd (0.7f, 0.9f));
+                set (id::lpfCutoff, rndLog (400.0f, 1200.0f));
+                set (id::lpfEnv, rnd (0.5f, 0.85f));
+                set (id::envFDecay, rnd (0.08f, 0.25f));
+                set (id::envADecay, rnd (0.25f, 0.6f));
+                set (id::envACurve, rnd (-0.6f, -0.3f));
+                set (id::envARelease, rnd (0.08f, 0.15f));
+                set (id::vcaDrive, rnd (0.5f, 0.9f));
+                set (id::comp, rnd (0.6f, 0.9f));
+                setChoice (modId (1, "src"),  (int) ModSrc::FilterEnv);   // the body dives with the crack
+                setChoice (modId (1, "dest"), (int) ModDest::AllPitch);
+                set (modId (1, "depth"), rnd (0.2f, 0.4f));
+            }
             if (chance (0.45f))                                    // debris crunch
             {
                 setBool (id::crushOn, true);
@@ -750,21 +807,21 @@ void Randomizer::applyCategory (Category c)
                     setFxOrder (crushLast);
                 }
             }
-            if (chance (0.35f))                                    // sfxr-style whoosh
+            if (! blast && chance (0.35f))                         // sfxr-style whoosh
             {
                 setBool (id::flangeOn, true);
                 set (id::flangeRate, rnd (0.1f, 0.4f));
                 set (id::flangeDepth, rnd (0.5f, 1.0f));
                 set (id::flangeFb, rnd (0.5f, 0.8f));
             }
-            if (chance (0.4f))                                     // low sub layer (OSC 2)
+            if (chance (blast ? 0.6f : 0.4f))                      // low sub layer (OSC 2)
             {
                 setBool (oscId (2, "on"), true);
                 setChoice (oscId (2, "wave"), (int) OscWave::Sine);
                 set (oscId (2, "pitch"), -12.0f);
                 set (oscId (2, "level"), rnd (0.3f, 0.5f));
             }
-            if (chance (0.25f))                                    // rumble flutter (tremolo)
+            if (! blast && chance (0.25f))                         // rumble flutter (tremolo)
             {
                 setBool (id::tremOn, true);
                 set (id::tremRate, rndLog (8.0f, 25.0f));
@@ -772,7 +829,7 @@ void Randomizer::applyCategory (Category c)
             }
             if (chance (0.3f))                                     // FM-noise debris burst
                 fmNoise();
-            set (id::gateTime, 0.4f);
+            set (id::gateTime, blast ? rnd (0.12f, 0.2f) : 0.4f);
             if (chance (0.4f))                                     // crackle
             {
                 setChoice (modId (2, "src"), (int) ModSrc::Lfo1);
@@ -1177,39 +1234,44 @@ void Randomizer::applyCategory (Category c)
                                                     : (int) NoiseType::LfsrHiss);
             set (id::noiseColor, rnd (0.1f, 0.5f));              // less thin, a little grit
             set (id::noiseLevel, rnd (0.65f, 0.95f));            // noise leads = airier, less tonal
+            if (chance (0.2f))                                   // serrated edge: dense Dust grit
+            {
+                setChoice (id::noiseType, (int) NoiseType::Dust);
+                set (id::noiseColor, rnd (0.75f, 0.95f));        // 350-1500 clicks per second
+            }
             // the swoosh: a resonant filter sweep is the heart of the swing.
             // Pick a gesture -- a bright slicing cut, an inverted rising whoosh,
             // or a full up-then-down arc (the classic sword swoosh)
             set (id::lpfRes, rnd (0.4f, 0.66f));                // resonant swoosh, but not whistly
             set (id::envACurve, rnd (-0.4f, -0.1f));
-            set (id::envARelease, rnd (0.06f, 0.14f));
+            set (id::envARelease, rnd (0.04f, 0.1f));
             const int swoosh = rndInt (0, 2);
             if (swoosh == 0)                                    // bright cut, sweeps down
             {
                 set (id::lpfCutoff, rndLog (1600.0f, 4500.0f));
                 set (id::lpfEnv, rnd (0.5f, 0.85f));
-                set (id::envFDecay, rnd (0.14f, 0.3f));
-                set (id::envADecay, rnd (0.16f, 0.34f));
+                set (id::envFDecay, rnd (0.08f, 0.2f));
+                set (id::envADecay, rnd (0.1f, 0.22f));
             }
             else if (swoosh == 1)                              // inverted: dark -> bright rise
             {
                 setBool (id::envFInvert, true);
                 set (id::lpfCutoff, rndLog (500.0f, 1300.0f)); // muffled start
                 set (id::lpfEnv, rnd (0.6f, 0.9f));            // inverted env opens it up
-                set (id::envFDecay, rnd (0.16f, 0.34f));       // the rise time
+                set (id::envFDecay, rnd (0.1f, 0.22f));        // the rise time
                 set (id::envFRelease, 0.4f);
-                set (id::envASustain, rnd (0.25f, 0.5f));      // hold so the rise is heard
-                set (id::envADecay, rnd (0.2f, 0.4f));
+                set (id::envASustain, rnd (0.2f, 0.4f));       // hold so the rise is heard
+                set (id::envADecay, rnd (0.12f, 0.25f));
             }
             else                                               // full arc: up to a peak then down
             {
                 set (id::lpfCutoff, rndLog (700.0f, 1600.0f));
                 set (id::lpfEnv, rnd (0.6f, 0.95f));
-                set (id::envFAttack, rnd (0.07f, 0.16f));      // sweep UP...
-                set (id::envFDecay, rnd (0.12f, 0.26f));       // ...then back DOWN
+                set (id::envFAttack, rnd (0.04f, 0.1f));       // sweep UP...
+                set (id::envFDecay, rnd (0.08f, 0.18f));       // ...then back DOWN
                 set (id::envFCurve, rnd (-0.2f, 0.3f));
-                set (id::envASustain, rnd (0.3f, 0.55f));      // sustain through the arc
-                set (id::envADecay, rnd (0.25f, 0.45f));
+                set (id::envASustain, rnd (0.2f, 0.4f));       // sustain through the arc
+                set (id::envADecay, rnd (0.15f, 0.3f));
             }
             if (chance (0.45f))                                 // thin/airy variant (HPF)
             {
@@ -1235,7 +1297,7 @@ void Randomizer::applyCategory (Category c)
                 setBool (id::flangeOn, true);
                 set (id::flangeRate, rnd (0.5f, 2.0f));
                 set (id::flangeDepth, rnd (0.5f, 0.9f));
-                set (id::flangeFb, rnd (0.3f, 0.7f));
+                set (id::flangeFb, rnd (0.1f, 0.35f));           // low feedback: the swirl stops with the cut
             }
             if (chance (0.45f))                                  // blade contact ring
                 fmClang();
@@ -1245,7 +1307,7 @@ void Randomizer::applyCategory (Category c)
                 set (id::ringFreq, rndLog (400.0f, 2000.0f));
                 set (id::ringMix, rnd (0.25f, 0.5f));
             }
-            set (id::gateTime, rnd (0.24f, 0.4f));             // ~300ms sweet spot: quick slash
+            set (id::gateTime, rnd (0.14f, 0.26f));            // a quick swish
             break;
         }
 
@@ -1258,6 +1320,13 @@ void Randomizer::applyCategory (Category c)
             setChoice (id::noiseType, (int) NoiseType::Analog);
             set (id::noiseColor, rnd (0.6f, 1.0f));              // pink-ish, soft
             set (id::noiseLevel, rnd (0.8f, 1.0f));
+            if (chance (0.25f))                                  // sand and debris: Dust grit over FM-noise air
+            {
+                setChoice (id::noiseType, (int) NoiseType::Dust);
+                set (id::noiseColor, rnd (0.8f, 1.0f));          // 500-2000 clicks per second
+                fmNoise();
+                set (oscId (3, "level"), rnd (0.3f, 0.5f));
+            }
             setBool (id::hpfOn, true);
             set (id::hpfCutoff, rndLog (200.0f, 700.0f));        // remove low rumble
             set (id::lpfCutoff, rndLog (700.0f, 2500.0f));
@@ -1297,44 +1366,159 @@ void Randomizer::applyCategory (Category c)
 
         case Category::Flame:
         {
-            // fire: a low filtered roar under a random crackle. Sample-and-hold
-            // jitter on the filter makes the spit and pop; drive adds the burn.
+            // fire, from big to small: a flamethrower or rocket roar, a firewall
+            // bursting out along the ground, an ignition "fwoomp", a torch hiss.
+            // Noise carries the flame; an S&G LFO on the cutoff is the turbulence.
+            enum { Thrower, Firewall, Ignition, Torch };
+            const int take = rndInt (0, 3);
             setChoice (oscId (1, "wave"), (int) OscWave::Sine);
-            setBool (oscId (1, "on"), chance (0.6f));            // optional low roar
-            set (id::baseFreq, rndLog (60.0f, 160.0f));
-            set (oscId (1, "level"), rnd (0.3f, 0.55f));
+            setBool (oscId (1, "on"), false);
             setBool (id::noiseOn, true);
-            setChoice (id::noiseType, chance (0.5f) ? (int) NoiseType::Rasp
-                                                    : (int) NoiseType::Analog);
-            set (id::noiseColor, rnd (0.3f, 0.8f));
-            set (id::noiseLevel, rnd (0.7f, 1.0f));
-            set (id::lpfCutoff, rndLog (500.0f, 2000.0f));       // warm, dull roar
-            set (id::lpfRes, rnd (0.1f, 0.4f));
-            setChoice (modId (1, "src"),  (int) ModSrc::Lfo1);   // S&H crackle on cutoff
+            setChoice (id::noiseType, chance (0.7f) ? (int) NoiseType::Analog
+                                                    : (int) NoiseType::Rasp);
+            setBool (id::hpfOn, true);
+
+            setChoice (lfoId (1, "wave"), (int) LfoWave::SampleGlide);   // turbulence
+            setChoice (modId (1, "src"),  (int) ModSrc::Lfo1);
             setChoice (modId (1, "dest"), (int) ModDest::Cutoff);
-            set (modId (1, "depth"), rnd (0.3f, 0.6f));
-            setChoice (lfoId (1, "wave"), (int) LfoWave::SampleHold);
-            set (lfoId (1, "rate"), rndLog (8.0f, 30.0f));
-            set (id::vcaDrive, rnd (0.4f, 0.8f));                // the burn
-            set (id::comp, rnd (0.3f, 0.6f));
-            set (id::envAAttack, rnd (0.01f, 0.08f));
-            set (id::envADecay, rnd (0.5f, 1.2f));
-            set (id::envASustain, rnd (0.3f, 0.6f));
-            set (id::envARelease, rnd (0.2f, 0.5f));
-            if (chance (0.45f))                                  // charring grit
+
+            auto crackleOverRoar = [this] (float clickColourLo, float clickColourHi, float roarLevel)
+            {
+                setChoice (id::noiseType, (int) NoiseType::Dust);
+                set (id::noiseColor, rnd (clickColourLo, clickColourHi));
+                fmNoise();
+                set (oscId (3, "level"), roarLevel);
+            };
+
+            switch (take)
+            {
+                case Thrower:                                    // sustained turbulent roar
+                {
+                    set (id::noiseColor, rnd (0.2f, 0.6f));
+                    set (id::noiseLevel, rnd (0.8f, 1.0f));
+                    set (id::hpfCutoff, rndLog (80.0f, 200.0f));
+                    set (id::lpfCutoff, rndLog (1500.0f, 5000.0f));
+                    set (id::lpfRes, rnd (0.1f, 0.35f));
+                    set (lfoId (1, "rate"), rndLog (6.0f, 15.0f));
+                    set (modId (1, "depth"), rnd (0.15f, 0.3f));
+                    if (chance (0.6f))                           // low rumble
+                    {
+                        setBool (oscId (1, "on"), true);
+                        set (id::baseFreq, rndLog (40.0f, 80.0f));
+                        set (oscId (1, "level"), rnd (0.3f, 0.5f));
+                    }
+                    if (chance (0.4f))                           // rocket: the roar opens up
+                    {
+                        set (id::envFAttack, rnd (0.3f, 0.8f));
+                        set (id::envFSustain, 1.0f);
+                        set (id::lpfEnv, rnd (0.3f, 0.6f));
+                    }
+                    if (chance (0.4f))                           // flutter
+                    {
+                        setBool (id::tremOn, true);
+                        set (id::tremRate, rndLog (8.0f, 16.0f));
+                        set (id::tremDepth, rnd (0.15f, 0.3f));
+                    }
+                    if (chance (0.3f))                           // jet whoosh
+                    {
+                        setBool (id::phaseOn, true);
+                        set (id::phaseRate, rndLog (0.2f, 1.0f));
+                        set (id::phaseDepth, rnd (0.5f, 0.9f));
+                        set (id::phaseFb, rnd (0.3f, 0.6f));
+                    }
+                    set (id::vcaDrive, rnd (0.4f, 0.7f));
+                    set (id::comp, rnd (0.3f, 0.6f));
+                    set (id::envAAttack, rnd (0.05f, 0.2f));
+                    set (id::envADecay, 0.5f);
+                    set (id::envASustain, rnd (0.8f, 1.0f));
+                    set (id::envARelease, rnd (0.25f, 0.5f));
+                    set (id::gateTime, rnd (0.8f, 1.5f));
+                    break;
+                }
+
+                case Firewall:                                   // bursts out, then burns
+                {
+                    set (id::noiseColor, rnd (0.3f, 0.7f));
+                    set (id::noiseLevel, rnd (0.8f, 1.0f));
+                    set (id::hpfCutoff, rndLog (100.0f, 300.0f));
+                    set (id::lpfCutoff, rndLog (600.0f, 1500.0f));
+                    set (id::lpfRes, rnd (0.15f, 0.4f));
+                    set (id::lpfEnv, rnd (0.5f, 0.8f));          // the arc opens and settles
+                    set (id::envFAttack, rnd (0.1f, 0.3f));
+                    set (id::envFDecay, rnd (0.4f, 0.8f));
+                    set (id::envFSustain, rnd (0.4f, 0.6f));
+                    set (lfoId (1, "rate"), rndLog (5.0f, 12.0f));
+                    set (modId (1, "depth"), rnd (0.1f, 0.25f));
+                    if (chance (0.5f))
+                        crackleOverRoar (0.45f, 0.7f, rnd (0.25f, 0.45f));
+                    if (chance (0.4f))                           // moving along the ground
+                    {
+                        setBool (id::flangeOn, true);
+                        set (id::flangeRate, rndLog (0.2f, 0.8f));
+                        set (id::flangeDepth, rnd (0.4f, 0.8f));
+                        set (id::flangeFb, rnd (0.2f, 0.5f));
+                    }
+                    set (id::vcaDrive, rnd (0.3f, 0.6f));
+                    set (id::envAAttack, rnd (0.05f, 0.15f));
+                    set (id::envADecay, rnd (0.4f, 0.8f));
+                    set (id::envASustain, rnd (0.5f, 0.75f));
+                    set (id::envARelease, rnd (0.3f, 0.6f));
+                    set (id::gateTime, rnd (0.8f, 1.3f));
+                    break;
+                }
+
+                case Ignition:                                   // fwoomp, then a small burn
+                {
+                    set (id::noiseColor, rnd (0.4f, 0.8f));
+                    set (id::noiseLevel, rnd (0.7f, 0.9f));
+                    set (id::hpfCutoff, rndLog (60.0f, 150.0f));
+                    set (id::lpfCutoff, rndLog (300.0f, 800.0f));
+                    set (id::lpfRes, rnd (0.1f, 0.3f));
+                    set (id::lpfEnv, rnd (0.6f, 0.9f));          // the bloom
+                    set (id::envFAttack, rnd (0.02f, 0.06f));
+                    set (id::envFDecay, rnd (0.2f, 0.4f));
+                    set (lfoId (1, "rate"), rndLog (4.0f, 10.0f));
+                    set (modId (1, "depth"), rnd (0.08f, 0.18f));
+                    setBool (oscId (1, "on"), true);             // low swell under the bloom
+                    set (id::baseFreq, rndLog (50.0f, 90.0f));
+                    set (oscId (1, "level"), rnd (0.3f, 0.5f));
+                    setChoice (modId (2, "src"),  (int) ModSrc::FilterEnv);
+                    setChoice (modId (2, "dest"), (int) ModDest::AllPitch);
+                    set (modId (2, "depth"), rnd (0.05f, 0.12f));
+                    set (id::envAAttack, rnd (0.01f, 0.04f));
+                    set (id::envADecay, rnd (0.3f, 0.5f));
+                    set (id::envASustain, rnd (0.15f, 0.3f));
+                    set (id::envARelease, rnd (0.2f, 0.4f));
+                    set (id::gateTime, rnd (0.4f, 0.7f));
+                    break;
+                }
+
+                case Torch:                                      // quiet steady hiss
+                {
+                    set (id::noiseColor, rnd (0.5f, 0.9f));
+                    set (id::noiseLevel, rnd (0.55f, 0.75f));
+                    set (id::hpfCutoff, rndLog (150.0f, 400.0f));
+                    set (id::lpfCutoff, rndLog (800.0f, 2500.0f));
+                    set (id::lpfRes, rnd (0.3f, 0.5f));          // a hint of whistle
+                    set (lfoId (1, "rate"), rndLog (2.0f, 6.0f));
+                    set (modId (1, "depth"), rnd (0.05f, 0.12f));
+                    if (chance (0.4f))
+                        crackleOverRoar (0.25f, 0.45f, rnd (0.2f, 0.35f));
+                    set (id::envAAttack, rnd (0.05f, 0.15f));
+                    set (id::envADecay, 0.5f);
+                    set (id::envASustain, rnd (0.7f, 0.9f));
+                    set (id::envARelease, rnd (0.2f, 0.4f));
+                    set (id::gateTime, rnd (1.0f, 1.6f));
+                    break;
+                }
+            }
+            if (take != Torch && chance (0.25f))                 // charring grit
             {
                 setBool (id::crushOn, true);
-                set (id::crushBits, rnd (4.0f, 9.0f));
-                set (id::crushDown, rnd (3.0f, 12.0f));
+                set (id::crushBits, rnd (5.0f, 10.0f));
+                set (id::crushDown, rnd (2.0f, 8.0f));
                 if (chance (0.5f)) setBool (id::crushPre, true);
             }
-            if (chance (0.3f))                                   // a second flutter layer
-            {
-                setBool (id::tremOn, true);
-                set (id::tremRate, rndLog (5.0f, 14.0f));
-                set (id::tremDepth, rnd (0.3f, 0.6f));
-            }
-            set (id::gateTime, rnd (0.6f, 1.0f));                // fire keeps burning
             break;
         }
 
@@ -1352,6 +1536,12 @@ void Randomizer::applyCategory (Category c)
                                                     : (int) NoiseType::LfsrHiss);
             set (id::noiseColor, rnd (0.0f, 0.4f));              // bright
             set (id::noiseLevel, rnd (0.4f, 0.75f));
+            if (chance (0.3f))                                   // dense Dust crackle instead
+            {
+                setChoice (id::noiseType, (int) NoiseType::Dust);
+                set (id::noiseColor, rnd (0.6f, 0.85f));         // 125-700 clicks per second
+                set (id::noiseLevel, rnd (0.6f, 0.9f));
+            }
             set (id::lpfCutoff, rndLog (4000.0f, 16000.0f));
             set (id::lpfRes, rnd (0.25f, 0.55f));
             // the buzz core: an audio-rate ring mod throws gritty electric
@@ -1450,6 +1640,13 @@ void Randomizer::applyCategory (Category c)
                 set (oscId (2, "pitch"), 12.0f);
                 set (oscId (2, "level"), rnd (0.2f, 0.4f));
             }
+            if (chance (0.25f))                                  // glitter: sparse Dust ticks
+            {
+                setBool (id::noiseOn, true);
+                setChoice (id::noiseType, (int) NoiseType::Dust);
+                set (id::noiseColor, rnd (0.3f, 0.55f));         // 15-90 clicks per second
+                set (id::noiseLevel, rnd (0.25f, 0.45f));
+            }
             if (chance (0.25f))                                  // 8-bit crystalline shimmer
             {
                 setBool (id::crushOn, true);
@@ -1457,6 +1654,592 @@ void Randomizer::applyCategory (Category c)
                 set (id::crushDown, rnd (1.0f, 4.0f));
             }
             set (id::gateTime, rnd (0.3f, 0.5f));
+            break;
+        }
+
+        case Category::Voice:
+        {
+            // human and creature vocalisations: a buzzy glottal source (OSC 1,
+            // often with the FM formant voice) through the formant filter. The
+            // filter env shapes pitch and vowel; an LFO keeps the pitch alive.
+            // Takes: shout/alarm, bark, growl, roar, death cry, screech, yelp, moan.
+            enum { Shout, Bark, Growl, Roar, Death, Screech, Yelp, Moan };
+            struct Take { float hzLo, hzHi, vowelLo, vowelHi, fmChance; };
+            static const Take takes[8] = {
+                { 220.0f,  420.0f, 0.30f, 0.50f, 0.50f },   // shout / alarm
+                { 250.0f,  600.0f, 0.35f, 0.55f, 0.35f },   // bark
+                {  60.0f,  120.0f, 0.60f, 0.90f, 0.25f },   // growl
+                {  70.0f,  160.0f, 0.40f, 0.70f, 0.30f },   // roar
+                { 160.0f,  320.0f, 0.30f, 0.50f, 0.45f },   // death cry
+                { 900.0f, 2200.0f, 0.00f, 0.25f, 0.60f },   // screech
+                { 500.0f, 1100.0f, 0.40f, 0.70f, 0.45f },   // yelp / whimper
+                {  90.0f,  200.0f, 0.55f, 0.95f, 0.50f } }; // moan
+            const int take = rndInt (0, 7);
+            const auto& tk = takes[take];
+            const float hz = rndLog (tk.hzLo, tk.hzHi);
+            const float vowel = rnd (tk.vowelLo, tk.vowelHi);
+
+            set (id::baseFreq, hz);
+            setChoice (oscId (1, "wave"), chance (0.6f) ? (int) OscWave::Saw
+                                                        : (int) OscWave::Square);
+            set (oscId (1, "pwm"), rnd (25.0f, 45.0f));            // nasal pulse
+            setBool (id::formOn, true);
+            set (id::formVowel, vowel);
+            set (id::formReso, rnd (0.55f, 0.85f));
+            set (id::formMix, rnd (0.85f, 1.0f));
+            setBool (id::noiseOn, true);                           // breath
+            setChoice (id::noiseType, (int) NoiseType::Analog);
+            set (id::noiseColor, rnd (0.3f, 0.7f));
+            set (id::noiseLevel, take == Roar  ? rnd (0.3f, 0.5f)
+                               : take == Growl ? rnd (0.2f, 0.35f)
+                               : take == Death ? rnd (0.15f, 0.3f)
+                                               : rnd (0.06f, 0.18f));
+            if (chance (take == Growl || take == Roar ? 0.35f : 0.2f))   // fry and rattle: Dust in the throat
+            {
+                setChoice (id::noiseType, (int) NoiseType::Dust);
+                set (id::noiseColor, rnd (0.4f, 0.75f));         // 30-350 clicks per second
+                set (id::noiseLevel, rnd (0.15f, 0.35f));
+            }
+            const bool high = take == Screech || take == Yelp;
+            set (id::lpfCutoff, high ? rndLog (6000.0f, 12000.0f) : rndLog (2500.0f, 6000.0f));
+            set (id::lpfRes, rnd (0.1f, 0.3f));
+            if (take != Growl && take != Roar && chance (0.5f))
+            {
+                setBool (id::hpfOn, true);
+                set (id::hpfCutoff, high ? rndLog (400.0f, 900.0f) : rndLog (100.0f, 200.0f));
+            }
+            if (chance (tk.fmChance))                              // FM formant voice
+            {
+                fmFormantVoice (hz, vowel, rnd (0.4f, 0.7f));
+                set (oscId (1, "level"), rnd (0.5f, 0.75f));
+            }
+            set (id::envAAttack, rnd (0.008f, 0.03f));
+            setChoice (modId (1, "src"),  (int) ModSrc::FilterEnv);   // pitch contour
+            setChoice (modId (1, "dest"), (int) ModDest::AllPitch);
+            setChoice (modId (2, "src"),  (int) ModSrc::FilterEnv);   // vowel contour
+            setChoice (modId (2, "dest"), (int) ModDest::FormVowel);
+            setChoice (modId (3, "src"),  (int) ModSrc::Lfo1);        // pitch jitter or vibrato
+            setChoice (modId (3, "dest"), (int) ModDest::AllPitch);
+            setChoice (lfoId (1, "wave"), (int) LfoWave::SampleGlide);
+            set (lfoId (1, "rate"), rnd (8.0f, 20.0f));
+            set (modId (3, "depth"), rnd (0.003f, 0.008f));
+
+            auto vibrato = [this] (float rateLo, float rateHi, float depthLo, float depthHi, float delay)
+            {
+                setChoice (lfoId (1, "wave"), (int) LfoWave::Sine);
+                set (lfoId (1, "rate"), rnd (rateLo, rateHi));
+                set (lfoId (1, "delay"), delay);
+                set (modId (3, "depth"), rnd (depthLo, depthHi));
+            };
+            auto thickLayer = [this] (bool sub)                    // OSC 2 detuned or an octave down
+            {
+                setBool (oscId (2, "on"), true);
+                setChoice (oscId (2, "wave"), (int) OscWave::Saw);
+                set (oscId (2, "pitch"), sub ? -12.0f : 0.0f);
+                set (oscId (2, "fine"), rnd (6.0f, 20.0f));
+                set (oscId (2, "level"), rnd (0.45f, 0.7f));
+            };
+            auto syncSweep = [this]                                // hard-sync "yeow" resonance
+            {
+                setBool (oscId (2, "on"), true);
+                setBool (oscId (2, "sync"), true);
+                setChoice (oscId (2, "wave"), (int) OscWave::Saw);
+                set (oscId (2, "pitch"), rnd (5.0f, 12.0f));
+                set (oscId (2, "level"), rnd (0.4f, 0.6f));
+                setChoice (modId (4, "src"),  (int) ModSrc::FilterEnv);
+                setChoice (modId (4, "dest"), (int) ModDest::Osc2Pitch);
+                set (modId (4, "depth"), rnd (0.1f, 0.25f));
+            };
+            auto growlRing = [this] (float mixLo, float mixHi)
+            {
+                setBool (id::ringOn, true);
+                set (id::ringFreq, rndLog (25.0f, 60.0f));
+                set (id::ringMix, rnd (mixLo, mixHi));
+            };
+
+            switch (take)
+            {
+                case Shout:                                        // up, then falls
+                    set (modId (1, "depth"), rnd (0.04f, 0.1f));
+                    set (modId (2, "depth"), rnd (-0.25f, -0.1f));
+                    set (id::envFDecay, rnd (0.15f, 0.35f));
+                    set (id::envADecay, rnd (0.25f, 0.4f));
+                    set (id::envASustain, rnd (0.55f, 0.75f));
+                    set (id::envARelease, rnd (0.12f, 0.25f));
+                    set (id::vcaDrive, rnd (0.4f, 0.8f));
+                    if (chance (0.4f))                             // alarm: the rising "hey!"
+                    {
+                        set (id::pj1Amt, (float) rndInt (3, 5));
+                        set (id::pj1Time, rnd (0.06f, 0.12f));
+                    }
+                    if (chance (0.4f)) syncSweep();
+                    set (id::gateTime, rnd (0.3f, 0.5f));
+                    break;
+
+                case Bark:                                         // short, quick drop
+                    set (modId (1, "depth"), rnd (0.08f, 0.18f));
+                    set (modId (2, "depth"), rnd (-0.2f, -0.05f));
+                    set (id::envFDecay, rnd (0.06f, 0.12f));
+                    set (id::noiseLevel, rnd (0.15f, 0.3f));
+                    set (id::vcaDrive, rnd (0.3f, 0.6f));
+                    if (chance (0.45f))                            // woof-woof: Step LFO opens twice
+                    {
+                        set (id::stepCount, 2.0f);
+                        set (id::stepGlide, 0.0f);
+                        set (stepValId (1), 0.0f);
+                        set (stepValId (2), -1.0f);
+                        set (lfoId (2, "rate"), rnd (5.0f, 8.0f));
+                        setChoice (modId (4, "src"),  (int) ModSrc::Lfo2);
+                        setChoice (modId (4, "dest"), (int) ModDest::VcaLevel);
+                        set (modId (4, "depth"), 1.0f);
+                        set (id::envADecay, rnd (0.3f, 0.45f));
+                        set (id::envASustain, rnd (0.5f, 0.7f));
+                        set (id::envARelease, 0.05f);
+                        set (id::gateTime, rnd (0.3f, 0.4f));
+                    }
+                    else
+                    {
+                        set (id::envADecay, rnd (0.1f, 0.2f));
+                        set (id::envARelease, 0.05f);
+                        set (id::gateTime, 0.12f);
+                    }
+                    break;
+
+                case Growl:                                        // low, rough, sustained
+                    set (modId (1, "depth"), rnd (-0.02f, 0.02f));
+                    set (modId (2, "depth"), rnd (-0.15f, 0.0f));
+                    set (id::envFDecay, rnd (0.2f, 0.4f));
+                    set (id::envAAttack, rnd (0.03f, 0.08f));
+                    set (id::envADecay, rnd (0.3f, 0.5f));
+                    set (id::envASustain, rnd (0.5f, 0.7f));
+                    set (id::envARelease, rnd (0.15f, 0.3f));
+                    set (id::vcaDrive, rnd (0.5f, 0.9f));
+                    setChoice (lfoId (1, "wave"), (int) LfoWave::SampleHold);   // rattling throat
+                    set (lfoId (1, "rate"), rnd (20.0f, 40.0f));
+                    set (modId (3, "depth"), rnd (0.004f, 0.01f));
+                    growlRing (0.3f, 0.55f);
+                    if (chance (0.6f))
+                    {
+                        setBool (id::tremOn, true);
+                        set (id::tremRate, rndLog (20.0f, 40.0f));
+                        set (id::tremDepth, rnd (0.2f, 0.45f));
+                    }
+                    if (chance (0.7f)) thickLayer (chance (0.5f));
+                    set (id::gateTime, rnd (0.5f, 0.9f));
+                    break;
+
+                case Roar:                                         // swells up, then falls away
+                    set (id::envFAttack, rnd (0.1f, 0.25f));
+                    set (id::envFDecay, rnd (0.4f, 0.8f));
+                    set (modId (1, "depth"), rnd (0.06f, 0.14f));
+                    set (modId (2, "depth"), rnd (-0.3f, -0.15f));
+                    set (id::envAAttack, rnd (0.05f, 0.12f));
+                    set (id::envADecay, rnd (0.6f, 1.0f));
+                    set (id::envASustain, rnd (0.3f, 0.5f));
+                    set (id::envARelease, 0.3f);
+                    set (id::vcaDrive, rnd (0.6f, 0.9f));
+                    set (id::comp, rnd (0.4f, 0.7f));
+                    if (chance (0.6f)) growlRing (0.2f, 0.4f);
+                    if (chance (0.6f)) thickLayer (true);
+                    if (chance (0.25f)) fmNoise();                 // throat grit
+                    if (chance (0.3f))
+                    {
+                        setBool (id::crushOn, true);
+                        set (id::crushBits, rnd (6.0f, 10.0f));
+                        set (id::crushDown, rnd (1.0f, 4.0f));
+                    }
+                    set (id::gateTime, rnd (0.6f, 1.0f));
+                    break;
+
+                case Death:                                        // long slide down
+                    setBool (id::envFInvert, true);                // slide from base and hold
+                    set (modId (1, "depth"), rnd (-0.35f, -0.2f));
+                    set (modId (2, "depth"), rnd (0.3f, 0.5f));    // vowel closes toward "oo"
+                    set (id::envFDecay, rnd (0.5f, 1.0f));
+                    set (id::envFRelease, 2.0f);
+                    vibrato (4.0f, 7.0f, 0.006f, 0.015f, rnd (0.15f, 0.3f));
+                    set (id::envAAttack, 0.02f);
+                    set (id::envADecay, rnd (0.7f, 1.2f));
+                    set (id::envACurve, rnd (-0.3f, 0.0f));
+                    set (id::envARelease, 0.25f);
+                    if (chance (0.5f)) thickLayer (false);
+                    set (id::gateTime, rnd (0.6f, 0.9f));
+                    break;
+
+                case Screech:                                      // high, shrill, wavering
+                    set (modId (1, "depth"), chance (0.5f) ? rnd (0.08f, 0.2f) : -rnd (0.08f, 0.2f));
+                    set (modId (2, "depth"), rnd (0.0f, 0.15f));
+                    set (id::envFDecay, rnd (0.15f, 0.4f));
+                    vibrato (8.0f, 14.0f, 0.01f, 0.025f, 0.0f);
+                    set (id::envADecay, rnd (0.25f, 0.5f));
+                    set (id::envASustain, rnd (0.3f, 0.5f));
+                    set (id::envARelease, 0.1f);
+                    if (chance (0.3f))
+                    {
+                        setBool (id::ringOn, true);
+                        set (id::ringFreq, rndLog (800.0f, 2000.0f));
+                        set (id::ringMix, rnd (0.2f, 0.4f));
+                    }
+                    if (chance (0.4f)) syncSweep();
+                    set (id::gateTime, rnd (0.25f, 0.45f));
+                    break;
+
+                case Yelp:                                         // a jump up, then a fall
+                    set (id::pj1Amt, (float) rndInt (3, 7));
+                    set (id::pj1Time, rnd (0.02f, 0.05f));
+                    set (modId (1, "depth"), rnd (0.1f, 0.2f));
+                    set (modId (2, "depth"), rnd (-0.4f, -0.25f)); // "ee" opening out
+                    set (id::envFDecay, rnd (0.08f, 0.2f));
+                    if (chance (0.4f))                             // whimper: longer, wavering
+                    {
+                        vibrato (5.0f, 8.0f, 0.006f, 0.012f, 0.05f);
+                        set (id::envADecay, rnd (0.4f, 0.7f));
+                        set (id::gateTime, rnd (0.3f, 0.5f));
+                    }
+                    else
+                    {
+                        set (id::envADecay, rnd (0.12f, 0.3f));
+                        set (id::gateTime, 0.15f);
+                    }
+                    set (id::envARelease, 0.08f);
+                    break;
+
+                case Moan:                                         // slow swell, wandering vowel
+                    set (modId (1, "depth"), rnd (-0.04f, 0.0f));  // the pitch sags
+                    set (modId (2, "depth"), rnd (-0.1f, 0.1f));
+                    set (id::envFDecay, rnd (0.6f, 1.0f));
+                    vibrato (4.0f, 6.0f, 0.004f, 0.01f, rnd (0.2f, 0.4f));
+                    set (id::stepCount, 4.0f);                     // Step LFO wanders the vowel
+                    set (id::stepGlide, rnd (0.8f, 1.0f));
+                    for (int k = 1; k <= 4; ++k)
+                        set (stepValId (k), rnd (-1.0f, 1.0f));
+                    set (lfoId (2, "rate"), rnd (1.0f, 3.0f));
+                    setChoice (modId (4, "src"),  (int) ModSrc::Lfo2);
+                    setChoice (modId (4, "dest"), (int) ModDest::FormVowel);
+                    set (modId (4, "depth"), rnd (0.25f, 0.45f));
+                    set (id::envAAttack, rnd (0.15f, 0.35f));
+                    set (id::envADecay, rnd (0.6f, 1.0f));
+                    set (id::envASustain, rnd (0.5f, 0.7f));
+                    set (id::envARelease, rnd (0.3f, 0.5f));
+                    if (chance (0.5f)) thickLayer (false);
+                    set (id::gateTime, rnd (0.8f, 1.2f));
+                    break;
+            }
+            if ((take == Shout || take == Death || take == Moan) && chance (0.15f))   // gravel
+            {
+                setBool (id::tremOn, true);
+                set (id::tremRate, rndLog (25.0f, 45.0f));
+                set (id::tremDepth, rnd (0.2f, 0.4f));
+            }
+
+            // optional colour on top of the formant: speech-chip grit, robot,
+            // alien or ghostly sweeps. Each skips an effect the take already set.
+            auto isOn = [this] (const juce::String& pid)
+            { return apvts.getRawParameterValue (pid)->load() > 0.5f; };
+            if (! isOn (id::crushOn) && chance (0.25f))
+            {
+                setBool (id::crushOn, true);
+                set (id::crushBits, rnd (5.0f, 10.0f));
+                set (id::crushDown, rnd (1.0f, 6.0f));
+            }
+            if (! isOn (id::ringOn) && chance (0.15f))
+            {
+                setBool (id::ringOn, true);
+                set (id::ringFreq, rndLog (80.0f, 400.0f));
+                set (id::ringMix, rnd (0.3f, 0.6f));
+            }
+            if (chance (0.15f))
+            {
+                setBool (id::phaseOn, true);
+                set (id::phaseRate, rndLog (0.3f, 3.0f));
+                set (id::phaseDepth, rnd (0.4f, 0.8f));
+                set (id::phaseFb, rnd (0.3f, 0.6f));
+            }
+            if (chance (0.15f))
+            {
+                setBool (id::flangeOn, true);
+                set (id::flangeRate, rndLog (0.1f, 1.0f));
+                set (id::flangeDepth, rnd (0.3f, 0.7f));
+                set (id::flangeFb, rnd (0.3f, 0.7f));
+            }
+            break;
+        }
+
+        case Category::Crackle:
+        {
+            // crackle. Campfire, embers, vinyl and crinkling paper use Dust noise
+            // (sparse millisecond clicks, COLOR = clicks per second) over an
+            // optional soft FM-noise bed, with an LFO flaring the click rate.
+            // Static/electric gates noise with the Step LFO on the VCA.
+            enum { Campfire, Embers, Vinyl, Paper, Static };
+            const int take = rndInt (0, 4);
+            setBool (oscId (1, "on"), false);
+            setBool (id::noiseOn, true);
+            set (id::noiseLevel, rnd (0.85f, 1.0f));
+
+            if (take != Static)
+            {
+                // Dust colour c gives 2 * 1000^c clicks per second
+                setChoice (id::noiseType, (int) NoiseType::Dust);
+                set (id::noiseColor, take == Embers ? rnd (0.08f, 0.25f)    // 3-10 /s
+                                   : take == Vinyl  ? rnd (0.15f, 0.4f)     // 5-30 /s
+                                   : take == Paper  ? rnd (0.6f, 0.8f)      // 125-500 /s
+                                                    : rnd (0.3f, 0.53f));   // 15-80 /s
+                setBool (id::hpfOn, true);
+                set (id::hpfCutoff, take == Vinyl ? rndLog (1500.0f, 4000.0f)
+                                  : take == Paper ? rndLog (1500.0f, 5000.0f)
+                                                  : rndLog (150.0f, 500.0f));   // keep the wood's body
+                set (id::lpfCutoff, take == Embers ? rndLog (1500.0f, 4000.0f)
+                                  : take == Vinyl  ? rndLog (6000.0f, 10000.0f)
+                                  : take == Paper  ? rndLog (8000.0f, 16000.0f)
+                                                   : rndLog (2500.0f, 7000.0f));
+                set (id::lpfRes, rnd (0.0f, 0.2f));
+
+                const float bedChance = take == Campfire ? 0.6f : take == Vinyl ? 0.6f
+                                      : take == Embers ? 0.4f : 0.0f;
+                if (chance (bedChance))                            // roar or hiss under the clicks
+                {
+                    fmNoise();
+                    set (oscId (3, "level"), take == Vinyl ? rnd (0.04f, 0.1f) : rnd (0.08f, 0.18f));
+                }
+
+                setChoice (lfoId (1, "wave"), take == Paper ? (int) LfoWave::SampleHold
+                                                            : (int) LfoWave::SampleGlide);
+                set (lfoId (1, "rate"), take == Paper ? rndLog (4.0f, 12.0f) : rndLog (0.4f, 2.0f));
+                if (take != Vinyl)                                 // the fire flares and settles
+                {
+                    setChoice (modId (1, "src"),  (int) ModSrc::Lfo1);
+                    setChoice (modId (1, "dest"), (int) ModDest::NoiseColor);
+                    set (modId (1, "depth"), take == Paper ? rnd (0.15f, 0.3f) : rnd (0.08f, 0.2f));
+                }
+                set (id::comp, rnd (0.4f, 0.7f));                  // lifts the quiet clicks
+                if (take == Campfire || take == Embers)
+                    set (id::vcaDrive, rnd (0.3f, 0.6f));          // weight on the pops
+
+                if (take == Paper)                                 // a hand crumpling: swells in
+                {
+                    set (id::envAAttack, rnd (0.05f, 0.25f));
+                    set (id::envADecay, rnd (0.6f, 1.2f));
+                    set (id::envASustain, rnd (0.4f, 0.7f));
+                    set (id::envARelease, rnd (0.2f, 0.4f));
+                    set (id::gateTime, rnd (0.8f, 1.4f));
+                }
+                else
+                {
+                    set (id::envAAttack, rnd (0.02f, 0.1f));
+                    set (id::envADecay, 0.5f);
+                    set (id::envASustain, rnd (0.8f, 1.0f));
+                    set (id::envARelease, rnd (0.3f, 0.6f));
+                    set (id::gateTime, rnd (1.5f, 2.5f));
+                }
+                if (take == Campfire && chance (0.2f))             // a little room
+                {
+                    setBool (id::delayOn, true);
+                    set (id::delayTime, rndLog (0.02f, 0.06f));
+                    set (id::delayFb, rnd (0.1f, 0.3f));
+                    set (id::delayMix, rnd (0.15f, 0.3f));
+                }
+                break;
+            }
+
+            // static / electric: the Step LFO gates the VCA (most steps closed,
+            // a few open); an S&H LFO jitters the step rate and the pop colour.
+            // Closed steps may leave a quiet hiss bed.
+            const bool hissBed = chance (0.5f);
+            if (chance (0.5f))
+            {
+                setChoice (id::noiseType, (int) NoiseType::LfsrHiss);
+                set (id::noiseColor, rnd (0.0f, 0.2f));
+            }
+            else
+            {
+                setChoice (id::noiseType, chance (0.5f) ? (int) NoiseType::Rasp
+                                                        : (int) NoiseType::Analog);
+                set (id::noiseColor, rnd (0.0f, 0.3f));
+            }
+            setBool (id::hpfOn, true);
+            set (id::hpfCutoff, rndLog (300.0f, 3000.0f));
+            if (chance (0.4f))                                     // radio band
+            {
+                set (id::lpfCutoff, rndLog (2500.0f, 4500.0f));
+                set (id::lpfRes, rnd (0.2f, 0.4f));
+            }
+            else
+            {
+                set (id::lpfCutoff, rndLog (4000.0f, 14000.0f));
+                set (id::lpfRes, rnd (0.0f, 0.3f));
+            }
+
+            const int steps = rndInt (6, 8);
+            set (id::stepCount, (float) steps);
+            set (id::stepGlide, 0.0f);
+            set (id::stepSkew, rnd (-0.6f, 0.6f));
+            for (int k = 1; k <= kMaxSteps; ++k)
+                set (stepValId (k), hissBed ? -rnd (0.82f, 0.92f) : -1.0f);
+            for (int n = rndInt (1, 3); n > 0; --n)
+                set (stepValId (rndInt (1, steps)), rnd (-0.1f, 0.7f));
+            set (lfoId (2, "rate"), rndLog (35.0f, 60.0f));
+            setChoice (modId (1, "src"),  (int) ModSrc::Lfo2);
+            setChoice (modId (1, "dest"), (int) ModDest::VcaLevel);
+            set (modId (1, "depth"), 1.0f);
+
+            setChoice (lfoId (1, "wave"), (int) LfoWave::SampleHold);
+            set (lfoId (1, "rate"), rndLog (3.0f, 9.0f));
+            setChoice (modId (2, "src"),  (int) ModSrc::Lfo1);     // irregular timing
+            setChoice (modId (2, "dest"), (int) ModDest::Lfo2Rate);
+            set (modId (2, "depth"), rnd (0.15f, 0.35f));
+            setChoice (modId (3, "src"),  (int) ModSrc::Lfo1);     // pop colour
+            setChoice (modId (3, "dest"), (int) ModDest::Cutoff);
+            set (modId (3, "depth"), rnd (0.1f, 0.25f));
+
+            set (id::envAAttack, 0.005f);
+            set (id::envADecay, rnd (0.8f, 1.5f));
+            set (id::envASustain, rnd (0.5f, 0.8f));
+            set (id::envARelease, rnd (0.2f, 0.4f));
+            if (chance (0.5f))                                     // digital grit
+            {
+                setBool (id::crushOn, true);
+                set (id::crushBits, rnd (5.0f, 10.0f));
+                set (id::crushDown, rnd (1.0f, 6.0f));
+            }
+            set (id::gateTime, rnd (0.8f, 1.4f));
+            break;
+        }
+
+        case Category::Twang:
+        {
+            // twang: a bright plucked tone with a resonant filter snapping shut.
+            // Three takes: bow string, sproing (pitch wobble), wire pluck (a
+            // short delay tuned to the note acts as a comb, like a string).
+            const int take = rndInt (0, 2);             // 0 bow, 1 sproing, 2 wire
+            float hz = 0.0f;
+            if (take == 0)
+            {
+                setChoice (oscId (1, "wave"), (int) OscWave::Saw);
+                hz = rndLog (70.0f, 180.0f);
+                set (id::envADecay, rnd (0.35f, 0.7f));
+            }
+            else if (take == 1)
+            {
+                setChoice (oscId (1, "wave"), chance (0.5f) ? (int) OscWave::Triangle
+                                                            : (int) OscWave::Sine);
+                hz = rndLog (180.0f, 500.0f);
+                set (id::envADecay, rnd (0.4f, 0.8f));
+            }
+            else
+            {
+                setChoice (oscId (1, "wave"), chance (0.5f) ? (int) OscWave::Square
+                                                            : (int) OscWave::Saw);
+                set (oscId (1, "pwm"), rnd (20.0f, 50.0f));
+                hz = rndLog (110.0f, 400.0f);
+                set (id::envADecay, rnd (0.25f, 0.6f));
+            }
+            set (id::baseFreq, hz);
+            set (id::envACurve, rnd (0.0f, 0.4f));                 // hard pluck: no exponential sag
+            set (id::envARelease, rnd (0.1f, 0.2f));
+
+            set (id::lpfCutoff, take == 1 ? rndLog (1200.0f, 3500.0f) : rndLog (600.0f, 1800.0f));
+            set (id::lpfRes, rnd (0.55f, 0.8f));                   // the twang ring
+            set (id::lpfEnv, rnd (0.5f, 0.8f));                    // bright pluck, closes fast
+            set (id::envFDecay, rnd (0.06f, 0.18f));
+            set (id::envFCurve, -0.4f);
+
+            setChoice (modId (1, "src"),  (int) ModSrc::FilterEnv);   // starts sharp, settles
+            setChoice (modId (1, "dest"), (int) ModDest::AllPitch);
+            set (modId (1, "depth"), take == 1 ? rnd (0.06f, 0.12f) : rnd (0.02f, 0.05f));
+            if (take == 1)                                         // the boing wobble
+            {
+                setChoice (lfoId (1, "wave"), (int) LfoWave::Sine);
+                set (lfoId (1, "rate"), rnd (9.0f, 18.0f));
+                setChoice (modId (2, "src"),  (int) ModSrc::Lfo1);
+                setChoice (modId (2, "dest"), (int) ModDest::AllPitch);
+                set (modId (2, "depth"), rnd (0.04f, 0.1f));
+            }
+            if (take == 2 || (take == 0 && chance (0.4f)))         // string comb
+            {
+                setBool (id::delayOn, true);
+                set (id::delayTime, juce::jlimit (0.0025f, 0.012f, (chance (0.5f) ? 1.0f : 2.0f) / hz));
+                set (id::delayFb, rnd (0.6f, 0.85f));
+                set (id::delayMix, rnd (0.35f, 0.55f));
+            }
+            if (chance (0.25f))                                    // shimmering tail
+            {
+                setBool (id::flangeOn, true);
+                set (id::flangeRate, rnd (0.3f, 1.5f));
+                set (id::flangeDepth, rnd (0.3f, 0.6f));
+                set (id::flangeFb, rnd (0.3f, 0.6f));
+            }
+            if (chance (0.3f))                                     // a second, detuned string
+            {
+                setBool (oscId (2, "on"), true);
+                setChoice (oscId (2, "wave"), (int) OscWave::Saw);
+                set (oscId (2, "fine"), rnd (5.0f, 15.0f));
+                set (oscId (2, "level"), rnd (0.4f, 0.6f));
+            }
+            set (id::gateTime, rnd (0.12f, 0.2f));
+            break;
+        }
+
+        case Category::Impact:
+        {
+            // impact: thump, thud, body fall, heavy door. A sub sine with a fast
+            // pitch dive and a short dull noise burst riding the same filter env.
+            // Low-passed throughout: HIT keeps the bright punch and pierce roles.
+            const int take = rndInt (0, 2);             // 0 thump, 1 thud / body fall, 2 heavy door
+            const bool light = chance (0.55f);          // high-passed: less sub, more knock
+            setChoice (oscId (1, "wave"), chance (0.7f) ? (int) OscWave::Sine
+                                                        : (int) OscWave::Triangle);
+            set (id::baseFreq, light ? rndLog (40.0f, 120.0f) : rndLog (40.0f, 90.0f));
+            set (oscId (1, "level"), rnd (0.7f, 0.9f));
+            setChoice (modId (1, "src"),  (int) ModSrc::FilterEnv);   // pitch dive
+            setChoice (modId (1, "dest"), (int) ModDest::AllPitch);
+            set (modId (1, "depth"), rnd (0.15f, 0.4f));
+            set (id::envFDecay, rnd (0.025f, 0.08f));
+            set (id::envFCurve, -0.6f);
+
+            setBool (id::noiseOn, true);                           // dull burst on the env
+            setChoice (id::noiseType, (int) NoiseType::Analog);
+            set (id::noiseColor, rnd (0.5f, 1.0f));
+            set (id::noiseLevel, 0.0f);
+            setChoice (modId (2, "src"),  (int) ModSrc::FilterEnv);
+            setChoice (modId (2, "dest"), (int) ModDest::NoiseLevel);
+            set (modId (2, "depth"), rnd (0.35f, 0.7f));
+
+            if (light)                                             // the LPF stays above the HPF
+            {
+                const float hpf = rndLog (80.0f, 2000.0f);
+                setBool (id::hpfOn, true);
+                set (id::hpfCutoff, hpf);
+                set (id::lpfCutoff, juce::jmax (rndLog (300.0f, 1200.0f), hpf * rnd (1.5f, 3.0f)));
+            }
+            else
+            {
+                set (id::lpfCutoff, rndLog (180.0f, 700.0f));
+            }
+            set (id::lpfRes, rnd (0.0f, 0.2f));
+            set (id::lpfEnv, rnd (0.1f, 0.35f));                   // a brief knock
+            set (id::envADecay, take == 0 ? rnd (0.12f, 0.3f)
+                              : take == 1 ? rnd (0.2f, 0.45f)
+                                          : rnd (0.4f, 0.8f));
+            set (id::envACurve, rnd (-0.7f, -0.4f));
+            set (id::envARelease, 0.08f);
+            set (id::vcaDrive, rnd (0.3f, 0.7f));
+            set (id::comp, rnd (0.5f, 0.85f));
+            if (! light && chance (0.4f))                          // sub octave weight
+            {
+                setBool (oscId (2, "on"), true);
+                setChoice (oscId (2, "wave"), (int) OscWave::Sine);
+                set (oscId (2, "pitch"), -12.0f);
+                set (oscId (2, "level"), rnd (0.4f, 0.7f));
+            }
+            if (take == 2)                                         // a room behind the door
+            {
+                setBool (id::delayOn, true);
+                set (id::delayTime, rndLog (0.03f, 0.07f));
+                set (id::delayFb, rnd (0.2f, 0.4f));
+                set (id::delayMix, rnd (0.2f, 0.35f));
+            }
+            set (id::gateTime, 0.1f);
             break;
         }
     }
@@ -1478,6 +2261,9 @@ void Randomizer::applyCategory (Category c)
         setBool (id::tremPre,  chance (0.35f));
         setBool (id::formPre,  chance (0.35f));
     }
+
+    if (c == Category::Slash)
+        setBool (id::delayOn, false);   // a slash is a quick swish: no echo tail
 
     compactModMatrix();    // no gaps: routings fill from slot 1 down
 }

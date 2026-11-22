@@ -620,7 +620,7 @@ void BitTrixerEditor::layoutPanels (juce::Rectangle<int> bounds)
         lfoRow.removeFromLeft (gap);
         stepLfoPanel.setBounds (lfoRow);
         right.removeFromTop (gap);
-        randomizerPanel.setBounds (right.removeFromBottom (200));   // Generate, a touch shorter
+        randomizerPanel.setBounds (right.removeFromBottom (230));   // Generate, four rows
         right.removeFromBottom (gap);
         triggerPanel.setBounds (right.removeFromBottom (138));      // Trigger, fixed, pushed down
         right.removeFromBottom (gap);

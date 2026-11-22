@@ -82,6 +82,10 @@ public:
 
     juce::Font getLabelFont (juce::Label&) override;
     juce::Font getComboBoxFont (juce::ComboBox&) override;
+
+    // a button's "fontHeight" property, when set, fixes its text size
+    static constexpr const char* kFontHeightProperty = "fontHeight";
+    juce::Font getTextButtonFont (juce::TextButton&, int buttonHeight) override;
     juce::Font getPopupMenuFont() override;
 
 protected:

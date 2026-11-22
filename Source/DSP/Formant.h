@@ -48,15 +48,9 @@ public:
         reso  = clamp01 (reso01);
         mix   = clamp01 (mix01);
 
-        // interpolate the formant table between the two nearest vowels
-        const float x  = vowel * (float) (kVowels - 1);   // 0 .. 4
-        int   i0 = (int) x;
-        if (i0 > kVowels - 2) i0 = kVowels - 2;
-        const float fr = x - (float) i0;
-
         for (int k = 0; k < 3; ++k)
         {
-            const float hz = kFormants[i0][k] + fr * (kFormants[i0 + 1][k] - kFormants[i0][k]);
+            const float hz = formantHz (vowel, k);
             const float fc = hz < 50.0f ? 50.0f : (hz > 0.45f * fs ? 0.45f * fs : hz);
             f[k] = 2.0f * FastMath::sinCycle (fc / (2.0f * fs));   // SVF tuning coef
         }
@@ -73,6 +67,16 @@ public:
     }
 
     // single-channel variant for the per-voice pre-filter path
+    // formant k (0..2) in Hz for vowel01, interpolated between the two nearest vowels
+    static float formantHz (float vowel01, int k) noexcept
+    {
+        const float x  = clamp01 (vowel01) * (float) (kVowels - 1);   // 0 .. 4
+        int   i0 = (int) x;
+        if (i0 > kVowels - 2) i0 = kVowels - 2;
+        const float fr = x - (float) i0;
+        return kFormants[i0][k] + fr * (kFormants[i0 + 1][k] - kFormants[i0][k]);
+    }
+
     void processMono (float* buf, int n) noexcept
     {
         for (int s = 0; s < n; ++s)

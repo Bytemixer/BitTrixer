@@ -38,9 +38,11 @@
 class Randomizer : private juce::AudioProcessorValueTreeState::Listener
 {
 public:
+    // APPEND-only: the index is what the Generate buttons send
     enum class Category { Pickup = 0, Laser, Explosion, Powerup, Hit, Jump, Blip, OneUp, Lose,
-                          Clang, Slash, Gust, Flame, Spark, Shimmer };
-    static constexpr int kNumCategories = 15;
+                          Clang, Slash, Gust, Flame, Spark, Shimmer,
+                          Voice, Crackle, Twang, Impact };
+    static constexpr int kNumCategories = 19;
 
     static const char* categoryName (Category c)
     {
@@ -61,6 +63,10 @@ public:
             case Category::Flame:     return "FLAME";
             case Category::Spark:     return "SPARK";
             case Category::Shimmer:   return "SHIMMER";
+            case Category::Voice:     return "VOICE";
+            case Category::Crackle:   return "CRACKLE";
+            case Category::Twang:     return "TWANG";
+            case Category::Impact:    return "IMPACT";
         }
         return "?";
     }
@@ -113,6 +119,7 @@ private:
     void fmChime (int modSlot);   // bell / coin / chime cascade
     void fmClang();               // metallic / inharmonic clang
     void fmNoise();               // op-1 feedback driven into noise
+    void fmFormantVoice (float baseHz, float vowel01, float outLevel);   // carriers on the vowel's formants
 
     void setFxOrder (const int* order);   // set the 7 chain-position params
     void shuffleFxOrder();                // random valid permutation

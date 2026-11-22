@@ -15,15 +15,20 @@
 #include "../Randomizer.h"
 
 // ============================================================================
-//  RandomizerPanel — the fun row: RANDOM, MUTATE and one button per
-//  sfxr-style category generator. The owner wires onRandom / onMutate / onCategory.
+//  RandomizerPanel — RANDOM, MUTATE and one button per sfxr-style category
+//  generator, in four rows grouped by family. Each button's width follows its
+//  label. The owner wires onRandom / onMutate / onCategory.
 // ============================================================================
 
 class RandomizerPanel : public SectionPanel
 {
 public:
+    static constexpr float kButtonFontHeight = 14.0f;
+
     RandomizerPanel() : SectionPanel ("Generate")
     {
+        randomButton.getProperties().set (RetroLookAndFeel::kFontHeightProperty, kButtonFontHeight);
+        mutateButton.getProperties().set (RetroLookAndFeel::kFontHeightProperty, kButtonFontHeight);
         randomButton.setButtonText ("RANDOM");
         randomButton.setColour (juce::TextButton::buttonColourId, RetroColors::accent);
         randomButton.setColour (juce::TextButton::textColourOffId, juce::Colour (0xff10151c));
@@ -50,13 +55,18 @@ public:
             juce::Colour (0xff9fd9c4),   // gust    - airy mint
             juce::Colour (0xffff5a2e),   // flame   - fiery red-orange
             juce::Colour (0xfff5d028),   // spark   - electric yellow
-            juce::Colour (0xff86d4f5)    // shimmer - icy cyan
+            juce::Colour (0xff86d4f5),   // shimmer - icy cyan
+            juce::Colour (0xffeda07a),   // voice   - warm peach
+            juce::Colour (0xffe0782f),   // crackle - ember
+            juce::Colour (0xffc7c46a),   // twang   - bowstring tan
+            juce::Colour (0xffa98a6e)    // impact  - earthy brown
         };
 
         for (int i = 0; i < Randomizer::kNumCategories; ++i)
         {
             auto* b = categoryButtons.add (new juce::TextButton());
             b->setButtonText (Randomizer::categoryName ((Randomizer::Category) i));
+            b->getProperties().set (RetroLookAndFeel::kFontHeightProperty, kButtonFontHeight);
             b->setColour (juce::TextButton::buttonColourId, catColors[i].withAlpha (0.85f));
             b->setColour (juce::TextButton::textColourOffId, juce::Colour (0xff10151c));
             const int index = i;
@@ -67,43 +77,20 @@ public:
 
     void resized() override
     {
-        // three equal-height rows so the new category row matches the others
+        using C = Randomizer::Category;
+        auto cat = [this] (C c) -> juce::TextButton* { return categoryButtons[(int) c]; };
+        const std::vector<std::vector<juce::TextButton*>> rows {
+            { &randomButton, &mutateButton, cat (C::Pickup), cat (C::Powerup), cat (C::OneUp), cat (C::Lose) },
+            { cat (C::Blip), cat (C::Jump), cat (C::Laser), cat (C::Explosion), cat (C::Voice) },
+            { cat (C::Hit), cat (C::Impact), cat (C::Slash), cat (C::Clang), cat (C::Twang) },
+            { cat (C::Gust), cat (C::Flame), cat (C::Crackle), cat (C::Spark), cat (C::Shimmer) } };
+
         auto b = content();
-        const int rowH = b.getHeight() / 3;
-        auto row1 = b.removeFromTop (rowH).reduced (0, 2);
-        auto row2 = b.removeFromTop (rowH).reduced (0, 2);
-        auto row3 = b.reduced (0, 2);
-
-        // row 1: RANDOM + MUTATE + first 3 categories (Pickup / Laser / Explode)
-        const int cw = row1.getWidth() / 5;
-        randomButton.setBounds (row1.removeFromLeft (cw).reduced (2, 0));
-        mutateButton.setBounds (row1.removeFromLeft (cw).reduced (2, 0));
-        for (int i = 0; i < 3; ++i)
-            categoryButtons[i]->setBounds (row1.removeFromLeft (cw).reduced (2, 0));
-
-        // row 2: categories 3..8 — variable widths so "Power-Up" fits (Hit
-        // narrower). Order: powerup, hit, jump, blip, 1-up, lose.
-        const float wts[6] = { 1.42f, 0.80f, 0.95f, 0.90f, 0.95f, 0.98f };
-        float wsum = 0.0f; for (float wgt : wts) wsum += wgt;
-        const int bw = row2.getWidth();
-        for (int i = 3; i < 9; ++i)
+        const int rowH = b.getHeight() / (int) rows.size();
+        for (size_t r = 0; r < rows.size(); ++r)
         {
-            const int colW = (i == 8) ? row2.getWidth()
-                                      : (int) ((float) bw * wts[i - 3] / wsum);
-            categoryButtons[i]->setBounds (row2.removeFromLeft (colW).reduced (2, 0));
-        }
-
-        // row 3: the six new categories (Clang / Slash / Gust / Flame / Spark /
-        // Shimmer). "Shimmer" is the long one, so it gets a wider cell.
-        const float w3[6] = { 0.93f, 0.93f, 0.86f, 0.93f, 0.93f, 1.42f };
-        float w3sum = 0.0f; for (float wgt : w3) w3sum += wgt;
-        const int bw3 = row3.getWidth();
-        for (int i = 9; i < Randomizer::kNumCategories; ++i)
-        {
-            const int w = (i == Randomizer::kNumCategories - 1)
-                            ? row3.getWidth()
-                            : (int) ((float) bw3 * w3[i - 9] / w3sum);
-            categoryButtons[i]->setBounds (row3.removeFromLeft (w).reduced (2, 0));
+            auto area = (r + 1 == rows.size() ? b : b.removeFromTop (rowH)).reduced (0, 2);
+            layoutRow (rows[r], area);
         }
     }
 
@@ -111,6 +98,29 @@ public:
     std::function<void (int)> onCategory;
 
 private:
+    // label width plus padding, then the spare width shared equally
+    void layoutRow (const std::vector<juce::TextButton*>& row, juce::Rectangle<int> area)
+    {
+        constexpr float kPad = 16.0f;   // text insets plus the gap between buttons
+        std::vector<float> w;
+        float total = 0.0f;
+        for (auto* btn : row)
+        {
+            const auto font = getLookAndFeel().getTextButtonFont (*btn, area.getHeight());
+            w.push_back (juce::GlyphArrangement::getStringWidth (font, btn->getButtonText()) + kPad);
+            total += w.back();
+        }
+        const float spare = ((float) area.getWidth() - total) / (float) row.size();
+        float x = (float) area.getX();
+        for (size_t i = 0; i < row.size(); ++i)
+        {
+            const float right = i + 1 == row.size() ? (float) area.getRight() : x + w[i] + spare;
+            row[i]->setBounds (juce::Rectangle<int> ((int) x, area.getY(), (int) right - (int) x,
+                                                     area.getHeight()).reduced (2, 0));
+            x = right;
+        }
+    }
+
     juce::TextButton randomButton, mutateButton;
     juce::OwnedArray<juce::TextButton> categoryButtons;
 };
