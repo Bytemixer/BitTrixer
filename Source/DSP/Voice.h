@@ -84,10 +84,17 @@ public:
 
     // Called at trigger time. detuneCents/pan position this voice within the
     // unison stack; phaseOffset spreads the unison voices; waves let each
-    // oscillator start at its rising zero crossing (no onset pop).
+    // oscillator start at its rising zero crossing (no onset pop). fresh clears
+    // the filter, noise, pre-FX and drift state; a steal (fresh = false) keeps
+    // the filter state so the sound does not click.
     void start (float detuneCents, float pan, uint32_t seed, float phaseOffset,
-                const Oscillator::Wave* waves) noexcept
+                const Oscillator::Wave* waves, bool fresh) noexcept
     {
+        if (fresh)
+        {
+            hardReset();
+            preFx.retrigger();
+        }
         rng = seed != 0 ? seed : 0xB16B00B5u;
         detuneRatio = std::pow (2.0f, detuneCents / 1200.0f);
 
@@ -105,7 +112,6 @@ public:
         }
         fm.reset (0.0f);                 // sine ops start at 0 -> click-free
         noise.seed (nextRandU32());
-        // keep filter state (anti-click on voice steal), drift keeps walking
     }
 
     void hardReset() noexcept

@@ -18,7 +18,7 @@
 //  StepLfoPanel — LFO 2 is a step sequencer (the BitTrixer twist). A
 //  draggable bar-graph sets 2..8 bipolar step levels; routed through the mod
 //  matrix (mapping it to pitch gives an arpeggio, to cutoff a rhythmic
-//  filter, ...). Plus STEPS / RATE / GLIDE controls.
+//  filter, ...). Plus STEPS / RATE / GLIDE / SKEW controls.
 // ============================================================================
 
 class StepLfoPanel : public SectionPanel

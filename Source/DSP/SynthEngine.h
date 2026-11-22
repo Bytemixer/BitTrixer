@@ -70,9 +70,22 @@ private:
         float pwm        = 0.0f;
     };
 
+    // FX tail: after the amp env ends, an instance keeps running its FX chain
+    // until the output stays below kTailFloor for kTailQuietSec, faded out
+    // over kTailFadeSec once it reaches kTailMaxSec.
+    static constexpr float kTailFloor    = 3.0e-5f;   // about -90 dBFS
+    static constexpr float kTailQuietSec = 0.05f;
+    static constexpr float kTailMaxSec   = 6.0f;
+    static constexpr float kTailFadeSec  = 0.3f;
+    // fixed LFO 1 seed per trigger, so sample-and-hold patterns repeat exactly
+    static constexpr uint32_t kLfoSeed = 0x2545F491u;
+
     struct Instance
     {
         bool active = false;
+        bool tail   = false;            // amp env done; only the FX chain still sounds
+        int  tailAge = 0;               // samples spent in the tail
+        int  quietRun = 0;              // consecutive samples below kTailFloor
         int  note   = kNoteNone;        // >= 0 MIDI; see tags below
         uint64_t startClock = 0;
         uint64_t ageSamples = 0;        // for pitch-jump onsets / min-gate
@@ -96,6 +109,7 @@ private:
                     int gateSamples, const VariateOffsets& v, uint32_t seed,
                     uint64_t clock);
         void gateOff();
+        void deactivate();
         // renders one sub-block additively into the bus
         void renderAdd (float* left, float* right, int n,
                         const Params::Patch& p, float fs);
@@ -128,7 +142,7 @@ private:
     float masterGain = 0.5f;
     float masterTarget = 0.5f;
 
-    // master output lo-fi stage (anti-aliased rate reduction + bit crush)
+    // master output lo-fi stage (sample-and-hold rate reduction + 8-bit quantize, no anti-aliasing)
     LofiStage lofi;
 
     uint32_t rng = 0x5EEDF00Du;

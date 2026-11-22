@@ -32,7 +32,7 @@ public:
     static constexpr int kCount = 7;
     enum class Effect { Crush = 0, Phaser, Flanger, RingMod, Tremolo, Formant, Delay };
 
-    void prepare (double sampleRate) noexcept
+    void prepare (double sampleRate)
     {
         crushL.reset(); crushR.reset();
         phaser.prepare (sampleRate); flanger.prepare (sampleRate); ring.prepare (sampleRate);

@@ -63,7 +63,13 @@ void SynthEngine::Instance::start (const Params::Patch& p, int noteTag,
                                    const VariateOffsets& v, uint32_t seed,
                                    uint64_t clockNow)
 {
+    // a fresh start (idle or tail-only instance) clears all voice state so every
+    // trigger renders identically; a steal of a sounding instance keeps it (no click)
+    const bool fresh = ! active || tail;
     active = true;
+    tail = false;
+    tailAge = 0;
+    quietRun = 0;
     note = noteTag;
     startClock = clockNow;
     ageSamples = 0;
@@ -95,10 +101,15 @@ void SynthEngine::Instance::start (const Params::Patch& p, int noteTag,
         const float phaseOffset = numVoices == 1 ? 0.0f
                                 : (float) i / (float) numVoices;
         voices[(size_t) i].start (pos * p.uniDetuneCents,
-                                  pos * p.uniSpread, s, phaseOffset, waves);
+                                  pos * p.uniSpread, s, phaseOffset, waves, fresh);
     }
 
+    lfo1.seed (kLfoSeed);
     lfo1.retrigger();
+    // the step values must be current before the retrigger reads step 1
+    stepLfo.setSteps (p.stepCount);
+    for (int k = 0; k < Params::kMaxSteps; ++k)
+        stepLfo.setStepValue (k, p.stepVals[(size_t) k]);
     stepLfo.retrigger();
     fxChain.retrigger();
     envF.gateOn();   // analog semantics: continues from current level on steal
@@ -110,6 +121,16 @@ void SynthEngine::Instance::gateOff()
     envF.gateOff();
     envA.gateOff();
     gateRemaining = -1;
+}
+
+void SynthEngine::Instance::deactivate()
+{
+    active = false;
+    tail = false;
+    tailAge = 0;
+    quietRun = 0;
+    envF.reset();
+    envA.reset();
 }
 
 void SynthEngine::Instance::renderAdd (float* left, float* right, int n,
@@ -161,7 +182,7 @@ void SynthEngine::Instance::renderAdd (float* left, float* right, int n,
 
     // retrigger: re-strike the sound at the retrigger rate while it is gated
     // (a stutter/arpeggio texture; the release tail still plays out at the end)
-    if (p.retrigHz >= 0.25f && ! envA.isReleasing())
+    if (p.retrigHz >= 0.25f && ! tail && ! envA.isReleasing())
     {
         retrigCounter -= n;
         if (retrigCounter <= 0)
@@ -300,11 +321,12 @@ void SynthEngine::Instance::renderAdd (float* left, float* right, int n,
     float scratchL[kSubBlock] {};
     float scratchR[kSubBlock] {};
 
-    for (int i = 0; i < numVoices; ++i)
-    {
-        voices[(size_t) i].setNoiseColor (clampf (p.noiseColor + mv.noiseColor, 0.0f, 1.0f));
-        voices[(size_t) i].renderAdd (scratchL, scratchR, n, ctx);
-    }
+    if (! tail)
+        for (int i = 0; i < numVoices; ++i)
+        {
+            voices[(size_t) i].setNoiseColor (clampf (p.noiseColor + mv.noiseColor, 0.0f, 1.0f));
+            voices[(size_t) i].renderAdd (scratchL, scratchR, n, ctx);
+        }
 
     // post-VCA effect chain, processed in the user's order. Any mono effect
     // flagged pre-filter already ran per-voice in PreFx, so setPreFlags() makes
@@ -319,20 +341,47 @@ void SynthEngine::Instance::renderAdd (float* left, float* right, int n,
     fxChain.setDelay   (p.delayOn,  delayTimeM * 1000.0f, delayFbM, delayMixM);
     fxChain.process (scratchL, scratchR, n);
 
+    if (tail)
+    {
+        // fade the last kTailFadeSec before the cap, then track silence
+        const int maxSamples  = (int) (kTailMaxSec * fsf);
+        const int fadeSamples = (int) (kTailFadeSec * fsf);
+        float peak = 0.0f;
+        for (int s = 0; s < n; ++s)
+        {
+            const int remaining = maxSamples - (tailAge + s);
+            if (remaining < fadeSamples)
+            {
+                const float g = remaining > 0 ? (float) remaining / (float) fadeSamples : 0.0f;
+                scratchL[s] *= g;
+                scratchR[s] *= g;
+            }
+            peak = std::max (peak, std::max (std::fabs (scratchL[s]), std::fabs (scratchR[s])));
+        }
+        tailAge += n;
+        quietRun = peak < kTailFloor ? quietRun + n : 0;
+    }
+
     for (int s = 0; s < n; ++s)
     {
         left[s]  += scratchL[s];
         right[s] += scratchR[s];
     }
 
-    if (! envA.isActive())
+    if (tail)
     {
-        active = false;
-        // Clear leftover envelope level so the NEXT trigger reusing this (now
-        // idle) instance starts from a clean, deterministic state. Without this
-        // the filter env's residual release level brightened re-triggers, and
-        // the offline export (always a fresh engine, env from 0) never matched
-        // the "warmed" live preview.
+        // silence must outlast the gap before the next delay repeat
+        const float quietSec = kTailQuietSec + (p.delayOn ? delayTimeM : 0.0f);
+        if (quietRun >= (int) (quietSec * fsf) || tailAge >= (int) (kTailMaxSec * fsf))
+            deactivate();
+    }
+    else if (! envA.isActive())
+    {
+        // the voices are done; reset the envelopes so a reuse starts clean,
+        // and let the FX chain ring out
+        tail = true;
+        tailAge = 0;
+        quietRun = 0;
         envF.reset();
         envA.reset();
     }
@@ -355,10 +404,8 @@ void SynthEngine::reset()
 {
     for (auto& inst : instances)
     {
-        inst.active = false;
+        inst.deactivate();
         inst.note = kNoteNone;
-        inst.envF.reset();
-        inst.envA.reset();
         for (auto& v : inst.voices)
             v.hardReset();
     }
@@ -375,6 +422,14 @@ SynthEngine::Instance* SynthEngine::findFreeInstance()
         if (! inst.active)
             return &inst;
 
+    // prefer stealing an FX tail over a sound that is still playing
+    Instance* oldestTail = nullptr;
+    for (auto& inst : instances)
+        if (inst.tail && (oldestTail == nullptr || inst.startClock < oldestTail->startClock))
+            oldestTail = &inst;
+    if (oldestTail != nullptr)
+        return oldestTail;
+
     Instance* oldest = &instances[0];
     for (auto& inst : instances)
         if (inst.startClock < oldest->startClock)
@@ -390,6 +445,9 @@ void SynthEngine::fire (int noteTag, float overrideHz, int gateSamples)
     // used to seed this, which drifted with history; the export ran a fresh
     // engine and never matched. Per-shot variation is opt-in via Auto-Variate,
     // which still draws from the live RNG below.)
+    // With nothing sounding, the lo-fi hold also restarts, as in a fresh export.
+    if (! anyActive())
+        lofi.reset();
     findFreeInstance()->start (patch, noteTag, overrideHz, gateSamples,
                                makeVariate(), kVoiceSeed, clock);
 }
@@ -493,9 +551,7 @@ void SynthEngine::render (float* left, float* right, int numSamples)
         {
             for (auto& inst : instances)
             {
-                inst.active = false;
-                inst.envF.reset();
-                inst.envA.reset();
+                inst.deactivate();
                 for (auto& v : inst.voices)
                     v.hardReset();
             }
@@ -503,9 +559,9 @@ void SynthEngine::render (float* left, float* right, int numSamples)
                 l[s] = r[s] = 0.0f;
         }
 
-        // master output stage: gain -> compression -> safety clip -> lo-fi
+        // master output stage: gain -> soft clip -> compression -> lo-fi
         //   compression: bfxr-style power-law density/punch (boosts quiet parts)
-        //   lo-fi:       anti-aliased rate reduction + bit-depth quantization
+        //   lo-fi:       sample-and-hold rate reduction (no anti-aliasing) + 8-bit quantize
         const float compExp = 1.0f - 0.7f * clampf (patch.compAmount, 0.0f, 1.0f);
         const bool  doComp  = patch.compAmount > 0.001f;
 

@@ -11,8 +11,9 @@
 
 #pragma once
 
-#include <array>
+#include <algorithm>
 #include <cmath>
+#include <vector>
 
 // ============================================================================
 //  Delay — a feedback delay line with fractional read (linear interpolation).
@@ -24,25 +25,32 @@
 class Delay
 {
 public:
-    void prepare (double sampleRate) noexcept
+    // allocates: call from prepareToPlay, never from the audio thread
+    void prepare (double sampleRate)
     {
         fs = (float) sampleRate;
+        const int needed = (int) std::ceil (kMaxTimeSec * sampleRate) + 2;
+        int size = 1;
+        while (size < needed) size <<= 1;
+        bufL.assign ((size_t) size, 0.0f);
+        bufR.assign ((size_t) size, 0.0f);
+        mask = size - 1;
         retrigger();
     }
 
     void retrigger() noexcept
     {
-        bufL.fill (0.0f);
-        bufR.fill (0.0f);
+        std::fill (bufL.begin(), bufL.end(), 0.0f);
+        std::fill (bufR.begin(), bufR.end(), 0.0f);
         writePos = 0;
     }
 
-    // timeMs 1 .. ~340   feedback01 0 .. 1   mix01 0 = dry .. 1 = wet
+    // timeMs 1 .. 400   feedback01 0 .. 1   mix01 0 = dry .. 1 = wet
     void setParams (float timeMs, float feedback01, float mix01) noexcept
     {
         float t = timeMs < 1.0f ? 1.0f : timeMs;
         delaySamps = (t * 0.001f) * fs;
-        if (delaySamps > (float) (kSize - 2)) delaySamps = (float) (kSize - 2);
+        if (delaySamps > (float) (mask - 1)) delaySamps = (float) (mask - 1);
         fb  = clamp01 (feedback01) * 0.98f;   // headroom under runaway
         mix = clamp01 (mix01);
     }
@@ -53,21 +61,20 @@ public:
         {
             left[s]  = stage (bufL, left[s]);
             right[s] = stage (bufR, right[s]);
-            writePos = (writePos + 1) & kMask;
+            writePos = (writePos + 1) & mask;
         }
     }
 
 private:
-    static constexpr int kSize = 16384;        // ~340 ms @ 48 kHz
-    static constexpr int kMask = kSize - 1;
+    static constexpr double kMaxTimeSec = 0.4;   // matches the Delay Time parameter maximum
 
     static float clamp01 (float x) noexcept { return x < 0.0f ? 0.0f : (x > 1.0f ? 1.0f : x); }
 
-    float stage (std::array<float, kSize>& buf, float x) noexcept
+    float stage (std::vector<float>& buf, float x) noexcept
     {
         const float readPos = (float) writePos - delaySamps;
-        const int i0 = ((int) std::floor (readPos)) & kMask;
-        const int i1 = (i0 + 1) & kMask;
+        const int i0 = ((int) std::floor (readPos)) & mask;
+        const int i1 = (i0 + 1) & mask;
         const float frac = readPos - std::floor (readPos);
         const float delayed = buf[(size_t) i0] + frac * (buf[(size_t) i1] - buf[(size_t) i0]);
 
@@ -79,6 +86,7 @@ private:
     float delaySamps = 4800.0f;
     float fb = 0.4f;
     float mix = 0.4f;
-    std::array<float, kSize> bufL {}, bufR {};
+    std::vector<float> bufL, bufR;
+    int mask = 0;
     int writePos = 0;
 };

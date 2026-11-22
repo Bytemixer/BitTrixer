@@ -47,6 +47,7 @@ public:
         shValue = nextRand();
         sgTarget = nextRand();
         sgValue = 0.0f;
+        lastOut = 0.0f;
     }
 
     float value() const noexcept { return lastOut; }

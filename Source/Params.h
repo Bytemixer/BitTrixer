@@ -28,7 +28,6 @@ namespace Params
     inline constexpr int   kNumModSlots = 6;
     inline constexpr int   kMaxUnison   = 16;
     inline constexpr int   kMaxSteps    = 8;
-    inline constexpr int   kFxSlots     = 6;     // reorderable FX chain slots (mirror FxChain::kSlots)
     inline constexpr int   kFxChainLen  = 7;     // FX chain effects/order length (mirror FxChain::kCount)
 
     // ---- enum orderings (must match the choice arrays below) ----
@@ -103,7 +102,6 @@ namespace Params
                                                    "Delay Time", "Delay Fdbk", "Delay Wet" };
     inline const juce::StringArray polesNames    { "2-Pole", "4-Pole" };
     inline const juce::StringArray rateNames     { "48 kHz", "44.1 kHz", "22 kHz", "11 kHz", "8 kHz" };
-    inline const juce::StringArray fxTypeNames   { "Off", "Crush", "Phaser", "Flanger", "Ring Mod", "Tremolo", "Formant", "Delay" };  // mirror FxChain::Type
     inline const juce::StringArray fxWaveNames   { "Sine", "Tri", "Square", "Saw" };   // RingMod carrier / Tremolo LFO shape
     inline const juce::StringArray fmAlgoNames   { "1 Serial", "2 Stack", "3 Dual Mod A", "4 Dual Mod B",
                                                    "5 Twin Pair", "6 Branch", "7 Pair+2", "8 Additive",   // YM2612 algorithms
@@ -123,7 +121,6 @@ namespace Params
     inline juce::String lfoId  (int lfo1Based, const char* suffix)  { return "lfo"  + juce::String (lfo1Based) + "_" + suffix; }
     inline juce::String modId  (int slot1Based, const char* suffix) { return "mod"  + juce::String (slot1Based) + "_" + suffix; }
     inline juce::String stepValId (int step1Based)                  { return "step_val" + juce::String (step1Based); }
-    inline juce::String fxId   (int slot1Based, const char* suffix) { return "fxslot" + juce::String (slot1Based) + "_" + suffix; }
     inline juce::String fxOrderId (int pos)                         { return "fxorder" + juce::String (pos); }
     inline juce::String fmOpId (int op1Based, const char* suffix)   { return "fmop"  + juce::String (op1Based) + "_" + suffix; }
 
@@ -358,13 +355,27 @@ namespace Params
         std::array<int, kFxChainLen> fxOrder { 0, 1, 3, 4, 5, 2, 6 };
         // per-effect pre-filter flags (Crush/Phaser/RingMod/Tremolo/Formant)
         bool crushPre = false, phasePre = false, ringPre = false, tremPre = false, formPre = false;
-
-        // reorderable FX chain: per-slot type index (FxChain::Type) + 3 generic params A/B/C
-        std::array<int,   kFxSlots> fxSlotType { 0, 0, 0, 0, 0, 0 };
-        std::array<float, kFxSlots> fxSlotA { 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f };
-        std::array<float, kFxSlots> fxSlotB { 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f };
-        std::array<float, kFxSlots> fxSlotC { 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f };
     };
+
+    // Makes order a permutation of 0..kFxChainLen-1: out-of-range or repeated
+    // entries are replaced by the missing effects in ascending order.
+    inline void sanitizeOrder (std::array<int, kFxChainLen>& order) noexcept
+    {
+        bool used[kFxChainLen] {};
+        for (auto& e : order)
+        {
+            if (e >= 0 && e < kFxChainLen && ! used[e]) used[e] = true;
+            else e = -1;
+        }
+        int next = 0;
+        for (auto& e : order)
+            if (e < 0)
+            {
+                while (used[next]) ++next;
+                e = next;
+                used[next] = true;
+            }
+    }
 
     // ------------------------------------------------------------------
     //  Cached raw-value pointers for lock-free per-block snapshotting.
@@ -487,14 +498,6 @@ namespace Params
                 fmRatio[i] = get (fmOpId (i + 1, "ratio"));
                 fmLevel[i] = get (fmOpId (i + 1, "level"));
             }
-
-            for (int k = 0; k < kFxSlots; ++k)
-            {
-                fxSlotType[k] = get (fxId (k + 1, "type"));
-                fxSlotA[k]    = get (fxId (k + 1, "a"));
-                fxSlotB[k]    = get (fxId (k + 1, "b"));
-                fxSlotC[k]    = get (fxId (k + 1, "c"));
-            }
         }
 
         Patch read() const
@@ -599,6 +602,7 @@ namespace Params
             p.delayOn = delayOn->load() > 0.5f; p.delayTime = delayTime->load(); p.delayFb  = delayFb->load();  p.delayMix = delayMix->load();
             for (int k = 0; k < kFxChainLen; ++k)
                 p.fxOrder[(size_t) k] = (int) fxOrder[k]->load();
+            sanitizeOrder (p.fxOrder);
             p.crushPre = crushPre->load() > 0.5f; p.phasePre = phasePre->load() > 0.5f;
             p.ringPre  = ringPre->load()  > 0.5f; p.tremPre  = tremPre->load()  > 0.5f;
             p.formPre  = formPre->load()  > 0.5f;
@@ -609,14 +613,6 @@ namespace Params
             {
                 p.fmRatio[(size_t) i] = fmRatio[i]->load();
                 p.fmLevel[(size_t) i] = fmLevel[i]->load();
-            }
-
-            for (int k = 0; k < kFxSlots; ++k)
-            {
-                p.fxSlotType[(size_t) k] = (int) fxSlotType[k]->load();
-                p.fxSlotA[(size_t) k]    = fxSlotA[k]->load();
-                p.fxSlotB[(size_t) k]    = fxSlotB[k]->load();
-                p.fxSlotC[(size_t) k]    = fxSlotC[k]->load();
             }
             return p;
         }
@@ -706,11 +702,6 @@ namespace Params
         std::atomic<float>* fmFeedback {};
         std::atomic<float>* fmRatio[4] {};
         std::atomic<float>* fmLevel[4] {};
-
-        std::atomic<float>* fxSlotType[kFxSlots] {};
-        std::atomic<float>* fxSlotA[kFxSlots] {};
-        std::atomic<float>* fxSlotB[kFxSlots] {};
-        std::atomic<float>* fxSlotC[kFxSlots] {};
     };
 
     // ------------------------------------------------------------------
@@ -1005,19 +996,6 @@ namespace Params
         layout.add (std::make_unique<AudioParameterBool> (ParameterID { id::ringPre, 1 },  "Ring Pre-filter",    false));
         layout.add (std::make_unique<AudioParameterBool> (ParameterID { id::tremPre, 1 },  "Tremolo Pre-filter", false));
         layout.add (std::make_unique<AudioParameterBool> (ParameterID { id::formPre, 1 },  "Formant Pre-filter", false));
-
-        // ---- reorderable FX chain slots (type + 3 generic A/B/C params each) ----
-        for (int k = 1; k <= kFxSlots; ++k)
-        {
-            const auto n = "FX " + String (k) + " ";
-            layout.add (std::make_unique<AudioParameterChoice>(ParameterID { fxId (k, "type"), 1 }, n + "Type", fxTypeNames, 0));
-            layout.add (std::make_unique<AudioParameterFloat> (ParameterID { fxId (k, "a"), 1 }, n + "A",
-                            NormalisableRange<float> (0.0f, 1.0f, 0.001f), 0.5f, unitAttr));
-            layout.add (std::make_unique<AudioParameterFloat> (ParameterID { fxId (k, "b"), 1 }, n + "B",
-                            NormalisableRange<float> (0.0f, 1.0f, 0.001f), 0.5f, unitAttr));
-            layout.add (std::make_unique<AudioParameterFloat> (ParameterID { fxId (k, "c"), 1 }, n + "C",
-                            NormalisableRange<float> (0.0f, 1.0f, 0.001f), 0.5f, unitAttr));
-        }
 
         return layout;
     }

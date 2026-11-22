@@ -15,8 +15,8 @@
 #include "../Randomizer.h"
 
 // ============================================================================
-//  RandomizerPanel — the fun row: full RANDOM plus the seven colorful
-//  sfxr-style category generators. The owner wires onRandom / onCategory.
+//  RandomizerPanel — the fun row: RANDOM, MUTATE and one button per
+//  sfxr-style category generator. The owner wires onRandom / onMutate / onCategory.
 // ============================================================================
 
 class RandomizerPanel : public SectionPanel

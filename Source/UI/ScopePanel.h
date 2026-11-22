@@ -97,7 +97,7 @@ public:
         // duration readout
         g.setColour (RetroColors::textDim);
         g.setFont (juce::Font (juce::FontOptions (10.0f)));
-        g.drawText (juce::String (avail / 44100.0, 2) + " s",
+        g.drawText (juce::String ((double) avail / renderRate, 2) + " s",
                     content().reduced (6, 4), juce::Justification::topRight);
     }
 
@@ -123,6 +123,10 @@ private:
 
     void renderWaveform()
     {
+        // render at the host rate so the lo-fi stride matches what plays
+        const double sr = apvts.processor.getSampleRate();
+        renderRate = sr > 8000.0 ? sr : 44100.0;
+        renderer.setSampleRate (renderRate);
         const auto buffer = renderer.renderPatch (getPatch(), 5.0);
         const int n = buffer.getNumSamples();
         mono.resize ((size_t) n);
@@ -135,6 +139,7 @@ private:
     juce::AudioProcessorValueTreeState& apvts;
     std::function<Params::Patch()> getPatch;
     WavExporter renderer;
+    double renderRate = 44100.0;
     juce::StringArray watchedIds;
     std::vector<float> mono;
     std::atomic<bool> dirty { false };
