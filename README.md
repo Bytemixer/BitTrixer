@@ -1,5 +1,6 @@
 # BitTrixer
 
+App Image
 <img width="1477" height="1273" alt="image" src="https://github.com/user-attachments/assets/c920c507-0fba-4fe9-8bbb-3518ad0ed7ad" />
 
 NOTE/caveat: 
